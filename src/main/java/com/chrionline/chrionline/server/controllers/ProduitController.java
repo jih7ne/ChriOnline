@@ -1,4 +1,6 @@
 package com.chrionline.chrionline.server.controllers;
 
-public class ProduitController {
+import com.chrionline.chrionline.core.interfaces.IController;
+
+public class ProduitController implements IController {
 }

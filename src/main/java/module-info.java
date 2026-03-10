@@ -9,6 +9,8 @@ module com.chrionline.chrionline {
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
+    requires java.sql;
+    requires org.slf4j;
 
     opens com.chrionline.chrionline to javafx.fxml;
     exports com.chrionline.chrionline;

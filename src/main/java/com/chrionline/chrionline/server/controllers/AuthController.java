@@ -1,4 +1,6 @@
 package com.chrionline.chrionline.server.controllers;
 
-public class AuthController {
+import com.chrionline.chrionline.core.interfaces.IController;
+
+public class AuthController implements IController {
 }
