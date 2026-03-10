@@ -58,6 +58,7 @@ public class ServerApplication {
         AppConfig.registerController("Commande", new CommandeController());
         AppConfig.registerController("Panier", new PanierController());
         AppConfig.registerController("Produit", new ProduitController());
+        AppConfig.registerController("Test", new TestClientController());
     }
 
 }
