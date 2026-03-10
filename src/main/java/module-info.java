@@ -13,6 +13,7 @@ module com.chrionline.chrionline {
     requires java.sql;
     requires org.slf4j;
     requires com.google.gson;
+    requires mysql.connector.j;
 
     exports com.chrionline.chrionline.client;
     exports com.chrionline.chrionline.client.controllers;
@@ -27,5 +28,7 @@ module com.chrionline.chrionline {
     opens com.chrionline.chrionline.network.protocol to com.google.gson;
     exports com.chrionline.chrionline.network.enums;
     opens com.chrionline.chrionline.network.enums to com.google.gson;
+    opens com.chrionline.chrionline.server.data.models to com.google.gson;
+    opens com.chrionline.chrionline.server.data.dto to com.google.gson;
 
 }
