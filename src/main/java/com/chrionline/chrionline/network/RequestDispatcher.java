@@ -2,7 +2,7 @@ package com.chrionline.chrionline.network;
 
 import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.interfaces.IController;
-import com.chrionline.chrionline.network.protocol.ApiResponse;
+import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.protocol.RequestParser;
 
@@ -15,7 +15,7 @@ public class RequestDispatcher {
             String[] parts = message.split("#", 2);
 
             if (parts.length < 2) {
-                return ApiResponse.badRequest("ERROR: Invalid message format. Expected: Controller#action:payload");
+                return AppResponse.badRequest("ERROR: Invalid message format. Expected: Controller#action:payload");
             }
 
             String controllerName = parts[0];
@@ -27,7 +27,7 @@ public class RequestDispatcher {
             IController controller = AppConfig.getController(controllerName);
 
             if(controller == null) {
-                return ApiResponse.error("Controller '" + controllerName + "' not found");
+                return AppResponse.error("Controller '" + controllerName + "' not found");
             }
 
             Method method = controller.getClass()
@@ -36,9 +36,9 @@ public class RequestDispatcher {
             return (String) method.invoke(controller, payload);
 
         } catch (NoSuchMethodException e) {
-            return ApiResponse.error("Action not found: " + e.getMessage());
+            return AppResponse.error("Action not found: " + e.getMessage());
         } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
+            return AppResponse.error(e.getMessage());
         }
     }
 
@@ -51,7 +51,7 @@ public class RequestDispatcher {
 
             IController controller = AppConfig.getController(request.getController());
             if (controller == null) {
-                return ApiResponse.error("Controller '" + request.getController() + "' not found");
+                return AppResponse.error("Controller '" + request.getController() + "' not found");
             }
 
 
@@ -61,10 +61,10 @@ public class RequestDispatcher {
             return (String) method.invoke(controller, request);
 
         } catch (NoSuchMethodException e) {
-            return ApiResponse.error("Action '" + request.getAction() + "' not found in controller '" +
+            return AppResponse.error("Action '" + request.getAction() + "' not found in controller '" +
                     request.getController() + "'");
         } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
+            return AppResponse.error(e.getMessage());
         }
     }
 

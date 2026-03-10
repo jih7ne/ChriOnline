@@ -5,14 +5,14 @@ import com.chrionline.chrionline.core.utils.JsonUtils;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ApiResponse {
+public class AppResponse {
     private String status;
     private String message;
     private Object data;
     private Map<String, Object> metadata;
 
 
-    private ApiResponse(){
+    private AppResponse(){
         this.metadata = new ConcurrentHashMap<>();
     }
 
@@ -40,8 +40,8 @@ public class ApiResponse {
     }
 
     //Deserializing to ServerResponse
-    public static ApiResponse fromJson(String json) {
-        return JsonUtils.fromJson(json, ApiResponse.class);
+    public static AppResponse fromJson(String json) {
+        return JsonUtils.fromJson(json, AppResponse.class);
     }
 
     public <T> T getDataAs(Class<T> type) {
@@ -64,10 +64,10 @@ public class ApiResponse {
 
 
     public static class Builder {
-        private final ApiResponse response;
+        private final AppResponse response;
 
         public Builder() {
-            this.response = new ApiResponse();
+            this.response = new AppResponse();
         }
 
         public Builder success() {
@@ -105,7 +105,7 @@ public class ApiResponse {
             return this;
         }
 
-        public ApiResponse build() {
+        public AppResponse build() {
             return response;
         }
 
@@ -171,33 +171,33 @@ public class ApiResponse {
 
 
     public static String withData(Object data) {
-        return ApiResponse.success(data);
+        return AppResponse.success(data);
     }
 
 
     public static String withData(Object data, String message) {
-        return ApiResponse.success(data, message);
+        return AppResponse.success(data, message);
     }
 
     public static String withData(Object data, Map<String, Object> metadata) {
-        return ApiResponse.success(data, metadata);
+        return AppResponse.success(data, metadata);
     }
 
     public static String ok() {
-        return ApiResponse.success(null, "Operation completed successfully");
+        return AppResponse.success(null, "Operation completed successfully");
     }
 
     public static String notFound(String resource) {
-        return ApiResponse.error(resource + " not found");
+        return AppResponse.error(resource + " not found");
     }
 
 
     public static String badRequest(String message) {
-        return ApiResponse.error("Bad request: " + message);
+        return AppResponse.error("Bad request: " + message);
     }
 
     public static String unauthorized(String message) {
-        return ApiResponse.error("Unauthorized: " + message);
+        return AppResponse.error("Unauthorized: " + message);
     }
 
     /**
