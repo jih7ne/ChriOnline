@@ -1,7 +1,7 @@
 package com.chrionline.chrionline.server.controllers;
 
 import com.chrionline.chrionline.core.interfaces.IController;
-import com.chrionline.chrionline.network.protocol.ApiResponse;
+import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 
 import java.util.HashMap;
@@ -22,7 +22,7 @@ public class TestClientController implements IController {
         responseData.put("received", request.getPayload());
 
         // Return as success response with data
-        return ApiResponse.withData(responseData, "Test completed");
+        return AppResponse.withData(responseData, "Test completed");
     }
 
 }
