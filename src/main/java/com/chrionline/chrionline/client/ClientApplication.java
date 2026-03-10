@@ -63,7 +63,20 @@ public class ClientApplication extends Application {
             AppConfig.getLogger().info("Initializing TCP client...");
             client = new TCPClient();
 
-            // How to send a request to the server
+            // Test register
+            Map<String, String> payload = new HashMap<>();
+            payload.put("nom", "Test");
+            payload.put("prenom", "User");
+            payload.put("email", "test@chrionline.com");
+            payload.put("password", "azerty");
+
+            AppRequest req = new AppRequest.Builder()
+                    .controller("Auth")
+                    .action("register")
+                    .payload(JsonUtils.toJson(payload))
+                    .build();
+
+            System.out.println(client.sendRequest(req));
 
             Map<String, String> map = new HashMap<>();
             map.put("password", "123");
