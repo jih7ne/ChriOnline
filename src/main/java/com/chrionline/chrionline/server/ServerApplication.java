@@ -5,6 +5,7 @@ import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.network.tcp.TCPServer;
 import com.chrionline.chrionline.server.controllers.*;
 import com.chrionline.chrionline.server.repositories.ProduitRepository;
+import com.chrionline.chrionline.server.repositories.UtilisateurRepository;
 import com.chrionline.chrionline.server.services.ProduitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,49 +17,39 @@ public class ServerApplication {
 
     public static void main(String[] args) {
         try {
-
-            logger.info("Starting Server application...");
-
-
+            logger.info("Démarrage du serveur ChriOnline...");
             registerRepositories();
-
-
             registerServices();
-
             registerControllers();
-
-
-            logger.info("Starting TCP Server on port {}", AppConstants.SERVER_PORT);
+            logger.info("Démarrage TCP sur le port {}", AppConstants.SERVER_PORT);
             new TCPServer();
-
         } catch (Exception e) {
-            logger.error("Failed to start application", e);
+            logger.error("Échec du démarrage", e);
             System.exit(-1);
         }
     }
 
     private static void registerRepositories() throws SQLException {
-        ProduitRepository produitRepo = new ProduitRepository(AppConfig.getConnection());
-        AppConfig.registerRepo(ProduitRepository.class, produitRepo);
-        logger.info("Repositories registered");
+        AppConfig.registerRepo(ProduitRepository.class,
+                new ProduitRepository(AppConfig.getConnection()));
+        AppConfig.registerRepo(UtilisateurRepository.class,
+                new UtilisateurRepository(AppConfig.getConnection()));
+        logger.info("Repositories enregistrés");
     }
 
     private static void registerServices() {
-
-        ProduitRepository produitRepo = AppConfig.getRepo(ProduitRepository.class);
-        ProduitService produitService = new ProduitService(produitRepo);
-
-        AppConfig.registerService(ProduitService.class, produitService);
-        logger.info("Services registered");
+        AppConfig.registerService(ProduitService.class,
+                new ProduitService(AppConfig.getRepo(ProduitRepository.class)));
+        logger.info("Services enregistrés");
     }
 
-    public static void registerControllers(){
+    public static void registerControllers() {
         AppConfig.registerController("Auth", new AuthController());
         AppConfig.registerController("Admin", new AdminController());
         AppConfig.registerController("Commande", new CommandeController());
         AppConfig.registerController("Panier", new PanierController());
         AppConfig.registerController("Produit", new ProduitController());
         AppConfig.registerController("Test", new TestClientController());
+        logger.info("Controllers enregistrés");
     }
-
 }
