@@ -2,7 +2,7 @@ package com.chrionline.chrionline.client.ui.views;
 
 import com.chrionline.chrionline.core.theme.AppTheme;
 import com.chrionline.chrionline.core.utils.JsonUtils;
-import com.chrionline.chrionline.network.protocol.ApiResponse;
+import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.tcp.TCPClient;
 import javafx.application.Platform;
@@ -115,7 +115,7 @@ public class RegisterView extends VBox {
                         .payload(JsonUtils.toJson(payload))
                         .build();
 
-                ApiResponse response = tcpClient.sendAndParse(request);
+                AppResponse response = tcpClient.sendAndParse(request);
 
                 Platform.runLater(() -> {
                     registerButton.setDisable(false); registerButton.setText("Créer mon compte");

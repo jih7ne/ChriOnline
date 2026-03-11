@@ -2,8 +2,8 @@ package com.chrionline.chrionline.network.tcp;
 
 import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
-import com.chrionline.chrionline.network.protocol.ApiResponse;
 import com.chrionline.chrionline.network.protocol.AppRequest;
+import com.chrionline.chrionline.network.protocol.AppResponse;
 
 import java.io.*;
 import java.net.Socket;
@@ -40,18 +40,18 @@ public class TCPClient {
         return sendRequest(request.toJson());
     }
 
-    public ApiResponse sendAndParse(String request) throws IOException {
+    public AppResponse sendAndParse(String request) throws IOException {
         String response = sendRequest(request);
-        return ApiResponse.fromJson(response);
+        return AppResponse.fromJson(response);
     }
 
-    public ApiResponse sendAndParse(AppRequest request) throws IOException {
+    public AppResponse sendAndParse(AppRequest request) throws IOException {
         String response = sendRequest(request);
-        return ApiResponse.fromJson(response);
+        return AppResponse.fromJson(response);
     }
 
     public <T> T sendAndGetData(String request, Class<T> dataType) throws IOException {
-        ApiResponse response = sendAndParse(request);
+        AppResponse response = sendAndParse(request);
         if (!response.isSuccess()) {
             throw new RuntimeException("Request failed: " + response.getMessage());
         }
