@@ -8,9 +8,11 @@ import com.chrionline.chrionline.network.tcp.TCPClient;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class ClientApplication extends Application {
 
@@ -25,52 +27,62 @@ public class ClientApplication extends Application {
         AppConfig.getLogger().info("JavaFX Application started successfully");
     }
 
-
-
     private void showLoginView() {
         LoginView view = new LoginView(
                 client,
-                token -> {
-
+                userData -> {
+                    // userData contient : token, role, id, nom, prenom, email, statut
+                    String token = (String) userData.get("token");
+                    String role  = (String) userData.get("role");
                     client.setAuthToken(token);
-                    AppConfig.getLogger().info("Login successful, token stored: {}", token);
-                    showWelcomeView(token);
+                    AppConfig.getLogger().info("Login OK — role: {}, token: {}", role, token);
+                    redirectByRole(role, userData);
                 },
                 this::showRegisterView
         );
         primaryStage.setTitle("ChriOnline — Connexion");
-        primaryStage.setScene(new Scene(view, 900, 650));
+        primaryStage.setScene(new Scene(view, 900, 700));
         primaryStage.show();
     }
 
     private void showRegisterView() {
         RegisterView view = new RegisterView(
                 client,
-                this::showLoginView,   // inscription réussie → retour login
-                this::showLoginView    // bouton "Déjà un compte ?"
+                this::showLoginView,
+                this::showLoginView
         );
         primaryStage.setTitle("ChriOnline — Inscription");
         primaryStage.setScene(new Scene(view, 900, 700));
     }
 
-    private void showWelcomeView(String token) {
-
-        javafx.scene.control.Label label = new javafx.scene.control.Label(
-                " Connecté ! Token : " + token
-        );
-        label.setStyle("-fx-font-size: 14px; -fx-padding: 40;");
-        primaryStage.setTitle("ChriOnline — Accueil");
-        primaryStage.setScene(new Scene(label, 900, 600));
+    private void redirectByRole(String role, Map<String, Object> userData) {
+        if ("admin".equals(role)) {
+            showAdminView(userData);
+        } else {
+            showClientView(userData);
+        }
     }
 
-    // ─── Lifecycle ────────────────────────────────────────────────
+    private void showAdminView(Map<String, Object> userData) {
+        // TODO Sprint 3 : remplacer par AdminView complète
+        Label label = new Label(" Admin Dashboard — " + userData.get("nom") + " " + userData.get("prenom"));
+        label.setStyle("-fx-font-size: 18px; -fx-padding: 40; -fx-text-fill: #3D2B1A;");
+        primaryStage.setTitle("ChriOnline — Administration");
+        primaryStage.setScene(new Scene(label, 1100, 700));
+    }
+
+    private void showClientView(Map<String, Object> userData) {
+        // TODO Sprint 3 : remplacer par CatalogueView / ProfilView
+        Label label = new Label(" Bienvenue " + userData.get("prenom") + " !");
+        label.setStyle("-fx-font-size: 18px; -fx-padding: 40; -fx-text-fill: #3D2B1A;");
+        primaryStage.setTitle("ChriOnline — Boutique");
+        primaryStage.setScene(new Scene(label, 1100, 700));
+    }
 
     @Override
     public void stop() throws Exception {
         AppConfig.getLogger().info("Shutting down client application...");
-        if (client != null && client.isConnected()) {
-            client.disconnect();
-        }
+        if (client != null && client.isConnected()) client.disconnect();
         super.stop();
     }
 
@@ -78,14 +90,9 @@ public class ClientApplication extends Application {
         try {
             AppConfig.getLogger().info("Initializing TCP client...");
             client = new TCPClient();
-
-            if (!client.isConnected()) {
-                throw new RuntimeException("Failed to connect to server");
-            }
-
+            if (!client.isConnected()) throw new RuntimeException("Failed to connect to server");
             AppConfig.getLogger().info("Successfully connected to server");
             launch(args);
-
         } catch (IOException e) {
             AppConfig.getLogger().error("Failed to initialize client", e);
             System.err.println("Could not connect to server: " + e.getMessage());
