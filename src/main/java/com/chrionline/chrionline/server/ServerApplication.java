@@ -7,6 +7,8 @@ import com.chrionline.chrionline.server.controllers.*;
 import com.chrionline.chrionline.server.repositories.ProduitRepository;
 import com.chrionline.chrionline.server.repositories.UtilisateurRepository;
 import com.chrionline.chrionline.server.services.ProduitService;
+import com.chrionline.chrionline.server.repositories.PanierRepository;
+import com.chrionline.chrionline.server.services.PanierService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,12 +36,19 @@ public class ServerApplication {
                 new ProduitRepository(AppConfig.getConnection()));
         AppConfig.registerRepo(UtilisateurRepository.class,
                 new UtilisateurRepository(AppConfig.getConnection()));
+        AppConfig.registerRepo(PanierRepository.class,
+                new PanierRepository(AppConfig.getConnection()));
         logger.info("Repositories enregistrés");
     }
 
     private static void registerServices() {
         AppConfig.registerService(ProduitService.class,
                 new ProduitService(AppConfig.getRepo(ProduitRepository.class)));
+        AppConfig.registerService(PanierService.class,
+                new PanierService(
+                        AppConfig.getRepo(PanierRepository.class),
+                        AppConfig.getRepo(ProduitRepository.class)
+                ));
         logger.info("Services enregistrés");
     }
 
