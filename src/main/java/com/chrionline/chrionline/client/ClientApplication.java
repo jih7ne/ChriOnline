@@ -1,20 +1,20 @@
 package com.chrionline.chrionline.client;
 
-import com.chrionline.chrionline.client.ui.views.LoginView;
-import com.chrionline.chrionline.client.ui.views.RegisterView;
+import com.chrionline.chrionline.client.ui.views.*;
 import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
+import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.network.tcp.TCPClient;
+import com.chrionline.chrionline.server.data.models.Produit;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.util.Map;
 
-public class ClientApplication extends Application {
+public class ClientApplication extends Application implements ViewManager {
 
     private static TCPClient client;
     private Stage primaryStage;
@@ -27,16 +27,20 @@ public class ClientApplication extends Application {
         AppConfig.getLogger().info("JavaFX Application started successfully");
     }
 
-    private void showLoginView() {
+    //  LOGIN
+    @Override
+    public void showLoginView() {
         LoginView view = new LoginView(
                 client,
                 userData -> {
-                    // userData contient : token, role, id, nom, prenom, email, statut
                     String token = (String) userData.get("token");
                     String role  = (String) userData.get("role");
                     client.setAuthToken(token);
-                    AppConfig.getLogger().info("Login OK — role: {}, token: {}", role, token);
-                    redirectByRole(role, userData);
+                    if ("admin".equals(role)) {
+                        showAdminView(userData);
+                    } else {
+                        showCatalogueView(userData);
+                    }
                 },
                 this::showRegisterView
         );
@@ -45,7 +49,9 @@ public class ClientApplication extends Application {
         primaryStage.show();
     }
 
-    private void showRegisterView() {
+    //  REGISTER
+    @Override
+    public void showRegisterView() {
         RegisterView view = new RegisterView(
                 client,
                 this::showLoginView,
@@ -55,28 +61,36 @@ public class ClientApplication extends Application {
         primaryStage.setScene(new Scene(view, 900, 700));
     }
 
-    private void redirectByRole(String role, Map<String, Object> userData) {
-        if ("admin".equals(role)) {
-            showAdminView(userData);
-        } else {
-            showClientView(userData);
-        }
+    // ===== CATALOGUE =====
+    @Override
+    public void showCatalogueView(Map<String, Object> userData) {
+        CatalogueView view = new CatalogueView(client, userData, this);
+        primaryStage.setTitle("ChriOnline — Catalogue");
+        primaryStage.setScene(new Scene(view, 1100, 750));
     }
 
-    private void showAdminView(Map<String, Object> userData) {
-        // TODO Sprint 3 : remplacer par AdminView complète
-        Label label = new Label(" Admin Dashboard — " + userData.get("nom") + " " + userData.get("prenom"));
-        label.setStyle("-fx-font-size: 18px; -fx-padding: 40; -fx-text-fill: #3D2B1A;");
+    //  PANIER
+    @Override
+    public void showPanierView(Map<String, Object> userData) {
+        PanierView view = new PanierView(client, userData, this);
+        primaryStage.setTitle("ChriOnline — Mon Panier");
+        primaryStage.setScene(new Scene(view, 1100, 750));
+    }
+
+    // DETAILS PRODUIT
+    @Override
+    public void showDetailsProduit(Produit produit, Map<String, Object> userData) {
+        // TODO : créer DetailsProduitView
+        // Pour l'instant on reste sur le catalogue
+        showCatalogueView(userData);
+    }
+
+    //  ADMIN
+    @Override
+    public void showAdminView(Map<String, Object> userData) {
+        AdminView view = new AdminView(client, userData, this);
         primaryStage.setTitle("ChriOnline — Administration");
-        primaryStage.setScene(new Scene(label, 1100, 700));
-    }
-
-    private void showClientView(Map<String, Object> userData) {
-        // TODO Sprint 3 : remplacer par CatalogueView / ProfilView
-        Label label = new Label(" Bienvenue " + userData.get("prenom") + " !");
-        label.setStyle("-fx-font-size: 18px; -fx-padding: 40; -fx-text-fill: #3D2B1A;");
-        primaryStage.setTitle("ChriOnline — Boutique");
-        primaryStage.setScene(new Scene(label, 1100, 700));
+        primaryStage.setScene(new Scene(view, 1100, 750));
     }
 
     @Override
