@@ -87,10 +87,10 @@ public class DetailsProduitView extends BorderPane {
         ));
         retourBtn.setOnAction(e -> viewManager.showCatalogueView(userData));
 
-        // Section principale — centrée
+        // Section principale
         HBox topSection = new HBox(48);
-        topSection.setAlignment(Pos.CENTER); // ← centré
-        topSection.setMaxWidth(1000);        // ← largeur max
+        topSection.setAlignment(Pos.CENTER);
+        topSection.setMaxWidth(1000);
 
         StackPane imageContainer = buildImageSection();
         VBox infoSection = buildInfoSection();
@@ -116,7 +116,6 @@ public class DetailsProduitView extends BorderPane {
         return content;
     }
 
-    // ===== IMAGE =====
     private StackPane buildImageSection() {
         StackPane container = new StackPane();
         container.setPrefWidth(480);
@@ -161,12 +160,10 @@ public class DetailsProduitView extends BorderPane {
         return container;
     }
 
-    // ===== INFO PRODUIT =====
     private VBox buildInfoSection() {
         VBox info = new VBox(16);
         info.setAlignment(Pos.TOP_LEFT);
 
-        // Catégorie
         Label categorieLabel = new Label(
                 produit.getNomCategorie() != null ? produit.getNomCategorie() : ""
         );
@@ -175,7 +172,6 @@ public class DetailsProduitView extends BorderPane {
                         "-fx-text-fill: #B08968;"
         );
 
-        // Nom
         Label nomLabel = new Label(produit.getNom());
         nomLabel.setStyle(
                 "-fx-font-size: 32px;" +
@@ -185,7 +181,6 @@ public class DetailsProduitView extends BorderPane {
         );
         nomLabel.setMaxWidth(Double.MAX_VALUE);
 
-        // Prix + stock
         HBox prixStock = new HBox(16);
         prixStock.setAlignment(Pos.CENTER_LEFT);
 
@@ -196,7 +191,6 @@ public class DetailsProduitView extends BorderPane {
                         "-fx-text-fill: #7F5539;"
         );
 
-        // Indicateur stock
         HBox stockBox = new HBox(6);
         stockBox.setAlignment(Pos.CENTER);
         Circle dot = new Circle(5);
@@ -212,7 +206,6 @@ public class DetailsProduitView extends BorderPane {
         stockBox.getChildren().addAll(dot, stockLabel);
         prixStock.getChildren().addAll(prixLabel, stockBox);
 
-        // Description courte
         Label descLabel = new Label(produit.getDescription() != null ?
                 produit.getDescription() : "");
         descLabel.setStyle(
@@ -223,7 +216,6 @@ public class DetailsProduitView extends BorderPane {
         );
         descLabel.setMaxWidth(Double.MAX_VALUE);
 
-        // ===== QUANTITE =====
         Label quantiteTitre = new Label("Quantité");
         quantiteTitre.setStyle(
                 "-fx-font-size: 14px;" +
@@ -234,7 +226,6 @@ public class DetailsProduitView extends BorderPane {
         HBox quantiteRow = new HBox(16);
         quantiteRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Contrôle quantité
         HBox quantiteControl = new HBox(0);
         quantiteControl.setAlignment(Pos.CENTER);
         quantiteControl.setStyle(
@@ -272,7 +263,6 @@ public class DetailsProduitView extends BorderPane {
 
         quantiteControl.getChildren().addAll(moinsBtn, quantiteLabel, plusBtn);
 
-        // Total
         HBox totalBox = new HBox(6);
         totalBox.setAlignment(Pos.CENTER_LEFT);
         Label totalTitre = new Label("Total:");
@@ -286,7 +276,6 @@ public class DetailsProduitView extends BorderPane {
         totalBox.getChildren().addAll(totalTitre, totalLabel);
         quantiteRow.getChildren().addAll(quantiteControl, totalBox);
 
-        // ===== BOUTON AJOUTER AU PANIER =====
         Button panierBtn = new Button("  Ajouter au panier");
         panierBtn.setMaxWidth(Double.MAX_VALUE);
         panierBtn.setDisable(!enStock);
@@ -338,7 +327,6 @@ public class DetailsProduitView extends BorderPane {
         return info;
     }
 
-    // ===== BOUTON QUANTITE =====
     private Button createQuantiteBtn(String text) {
         Button btn = new Button(text);
         btn.setPrefSize(40, 40);
@@ -369,7 +357,6 @@ public class DetailsProduitView extends BorderPane {
         return btn;
     }
 
-    // ===== TABS DESCRIPTION / CARACTERISTIQUES =====
     private VBox buildTabsSection() {
         VBox section = new VBox(16);
         section.setStyle(
@@ -379,12 +366,10 @@ public class DetailsProduitView extends BorderPane {
         );
         section.setPadding(new Insets(24));
 
-        // Tabs header
         HBox tabsHeader = new HBox(8);
         Button descTab = createTabBtn("Description", true);
         Button caracTab = createTabBtn("Caractéristiques", false);
 
-        // Contenu des tabs
         VBox tabContent = new VBox(12);
         tabContent.setPadding(new Insets(8, 0, 0, 0));
         showDescriptionTab(tabContent);
@@ -470,12 +455,10 @@ public class DetailsProduitView extends BorderPane {
         }
     }
 
-    // ===== CALCUL TOTAL =====
     private void updateTotal() {
         totalLabel.setText(String.format("%.2f MAD", produit.getPrix() * quantite));
     }
 
-    // ===== AJOUTER AU PANIER =====
     private void ajouterAuPanier() {
         new Thread(() -> {
             try {
