@@ -9,10 +9,7 @@ import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
 import com.chrionline.chrionline.server.data.mappers.LigneCommandeRowMapper;
 import com.chrionline.chrionline.server.data.mappers.PaiementRowMapper;
 import com.chrionline.chrionline.server.repositories.*;
-import com.chrionline.chrionline.server.services.CommandeService;
-import com.chrionline.chrionline.server.services.PaiementService;
-import com.chrionline.chrionline.server.services.ProduitService;
-import com.chrionline.chrionline.server.services.PanierService;
+import com.chrionline.chrionline.server.services.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +69,8 @@ public class ServerApplication {
                         AppConfig.getRepo(PaiementRepository.class),
                         AppConfig.getService(CommandeService.class)
                 ));
-
+        AppConfig.registerService(AdresseService.class,
+                new AdresseService(AppConfig.getRepo(AdresseRepository.class)));
         logger.info("Services enregistrés");
     }
 
@@ -85,6 +83,7 @@ public class ServerApplication {
         AppConfig.registerController("Test", new TestClientController());
         AppConfig.registerController("Commande",  new CommandeController());
         AppConfig.registerController("Paiement",  new PaiementController());
+        AppConfig.registerController("Adresse", new AdresseController());
         logger.info("Controllers enregistrés");
     }
 }
