@@ -61,36 +61,33 @@ public class ClientApplication extends Application implements ViewManager {
         primaryStage.setScene(new Scene(view, 900, 700));
     }
 
-    // ===== CATALOGUE =====
     @Override
     public void showCatalogueView(Map<String, Object> userData) {
         CatalogueView view = new CatalogueView(client, userData, this);
         primaryStage.setTitle("ChriOnline — Catalogue");
-        primaryStage.setScene(new Scene(view, 1100, 750));
+        primaryStage.getScene().setRoot(view);
     }
 
-    //  PANIER
     @Override
     public void showPanierView(Map<String, Object> userData) {
         PanierView view = new PanierView(client, userData, this);
         primaryStage.setTitle("ChriOnline — Mon Panier");
-        primaryStage.setScene(new Scene(view, 1100, 750));
+        primaryStage.getScene().setRoot(view);
+    }
+
+    @Override
+    public void showAdminView(Map<String, Object> userData) {
+        AdminView view = new AdminView(client, userData, this);
+        primaryStage.setTitle("ChriOnline — Administration");
+        primaryStage.getScene().setRoot(view);
     }
 
     // DETAILS PRODUIT
     @Override
     public void showDetailsProduit(Produit produit, Map<String, Object> userData) {
-        // TODO : créer DetailsProduitView
-        // Pour l'instant on reste sur le catalogue
-        showCatalogueView(userData);
-    }
-
-    //  ADMIN
-    @Override
-    public void showAdminView(Map<String, Object> userData) {
-        AdminView view = new AdminView(client, userData, this);
-        primaryStage.setTitle("ChriOnline — Administration");
-        primaryStage.setScene(new Scene(view, 1100, 750));
+        DetailsProduitView view = new DetailsProduitView(client, produit, userData, this);
+        primaryStage.setTitle("ChriOnline — " + produit.getNom());
+        primaryStage.getScene().setRoot(view);
     }
 
     @Override
