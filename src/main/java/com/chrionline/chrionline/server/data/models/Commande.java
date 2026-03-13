@@ -8,7 +8,7 @@ public class Commande {
     private int id_commande;
     private String uuid_commande;
     private int id_utilisateur;
-    private int id_panier;
+    private Integer id_panier;
     private int id_adresse;
     private LocalDateTime date;
     private StatutCommande statut;
@@ -17,7 +17,7 @@ public class Commande {
     public Commande() {
     }
 
-    public Commande(int id_commande, String uuid_commande, int id_utilisateur, int id_panier, int id_adresse, LocalDateTime date, StatutCommande statut, double prix_total) {
+    public Commande(int id_commande, String uuid_commande, int id_utilisateur, Integer id_panier, int id_adresse, LocalDateTime date, StatutCommande statut, double prix_total) {
         this.id_commande = id_commande;
         this.uuid_commande = uuid_commande;
         this.id_utilisateur = id_utilisateur;
@@ -40,7 +40,7 @@ public class Commande {
         return id_utilisateur;
     }
 
-    public int getId_panier() {
+    public Integer getId_panier() {
         return id_panier;
     }
 
@@ -72,7 +72,7 @@ public class Commande {
         this.id_utilisateur = id_utilisateur;
     }
 
-    public void setId_panier(int id_panier) {
+    public void setId_panier(Integer id_panier) {
         this.id_panier = id_panier;
     }
 
