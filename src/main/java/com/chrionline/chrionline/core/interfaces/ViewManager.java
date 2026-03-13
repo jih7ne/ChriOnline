@@ -1,7 +1,13 @@
 package com.chrionline.chrionline.core.interfaces;
 
-import java.io.IOException;
+import com.chrionline.chrionline.server.data.models.Produit;
+import java.util.Map;
 
 public interface ViewManager {
-    void showView(String fxmlPath, String title) throws IOException;
+    void showLoginView();
+    void showRegisterView();
+    void showCatalogueView(Map<String, Object> userData);
+    void showPanierView(Map<String, Object> userData);
+    void showDetailsProduit(Produit produit, Map<String, Object> userData);
+    void showAdminView(Map<String, Object> userData);
 }
