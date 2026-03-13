@@ -14,11 +14,14 @@ module com.chrionline.chrionline {
     requires org.slf4j;
     requires com.google.gson;
     requires mysql.connector.j;
+    requires org.kordamp.ikonli.feather;
+    requires org.kordamp.ikonli.core;
 
     exports com.chrionline.chrionline.client;
     exports com.chrionline.chrionline.client.controllers;
     exports com.chrionline.chrionline.server.controllers;
     exports com.chrionline.chrionline.core.enums;
+    exports com.chrionline.chrionline.server.data.models;
 
     opens com.chrionline.chrionline to javafx.fxml, com.google.gson;
     opens com.chrionline.chrionline.client to javafx.fxml;
