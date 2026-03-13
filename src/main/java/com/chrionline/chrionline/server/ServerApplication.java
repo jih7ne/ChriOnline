@@ -4,10 +4,14 @@ import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.network.tcp.TCPServer;
 import com.chrionline.chrionline.server.controllers.*;
-import com.chrionline.chrionline.server.repositories.ProduitRepository;
-import com.chrionline.chrionline.server.repositories.UtilisateurRepository;
+import com.chrionline.chrionline.server.data.mappers.AdresseRowMapper;
+import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
+import com.chrionline.chrionline.server.data.mappers.LigneCommandeRowMapper;
+import com.chrionline.chrionline.server.data.mappers.PaiementRowMapper;
+import com.chrionline.chrionline.server.repositories.*;
+import com.chrionline.chrionline.server.services.CommandeService;
+import com.chrionline.chrionline.server.services.PaiementService;
 import com.chrionline.chrionline.server.services.ProduitService;
-import com.chrionline.chrionline.server.repositories.PanierRepository;
 import com.chrionline.chrionline.server.services.PanierService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +42,14 @@ public class ServerApplication {
                 new UtilisateurRepository(AppConfig.getConnection()));
         AppConfig.registerRepo(PanierRepository.class,
                 new PanierRepository(AppConfig.getConnection()));
+        AppConfig.registerRepo(CommandeRepository.class,
+                new CommandeRepository(AppConfig.getConnection(), new CommandeRowMapper()));
+        AppConfig.registerRepo(LigneCommandeRepository.class,
+                new LigneCommandeRepository(AppConfig.getConnection(), new LigneCommandeRowMapper()));
+        AppConfig.registerRepo(PaiementRepository.class,
+                new PaiementRepository(AppConfig.getConnection(), new PaiementRowMapper()));
+        AppConfig.registerRepo(AdresseRepository.class,
+                new AdresseRepository(AppConfig.getConnection(), new AdresseRowMapper()));
         logger.info("Repositories enregistrés");
     }
 
@@ -49,6 +61,18 @@ public class ServerApplication {
                         AppConfig.getRepo(PanierRepository.class),
                         AppConfig.getRepo(ProduitRepository.class)
                 ));
+        AppConfig.registerService(CommandeService.class,
+                new CommandeService(
+                        AppConfig.getRepo(CommandeRepository.class),
+                        AppConfig.getRepo(LigneCommandeRepository.class),
+                        AppConfig.getRepo(ProduitRepository.class)
+                ));
+        AppConfig.registerService(PaiementService.class,
+                new PaiementService(
+                        AppConfig.getRepo(PaiementRepository.class),
+                        AppConfig.getService(CommandeService.class)
+                ));
+
         logger.info("Services enregistrés");
     }
 
@@ -59,6 +83,8 @@ public class ServerApplication {
         AppConfig.registerController("Panier", new PanierController());
         AppConfig.registerController("Produit", new ProduitController());
         AppConfig.registerController("Test", new TestClientController());
+        AppConfig.registerController("Commande",  new CommandeController());
+        AppConfig.registerController("Paiement",  new PaiementController());
         logger.info("Controllers enregistrés");
     }
 }
