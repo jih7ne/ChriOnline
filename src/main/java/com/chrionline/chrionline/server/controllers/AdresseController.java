@@ -49,7 +49,12 @@ public class AdresseController implements IController {
             }
             logger.info("Action: ajouter adresse utilisateur id={}", adresse.getId_utilisateur());
             adresseService.ajouterAdresse(adresse);
-            return AppResponse.success(null, "Adresse ajoutée avec succès");
+
+            // Récupérer l'adresse avec son id depuis la BDD
+            List<Adresse> adresses = adresseService.getAdressesUtilisateur(adresse.getId_utilisateur());
+            Adresse adresseCreee = adresses.isEmpty() ? null : adresses.get(adresses.size() - 1);
+
+            return AppResponse.success(adresseCreee, "Adresse ajoutée avec succès");
         } catch (Exception e) {
             logger.error("Erreur lors de l'ajout de l'adresse", e);
             return AppResponse.error("Erreur lors de l'ajout de l'adresse");
