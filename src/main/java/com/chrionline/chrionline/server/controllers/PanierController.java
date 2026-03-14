@@ -18,7 +18,6 @@ public class PanierController implements IController {
         this.panierService = AppConfig.getService(PanierService.class);
     }
 
-    //  OBTENIR LE PANIER
     public String getPanier(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
@@ -27,14 +26,13 @@ public class PanierController implements IController {
             }
             logger.info("Action: getPanier utilisateur id={}", idUtilisateur);
             Panier panier = panierService.getPanier(idUtilisateur);
-            return AppResponse.success(panier);
+            return AppResponse.success(panier.getProduits()); // ← liste au lieu de l'objet Panier
         } catch (Exception e) {
             logger.error("Erreur lors de la récupération du panier", e);
             return AppResponse.error("Erreur lors de la récupération du panier");
         }
     }
 
-    //  AJOUTER UN PRODUIT
     public String ajouterProduit(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
@@ -56,7 +54,6 @@ public class PanierController implements IController {
         }
     }
 
-    //  SUPPRIMER UN PRODUIT
     public String supprimerProduit(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
@@ -74,7 +71,6 @@ public class PanierController implements IController {
         }
     }
 
-    //  MODIFIER QUANTITE
     public String modifierQuantite(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
@@ -96,7 +92,6 @@ public class PanierController implements IController {
         }
     }
 
-    //  CALCUL TOTAL
     public String calculerTotal(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
@@ -112,7 +107,6 @@ public class PanierController implements IController {
         }
     }
 
-    //  VIDER LE PANIER
     public String viderPanier(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
