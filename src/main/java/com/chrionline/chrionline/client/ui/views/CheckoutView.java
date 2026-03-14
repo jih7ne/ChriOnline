@@ -380,6 +380,12 @@ public class CheckoutView extends BorderPane {
             showError("Veuillez sélectionner une adresse de livraison.");
             return;
         }
+        Map<String, Object> adresseSelectionnee = adresseComboBox.getValue();
+        System.out.println("Adresse sélectionnée : " + adresseSelectionnee);
+        System.out.println("id type : " + (adresseSelectionnee.get("id") != null
+                ? adresseSelectionnee.get("id").getClass().getName()
+                : "NULL"));
+
         String numeroCarte = numeroCarteField.getText().replace(" ", "");
         String cvv         = cvvField.getText();
         String mois        = moisField.getText();
@@ -402,7 +408,12 @@ public class CheckoutView extends BorderPane {
                     Platform.runLater(() -> showError("Adresse invalide, veuillez en sélectionner une autre."));
                     return;
                 }
-                int idAdresse = ((Number) idAdresseObj).intValue();
+                int idAdresse;
+                if (idAdresseObj instanceof Number) {
+                    idAdresse = ((Number) idAdresseObj).intValue();
+                } else {
+                    idAdresse = Integer.parseInt(idAdresseObj.toString());
+                }
 
                 // Étape 1 : Créer la commande
                 Map<String, Object> commandeParams = new HashMap<>();
