@@ -105,7 +105,8 @@ public class ClientApplication extends Application implements ViewManager {
         CheckoutView view = new CheckoutView(
                 client,
                 lignes,
-                userData,                                          // ← plus de idUtilisateur séparé
+                userData,
+                this,
                 paiementData -> showConfirmationView(paiementData),
                 () -> showPanierView(userData)
         );
