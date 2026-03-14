@@ -1,5 +1,7 @@
 package com.chrionline.chrionline.client.ui.views;
 
+import com.chrionline.chrionline.client.ui.components.ClientNavbar;
+import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.core.theme.AppTheme;
 import com.chrionline.chrionline.core.utils.JsonUtils;
 import com.chrionline.chrionline.network.protocol.AppRequest;
@@ -9,18 +11,21 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class CheckoutView extends StackPane {
+public class CheckoutView extends BorderPane {
 
     private final TCPClient tcpClient;
     private final Map<String, Object> userData;
+    private final ViewManager viewManager;
     private final Consumer<Map<String, Object>> onPaiementSuccess;
     private final Runnable onAnnuler;
 
@@ -29,74 +34,69 @@ public class CheckoutView extends StackPane {
     private final TextField moisField;
     private final TextField anneeField;
     private final PasswordField cvvField;
-    private final TextField titulaireField;
     private final Label cardPreviewLabel;
     private final Label datePrevLabel;
-    private final Label titulairePrevLabel;
     private final Label totalLabel;
     private final Label errorLabel;
     private final Button btnConfirmer;
-    private final TableView<Map<String, Object>> articlesTable;
+    private final VBox produitsContainer;
 
     private final List<Map<String, Object>> lignes;
 
-    // ─── Constructeur — plus de idUtilisateur séparé ──────────────────────
     public CheckoutView(TCPClient tcpClient,
                         List<Map<String, Object>> lignes,
                         Map<String, Object> userData,
+                        ViewManager viewManager,
                         Consumer<Map<String, Object>> onPaiementSuccess,
                         Runnable onAnnuler) {
-        this.tcpClient          = tcpClient;
-        this.lignes             = lignes;
-        this.userData           = userData;
-        this.onPaiementSuccess  = onPaiementSuccess;
-        this.onAnnuler          = onAnnuler;
+        this.tcpClient         = tcpClient;
+        this.lignes            = lignes;
+        this.userData          = userData;
+        this.viewManager       = viewManager;
+        this.onPaiementSuccess = onPaiementSuccess;
+        this.onAnnuler         = onAnnuler;
 
         this.setStyle("-fx-background-color: " + AppTheme.BG + ";");
 
+        // ─── NAVBAR ────────────────────────────────────────────────────────
+        ClientNavbar navbar = new ClientNavbar(0, userData, viewManager, null);
+        this.setTop(navbar);
+
+        // ─── CONTENU SCROLLABLE ────────────────────────────────────────────
         ScrollPane scroll = new ScrollPane();
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background: " + AppTheme.BG + "; -fx-background-color: " + AppTheme.BG + ";");
 
-        VBox root = new VBox(24);
-        root.setPadding(new Insets(32));
+        VBox root = new VBox(28);
+        root.setPadding(new Insets(28, 60, 48, 60));
         root.setStyle("-fx-background-color: " + AppTheme.BG + ";");
 
-        // ─── TITRE ─────────────────────────────────────────────────────────
-        Label titre = new Label("Finaliser la commande");
-        titre.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";");
-
-        // ─── BARRE DE PROGRESSION ──────────────────────────────────────────
-        HBox progressBar = buildProgressBar(1);
+        // ─── STEP INDICATOR ────────────────────────────────────────────────
+        HBox stepIndicator = buildStepIndicator(1);
 
         // ─── CONTENU PRINCIPAL ─────────────────────────────────────────────
-        HBox content = new HBox(24);
-        content.setAlignment(Pos.TOP_CENTER);
+        HBox content = new HBox(28);
+        content.setAlignment(Pos.TOP_LEFT);
 
-        VBox leftCol = new VBox(16);
+        // ══════════════════════════════════════════════
+        // COLONNE GAUCHE
+        // ══════════════════════════════════════════════
+        VBox leftCol = new VBox(20);
         HBox.setHgrow(leftCol, Priority.ALWAYS);
 
-        // --- Section adresse ---
+        // ── Section adresse ────────────────────────────────────────────────
         adresseComboBox = new ComboBox<>();
         adresseComboBox.setMaxWidth(Double.MAX_VALUE);
         adresseComboBox.setPromptText("Sélectionner une adresse");
-        adresseComboBox.setStyle(
-                "-fx-background-color: " + AppTheme.FIELD_BG + ";" +
-                        "-fx-border-color: " + AppTheme.FIELD_BORDER + ";" +
-                        "-fx-border-radius: 8px; -fx-background-radius: 8px;" +
-                        "-fx-font-size: 14px;"
-        );
+        adresseComboBox.setStyle(fieldStyle());
         adresseComboBox.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(Map<String, Object> item, boolean empty) {
+            @Override protected void updateItem(Map<String, Object> item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null
-                        : item.get("rue") + ", " + item.get("ville"));
+                setText(empty || item == null ? null : item.get("rue") + ", " + item.get("ville"));
             }
         });
         adresseComboBox.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(Map<String, Object> item, boolean empty) {
+            @Override protected void updateItem(Map<String, Object> item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? "Sélectionner une adresse"
                         : item.get("rue") + ", " + item.get("ville"));
@@ -104,115 +104,132 @@ public class CheckoutView extends StackPane {
         });
 
         Button btnNouvelleAdresse = new Button("+ Nouvelle adresse");
-        AppTheme.styleOutlineButton(btnNouvelleAdresse);
+        btnNouvelleAdresse.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: " + AppTheme.PRIMARY + ";" +
+                        "-fx-border-width: 1.5px; -fx-border-radius: 20px;" +
+                        "-fx-text-fill: " + AppTheme.PRIMARY + ";" +
+                        "-fx-font-size: 13px; -fx-padding: 8px 16px; -fx-cursor: hand;"
+        );
         btnNouvelleAdresse.setOnAction(e -> openAdresseDialog());
 
         HBox adresseRow = new HBox(12, adresseComboBox, btnNouvelleAdresse);
         HBox.setHgrow(adresseComboBox, Priority.ALWAYS);
         adresseRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox sectionAdresse = buildSection("Adresse de livraison", adresseRow);
+        VBox sectionAdresse = buildCard("📍  Adresse de livraison", adresseRow);
 
-        // --- Aperçu carte ---
+        // ── Aperçu carte bancaire ──────────────────────────────────────────
         cardPreviewLabel = new Label("•••• •••• •••• ••••");
         cardPreviewLabel.setStyle(
-                "-fx-text-fill: " + AppTheme.WHITE + ";" +
-                        "-fx-font-size: 22px; -fx-font-family: 'Courier New';"
+                "-fx-text-fill: white; -fx-font-size: 20px; -fx-font-family: 'Courier New';"
         );
-        titulairePrevLabel = new Label("VOTRE NOM");
-        titulairePrevLabel.setStyle("-fx-text-fill: " + AppTheme.WHITE + "; -fx-font-size: 14px;");
         datePrevLabel = new Label("MM/AA");
-        datePrevLabel.setStyle("-fx-text-fill: " + AppTheme.WHITE + "; -fx-font-size: 14px;");
+        datePrevLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 13px;");
 
-        Label chipIcon = new Label("💳");
-        chipIcon.setStyle("-fx-font-size: 32px;");
+        Label chipIcon  = new Label("💳");
+        chipIcon.setStyle("-fx-font-size: 28px;");
         Label bankLabel = new Label("ChriBank");
-        bankLabel.setStyle("-fx-text-fill: " + AppTheme.WHITE + "; -fx-font-size: 13px;");
+        bankLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 12px;");
         Region spacerCard = new Region();
         HBox.setHgrow(spacerCard, Priority.ALWAYS);
-        HBox cardTop = new HBox(chipIcon, spacerCard, bankLabel);
+        HBox cardTopRow = new HBox(chipIcon, spacerCard, bankLabel);
 
-        VBox titulaireBox = new VBox(2,
-                new Label("Titulaire") {{ setStyle("-fx-text-fill: rgba(237,224,212,0.6); -fx-font-size: 11px;"); }},
-                titulairePrevLabel
-        );
-        VBox dateBoxCard = new VBox(2,
-                new Label("Expire") {{ setStyle("-fx-text-fill: rgba(237,224,212,0.6); -fx-font-size: 11px;"); }},
+        VBox expireBox = new VBox(2,
+                new Label("Expire") {{ setStyle("-fx-text-fill: rgba(255,255,255,0.5); -fx-font-size: 10px;"); }},
                 datePrevLabel
         );
-        Region spacerBottom = new Region();
-        HBox.setHgrow(spacerBottom, Priority.ALWAYS);
-        HBox cardBottom = new HBox(titulaireBox, spacerBottom, dateBoxCard);
+        HBox cardBottomRow = new HBox();
+        Region spacerCardBottom = new Region();
+        HBox.setHgrow(spacerCardBottom, Priority.ALWAYS);
+        cardBottomRow.getChildren().addAll(spacerCardBottom, expireBox);
 
-        VBox cardPreview = new VBox(16, cardTop, cardPreviewLabel, cardBottom);
-        cardPreview.setStyle(
-                "-fx-background-color: linear-gradient(to bottom right, " + AppTheme.PRIMARY + ", #4A3525);" +
-                        "-fx-background-radius: 16px; -fx-padding: 24px;"
+        VBox cardVisual = new VBox(12, cardTopRow, cardPreviewLabel, cardBottomRow);
+        cardVisual.setStyle(
+                "-fx-background-color: linear-gradient(to bottom right, #7B5B3A, #3D2010);" +
+                        "-fx-background-radius: 14px; -fx-padding: 20px;"
         );
 
-        // --- Champs paiement ---
+        // ── Champs paiement ───────────────────────────────────────────────
         numeroCarteField = new TextField();
         numeroCarteField.setPromptText("1234 5678 9012 3456");
-        numeroCarteField.setStyle(buildFieldStyle() + "-fx-font-family: 'Courier New';");
-        numeroCarteField.textProperty().addListener((obs, old, val) -> updateCardPreview());
+        numeroCarteField.setStyle(fieldStyle() + "-fx-font-family: 'Courier New';");
+        numeroCarteField.textProperty().addListener((obs, old, val) -> {
+            // Formater automatiquement avec espaces
+            String digits = val.replace(" ", "").replaceAll("[^0-9]", "");
+            if (digits.length() > 16) digits = digits.substring(0, 16);
+            StringBuilder formatted = new StringBuilder();
+            for (int i = 0; i < digits.length(); i++) {
+                if (i > 0 && i % 4 == 0) formatted.append(" ");
+                formatted.append(digits.charAt(i));
+            }
+            String result = formatted.toString();
+            if (!result.equals(val)) {
+                numeroCarteField.setText(result);
+                numeroCarteField.positionCaret(result.length());
+            }
+            updateCardPreview(digits);
+        });
 
         moisField = new TextField();
         moisField.setPromptText("MM");
         moisField.setMaxWidth(70);
-        moisField.setStyle(buildFieldStyle());
+        moisField.setStyle(fieldStyle());
         moisField.textProperty().addListener((obs, old, val) -> updateDatePreview());
 
         anneeField = new TextField();
         anneeField.setPromptText("AA");
         anneeField.setMaxWidth(70);
-        anneeField.setStyle(buildFieldStyle());
+        anneeField.setStyle(fieldStyle());
         anneeField.textProperty().addListener((obs, old, val) -> updateDatePreview());
 
         cvvField = new PasswordField();
         cvvField.setPromptText("•••");
         cvvField.setMaxWidth(90);
-        cvvField.setStyle(buildFieldStyle());
-
-        titulaireField = new TextField();
-        titulaireField.setPromptText("NOM PRÉNOM");
-        titulaireField.setStyle(buildFieldStyle());
-        titulaireField.textProperty().addListener((obs, old, val) ->
-                titulairePrevLabel.setText(val.isEmpty() ? "VOTRE NOM" : val.toUpperCase()));
+        cvvField.setStyle(fieldStyle());
 
         Label slashLabel = new Label("/");
-        slashLabel.setStyle("-fx-font-size: 18px; -fx-text-fill: " + AppTheme.PRIMARY + ";");
+        slashLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
         HBox dateRow = new HBox(8, moisField, slashLabel, anneeField);
         dateRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox dateBox2   = new VBox(6, fieldLabel("Date d'expiration"), dateRow);
-        VBox cvvBox     = new VBox(6, fieldLabel("CVV"), cvvField);
-        HBox dateCvvRow = new HBox(16, dateBox2, cvvBox);
-        HBox.setHgrow(dateBox2, Priority.ALWAYS);
+        VBox dateBoxField = new VBox(6, fieldLabel("Date d'expiration"), dateRow);
+        VBox cvvBoxField  = new VBox(6, fieldLabel("CVV"), cvvField);
+        HBox dateCvvRow   = new HBox(16, dateBoxField, cvvBoxField);
+        HBox.setHgrow(dateBoxField, Priority.ALWAYS);
 
         errorLabel = new Label();
         errorLabel.setStyle("-fx-text-fill: " + AppTheme.ERROR_COLOR + "; -fx-font-size: 13px;");
         errorLabel.setVisible(false);
         errorLabel.setWrapText(true);
 
-        Label sslLabel = new Label("🔒 Paiement sécurisé par SSL");
+        Label sslLabel = new Label("🔒  Paiement sécurisé — Données chiffrées SSL");
         sslLabel.setStyle("-fx-text-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 12px;");
+        sslLabel.setMaxWidth(Double.MAX_VALUE);
+        sslLabel.setAlignment(Pos.CENTER);
 
-        VBox sectionPaiement = buildSection("Informations de paiement",
-                cardPreview,
+        VBox sectionPaiement = buildCard("💳  Informations de paiement",
+                cardVisual,
                 new VBox(6, fieldLabel("Numéro de carte"), numeroCarteField),
                 dateCvvRow,
-                new VBox(6, fieldLabel("Nom du titulaire"), titulaireField),
                 errorLabel,
                 sslLabel
         );
 
-        // --- Boutons ---
+        // ── Boutons ───────────────────────────────────────────────────────
         Button btnAnnulerBtn = new Button("Annuler");
-        AppTheme.styleOutlineButton(btnAnnulerBtn);
         btnAnnulerBtn.setMaxWidth(Double.MAX_VALUE);
+        btnAnnulerBtn.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: " + AppTheme.PRIMARY + ";" +
+                        "-fx-border-width: 1.5px; -fx-border-radius: 30px;" +
+                        "-fx-text-fill: " + AppTheme.PRIMARY + ";" +
+                        "-fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-padding: 13px 24px; -fx-cursor: hand;"
+        );
         btnAnnulerBtn.setOnAction(e -> onAnnuler.run());
 
-        btnConfirmer = new Button("🔒  Payer maintenant");
+        btnConfirmer = new Button("🔒   Payer maintenant");
         AppTheme.stylePrimaryButton(btnConfirmer);
         btnConfirmer.setOnAction(e -> handlePaiement());
 
@@ -222,55 +239,116 @@ public class CheckoutView extends StackPane {
 
         leftCol.getChildren().addAll(sectionAdresse, sectionPaiement, boutons);
 
-        // --- Colonne droite : résumé ---
-        articlesTable = new TableView<>();
-        articlesTable.setPrefHeight(200);
-        articlesTable.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
-        TableColumn<Map<String, Object>, String> colProduit = new TableColumn<>("Produit");
-        colProduit.setCellValueFactory(new PropertyValueFactory<>("nom"));
-        colProduit.setPrefWidth(140);
-        TableColumn<Map<String, Object>, Integer> colQte = new TableColumn<>("Qté");
-        colQte.setCellValueFactory(new PropertyValueFactory<>("quantite"));
-        colQte.setPrefWidth(40);
-        TableColumn<Map<String, Object>, Double> colPrix = new TableColumn<>("Prix");
-        colPrix.setCellValueFactory(new PropertyValueFactory<>("prixUnitaire"));
-        colPrix.setPrefWidth(70);
-        articlesTable.getColumns().addAll(colProduit, colQte, colPrix);
+        // ══════════════════════════════════════════════
+        // COLONNE DROITE : Récapitulatif
+        // ══════════════════════════════════════════════
+        produitsContainer = new VBox(10);
 
         totalLabel = new Label("0.00 MAD");
-        totalLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";");
-
+        totalLabel.setStyle(
+                "-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";"
+        );
         Label totalTxt = new Label("Total");
-        totalTxt.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";");
+        totalTxt.setStyle(
+                "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";"
+        );
         Region spacerTotal = new Region();
         HBox.setHgrow(spacerTotal, Priority.ALWAYS);
         HBox totalRow = new HBox(totalTxt, spacerTotal, totalLabel);
+        totalRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label livraisonLabel = new Label("Gratuit");
-        livraisonLabel.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+        Label livraisonVal = new Label("Gratuit");
+        livraisonVal.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold; -fx-font-size: 13px;");
         Label livraisonTxt = new Label("Livraison");
+        livraisonTxt.setStyle("-fx-text-fill: " + AppTheme.TEXT_MAIN + "; -fx-font-size: 13px;");
         Region spacerLiv = new Region();
         HBox.setHgrow(spacerLiv, Priority.ALWAYS);
-        HBox livraisonRow = new HBox(livraisonTxt, spacerLiv, livraisonLabel);
+        HBox livraisonRow = new HBox(livraisonTxt, spacerLiv, livraisonVal);
 
         Separator sep1 = new Separator();
+        sep1.setStyle("-fx-background-color: " + AppTheme.FIELD_BORDER + ";");
         Separator sep2 = new Separator();
+        sep2.setStyle("-fx-background-color: " + AppTheme.FIELD_BORDER + ";");
 
-        VBox rightCol = buildSection("Récapitulatif",
-                articlesTable, sep1, livraisonRow, sep2, totalRow);
-        rightCol.setMinWidth(280);
-        rightCol.setMaxWidth(320);
+        VBox rightCol = buildCard("🛒  Récapitulatif",
+                produitsContainer, sep1, livraisonRow, sep2, totalRow);
+        rightCol.setMinWidth(300);
+        rightCol.setMaxWidth(340);
+        VBox.setVgrow(rightCol, Priority.NEVER);
 
         content.getChildren().addAll(leftCol, rightCol);
-        root.getChildren().addAll(titre, progressBar, content);
+        root.getChildren().addAll(stepIndicator, content);
         scroll.setContent(root);
-        this.getChildren().add(scroll);
+        this.setCenter(scroll);
 
-        // ─── Charger les données au démarrage ─────────────────────────────
-        // idUtilisateur extrait UNE SEULE FOIS ici (corrige le double-define)
+        // ─── Charger les données ───────────────────────────────────────────
         int idUtilisateur = ((Double) userData.get("id")).intValue();
         chargerAdresses(idUtilisateur);
         chargerResume();
+    }
+
+    // ─── Step Indicator amélioré ───────────────────────────────────────────
+
+    private HBox buildStepIndicator(int activeStep) {
+        String[] labels = {"Panier", "Paiement", "Confirmation"};
+        HBox bar = new HBox(0);
+        bar.setAlignment(Pos.CENTER);
+        bar.setPadding(new Insets(8, 0, 8, 0));
+
+        for (int i = 0; i < labels.length; i++) {
+            boolean done   = i < activeStep;
+            boolean active = i == activeStep;
+
+            // Cercle
+            StackPane circlePane = new StackPane();
+            circlePane.setPrefSize(40, 40);
+
+            Circle outerCircle = new Circle(20);
+            outerCircle.setFill(done || active
+                    ? Color.web(AppTheme.PRIMARY)
+                    : Color.web(AppTheme.TOGGLE_INACTIVE));
+            if (active) {
+                outerCircle.setStroke(Color.web(AppTheme.PRIMARY));
+                outerCircle.setStrokeWidth(2.5);
+            }
+
+            Label stepLbl = new Label(done ? "✓" : String.valueOf(i + 1));
+            stepLbl.setStyle(
+                    "-fx-font-size: 14px; -fx-font-weight: bold;" +
+                            "-fx-text-fill: " + ((done || active) ? "white" : AppTheme.TEXT_MUTED) + ";"
+            );
+            circlePane.getChildren().addAll(outerCircle, stepLbl);
+
+            // Texte sous le cercle
+            Label stepLabel = new Label(labels[i]);
+            stepLabel.setStyle(
+                    "-fx-font-size: 12px; -fx-font-weight: " + (active ? "bold" : "normal") + ";" +
+                            "-fx-text-fill: " + (done || active ? AppTheme.PRIMARY : AppTheme.TEXT_MUTED) + ";"
+            );
+
+            VBox stepBox = new VBox(6, circlePane, stepLabel);
+            stepBox.setAlignment(Pos.CENTER);
+            bar.getChildren().add(stepBox);
+
+            // Ligne entre les étapes
+            if (i < labels.length - 1) {
+                VBox lineWrapper = new VBox();
+                lineWrapper.setAlignment(Pos.CENTER);
+                lineWrapper.setPadding(new Insets(0, 0, 20, 0));
+                Region line = new Region();
+                line.setPrefWidth(100);
+                line.setPrefHeight(3);
+                line.setStyle(
+                        "-fx-background-color: " + (i < activeStep
+                                ? AppTheme.PRIMARY
+                                : AppTheme.TOGGLE_INACTIVE) + ";" +
+                                "-fx-background-radius: 2px;"
+                );
+                lineWrapper.getChildren().add(line);
+                bar.getChildren().add(lineWrapper);
+            }
+        }
+        return bar;
     }
 
     // ─── Réseau ────────────────────────────────────────────────────────────
@@ -318,11 +396,10 @@ public class CheckoutView extends StackPane {
 
         new Thread(() -> {
             try {
-                // idUtilisateur extrait depuis userData (pas de redéclaration)
                 int idUser    = ((Double) userData.get("id")).intValue();
                 int idAdresse = ((Double) adresseComboBox.getValue().get("id")).intValue();
 
-                // ── ÉTAPE 1 : Créer la commande ────────────────────────────
+                // Étape 1 : Créer la commande
                 Map<String, Object> commandeParams = new HashMap<>();
                 commandeParams.put("idUtilisateur", idUser);
                 commandeParams.put("idAdresse",     idAdresse);
@@ -336,7 +413,7 @@ public class CheckoutView extends StackPane {
                 if (respCommande == null || !respCommande.isSuccess()) {
                     Platform.runLater(() -> {
                         btnConfirmer.setDisable(false);
-                        btnConfirmer.setText("🔒  Payer maintenant");
+                        btnConfirmer.setText("🔒   Payer maintenant");
                         showError(respCommande != null
                                 ? respCommande.getMessage()
                                 : "Erreur lors de la création de la commande.");
@@ -345,11 +422,11 @@ public class CheckoutView extends StackPane {
                 }
 
                 @SuppressWarnings("unchecked")
-                Map<String, Object> commandeData  = respCommande.getDataAs(Map.class);
-                int    idCommandeCreee            = ((Double) commandeData.get("idCommande")).intValue();
-                String uuidCommande               = (String) commandeData.get("uuidCommande");
+                Map<String, Object> commandeData = respCommande.getDataAs(Map.class);
+                int    idCommandeCreee           = ((Double) commandeData.get("idCommande")).intValue();
+                String uuidCommande              = (String) commandeData.get("uuidCommande");
 
-                // ── ÉTAPE 2 : Traiter le paiement ─────────────────────────
+                // Étape 2 : Traiter le paiement
                 Map<String, Object> paiementParams = new HashMap<>();
                 paiementParams.put("idCommande",     idCommandeCreee);
                 paiementParams.put("numeroCarte",    numeroCarte);
@@ -364,7 +441,7 @@ public class CheckoutView extends StackPane {
 
                 Platform.runLater(() -> {
                     btnConfirmer.setDisable(false);
-                    btnConfirmer.setText("🔒  Payer maintenant");
+                    btnConfirmer.setText("🔒   Payer maintenant");
 
                     if (respPaiement != null && respPaiement.isSuccess()) {
                         @SuppressWarnings("unchecked")
@@ -376,47 +453,69 @@ public class CheckoutView extends StackPane {
                         }
                     } else {
                         showError(respPaiement != null
-                                ? respPaiement.getMessage()
-                                : "Paiement échoué.");
+                                ? respPaiement.getMessage() : "Paiement échoué.");
                     }
                 });
 
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     btnConfirmer.setDisable(false);
-                    btnConfirmer.setText("🔒  Payer maintenant");
+                    btnConfirmer.setText("🔒   Payer maintenant");
                     showError("Erreur réseau : " + e.getMessage());
                 });
             }
         }).start();
     }
 
-    // ─── Helpers UI ────────────────────────────────────────────────────────
+    // ─── Résumé produits ───────────────────────────────────────────────────
 
     private void chargerResume() {
-        if (lignes == null) return;
+        produitsContainer.getChildren().clear();
+        if (lignes == null || lignes.isEmpty()) return;
+
         double total = 0;
         for (Map<String, Object> ligne : lignes) {
-            double prix = ((Number) ligne.getOrDefault("prix_unitaire", 0)).doubleValue();
-            int    qte  = ((Number) ligne.getOrDefault("quantite", 1)).intValue();
-            total      += prix * qte;
+            String nom   = String.valueOf(ligne.getOrDefault("nom", "Produit"));
+            double prix  = ((Number) ligne.getOrDefault("prix_unitaire", 0)).doubleValue();
+            int    qte   = ((Number) ligne.getOrDefault("quantite", 1)).intValue();
+            double sous  = prix * qte;
+            total       += sous;
+
+            // Ligne produit
+            Label nomLabel = new Label(nom);
+            nomLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+            nomLabel.setWrapText(true);
+            HBox.setHgrow(nomLabel, Priority.ALWAYS);
+
+            Label detailLabel = new Label(qte + " × " + String.format("%.2f MAD", prix));
+            detailLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
+
+            Label montantLabel = new Label(String.format("%.2f MAD", sous));
+            montantLabel.setStyle(
+                    "-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";"
+            );
+
+            VBox leftInfo = new VBox(2, nomLabel, detailLabel);
+            HBox.setHgrow(leftInfo, Priority.ALWAYS);
+
+            HBox row = new HBox(leftInfo, montantLabel);
+            row.setAlignment(Pos.CENTER_LEFT);
+            produitsContainer.getChildren().add(row);
         }
+
         double finalTotal = total;
         Platform.runLater(() -> totalLabel.setText(String.format("%.2f MAD", finalTotal)));
     }
 
-    private void updateCardPreview() {
-        String raw = numeroCarteField.getText().replace(" ", "");
-        StringBuilder formatted = new StringBuilder();
-        for (int i = 0; i < raw.length() && i < 16; i++) {
-            if (i > 0 && i % 4 == 0) formatted.append(" ");
-            formatted.append(raw.charAt(i));
+    // ─── Helpers preview carte ─────────────────────────────────────────────
+
+    private void updateCardPreview(String digits) {
+        StringBuilder preview = new StringBuilder();
+        for (int i = 0; i < 16; i++) {
+            if (i > 0 && i % 4 == 0) preview.append(" ");
+            preview.append(i < digits.length() ? digits.charAt(i) : '•');
         }
-        while (formatted.toString().replace(" ", "").length() < 16) {
-            if (formatted.length() > 0 && formatted.length() % 5 == 4) formatted.append(" ");
-            formatted.append("•");
-        }
-        cardPreviewLabel.setText(formatted.toString());
+        cardPreviewLabel.setText(preview.toString());
     }
 
     private void updateDatePreview() {
@@ -426,9 +525,8 @@ public class CheckoutView extends StackPane {
     }
 
     private void openAdresseDialog() {
-        AdresseDialogView dialog = new AdresseDialogView(tcpClient, null, adresse ->
-                Platform.runLater(() -> adresseComboBox.getItems().add(adresse))
-        );
+        AdresseDialogView dialog = new AdresseDialogView(tcpClient, null,
+                adresse -> Platform.runLater(() -> adresseComboBox.getItems().add(adresse)));
         javafx.scene.Scene scene = new javafx.scene.Scene(dialog);
         javafx.stage.Stage stage = new javafx.stage.Stage();
         stage.setScene(scene);
@@ -437,75 +535,35 @@ public class CheckoutView extends StackPane {
         stage.showAndWait();
     }
 
-    static HBox buildProgressBar(int activeIndex) {
-        String[] labels = {"Panier", "Paiement", "Confirmation"};
-        HBox bar = new HBox(0);
-        bar.setAlignment(Pos.CENTER);
-        for (int i = 0; i < labels.length; i++) {
-            boolean completed = i < activeIndex;
-            boolean active    = i == activeIndex;
-            String bg        = completed ? AppTheme.PRIMARY
-                    : active    ? AppTheme.PRIMARY_LIGHT
-                    :             AppTheme.TOGGLE_INACTIVE;
-            String textColor = (completed || active) ? AppTheme.WHITE : AppTheme.PRIMARY;
-            String stepText  = completed ? "✓" : String.valueOf(i + 1);
+    // ─── Helpers UI ────────────────────────────────────────────────────────
 
-            Label circle = new Label(stepText);
-            circle.setStyle(
-                    "-fx-background-color: " + bg + ";" +
-                            "-fx-background-radius: 20px;" +
-                            "-fx-min-width: 40px; -fx-min-height: 40px;" +
-                            "-fx-alignment: CENTER;" +
-                            "-fx-font-weight: bold;" +
-                            "-fx-text-fill: " + textColor + ";"
-            );
-            Label lbl = new Label(labels[i]);
-            lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: "
-                    + ((completed || active) ? AppTheme.PRIMARY : AppTheme.TEXT_MUTED) + ";");
-            VBox step = new VBox(4, circle, lbl);
-            step.setAlignment(Pos.CENTER);
-            bar.getChildren().add(step);
-
-            if (i < labels.length - 1) {
-                Region line = new Region();
-                line.setPrefWidth(80);
-                line.setPrefHeight(4);
-                line.setStyle("-fx-background-color: "
-                        + (i < activeIndex ? AppTheme.PRIMARY : AppTheme.TOGGLE_INACTIVE) + ";");
-                line.setTranslateY(-10);
-                bar.getChildren().add(line);
-            }
-        }
-        return bar;
-    }
-
-    private VBox buildSection(String titre, javafx.scene.Node... children) {
+    private VBox buildCard(String titre, javafx.scene.Node... children) {
         Label titreLabel = new Label(titre);
         titreLabel.setStyle(
-                "-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";"
+                "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";"
         );
-        VBox section = new VBox(16);
-        section.setStyle(
+        VBox card = new VBox(14);
+        card.setStyle(
                 "-fx-background-color: " + AppTheme.CARD_BG + ";" +
-                        "-fx-background-radius: 16px; -fx-padding: 24px;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 12, 0, 0, 4);"
+                        "-fx-background-radius: 16px; -fx-padding: 22px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 14, 0, 0, 4);"
         );
-        section.getChildren().add(titreLabel);
-        section.getChildren().addAll(children);
-        return section;
+        card.getChildren().add(titreLabel);
+        card.getChildren().addAll(children);
+        return card;
     }
 
     private Label fieldLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-text-fill: " + AppTheme.TEXT_MAIN + "; -fx-font-size: 14px;");
+        l.setStyle("-fx-text-fill: " + AppTheme.TEXT_MAIN + "; -fx-font-size: 13px;");
         return l;
     }
 
-    private String buildFieldStyle() {
+    private String fieldStyle() {
         return "-fx-background-color: " + AppTheme.FIELD_BG + ";" +
                 "-fx-border-color: " + AppTheme.FIELD_BORDER + ";" +
                 "-fx-border-radius: 10px; -fx-background-radius: 10px;" +
-                "-fx-padding: 12px 16px; -fx-font-size: 14px;" +
+                "-fx-padding: 11px 14px; -fx-font-size: 14px;" +
                 "-fx-text-fill: " + AppTheme.TEXT_MAIN + ";";
     }
 
