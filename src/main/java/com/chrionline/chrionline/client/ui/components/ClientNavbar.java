@@ -1,6 +1,7 @@
 package com.chrionline.chrionline.client.ui.components;
 
 import com.chrionline.chrionline.core.interfaces.ViewManager;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -31,7 +32,7 @@ public class ClientNavbar extends HBox {
         setPadding(new Insets(12, 32, 12, 60));
         setAlignment(Pos.CENTER_LEFT);
 
-        //  LOGO (fixé à gauche)
+        // LOGO
         HBox logoBox = new HBox(8);
         logoBox.setAlignment(Pos.CENTER_LEFT);
         logoBox.setPrefWidth(220);
@@ -49,7 +50,7 @@ public class ClientNavbar extends HBox {
         );
         logoBox.getChildren().addAll(logoIcon, logoText);
 
-        //  CENTRE — recherche
+        // CENTRE — recherche
         HBox centerBox = new HBox();
         centerBox.setAlignment(Pos.CENTER);
         HBox.setHgrow(centerBox, Priority.ALWAYS);
@@ -110,7 +111,6 @@ public class ClientNavbar extends HBox {
         searchContainer.getChildren().addAll(searchField, searchIcon);
         centerBox.getChildren().add(searchContainer);
 
-        //  DROITE — icônes
         HBox iconsBox = new HBox(6);
         iconsBox.setAlignment(Pos.CENTER_RIGHT);
         iconsBox.setPrefWidth(180);
@@ -118,6 +118,7 @@ public class ClientNavbar extends HBox {
         HBox.setMargin(iconsBox, new Insets(0, 43, 0, 0));
 
         StackPane panierBtn = createIconButton(Feather.SHOPPING_CART);
+
         cartCountLabel = new Label(String.valueOf(cartCount));
         cartCountLabel.setStyle(
                 "-fx-background-color: #7F5539;" +
@@ -142,6 +143,10 @@ public class ClientNavbar extends HBox {
         iconsBox.getChildren().addAll(panierBtn, commandesBtn, compteBtn);
 
         getChildren().addAll(logoBox, centerBox, iconsBox);
+
+        Platform.runLater(() -> {
+            logoBox.requestFocus();
+        });
     }
 
     private StackPane createIconButton(Ikon icon) {
