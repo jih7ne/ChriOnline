@@ -396,8 +396,13 @@ public class CheckoutView extends BorderPane {
 
         new Thread(() -> {
             try {
-                int idUser    = ((Double) userData.get("id")).intValue();
-                int idAdresse = ((Double) adresseComboBox.getValue().get("id")).intValue();
+                int idUser = ((Number) userData.get("id")).intValue();
+                Object idAdresseObj = adresseComboBox.getValue().get("id");
+                if (idAdresseObj == null) {
+                    Platform.runLater(() -> showError("Adresse invalide, veuillez en sélectionner une autre."));
+                    return;
+                }
+                int idAdresse = ((Number) idAdresseObj).intValue();
 
                 // Étape 1 : Créer la commande
                 Map<String, Object> commandeParams = new HashMap<>();
