@@ -4,6 +4,7 @@ import com.chrionline.chrionline.client.ui.components.ClientNavbar;
 import com.chrionline.chrionline.client.ui.components.ProduitCard;
 import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.core.utils.JsonUtils;
+import com.chrionline.chrionline.core.utils.PanierUtils;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.network.tcp.TCPClient;
@@ -32,7 +33,6 @@ public class CatalogueView extends BorderPane {
     private Label totalLabel;
     private List<Produit> tousLesProduits = new ArrayList<>();
     private final List<String> categoriesSelectionnees = new ArrayList<>();
-    private int cartCount = 0;
     private ClientNavbar navbar;
 
     public CatalogueView(TCPClient client, Map<String, Object> userData, ViewManager viewManager) {
@@ -45,8 +45,9 @@ public class CatalogueView extends BorderPane {
     }
 
     private void buildUI() {
-        navbar = new ClientNavbar(cartCount, userData, viewManager, this::rechercherProduits);
+        navbar = new ClientNavbar(0, userData, viewManager, this::rechercherProduits);
         setTop(navbar);
+        PanierUtils.chargerCartCount(client, userData, navbar); // charge le vrai count depuis serveur
 
         HBox content = new HBox(0);
         content.setPadding(new Insets(24, 24, 24, 0));
@@ -66,40 +67,18 @@ public class CatalogueView extends BorderPane {
         sidebar.setMaxWidth(230);
 
         Label titre = new Label("Catégories");
-        titre.setStyle(
-                "-fx-font-size: 16px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: #7F5539;" +
-                        "-fx-padding: 0 0 10 0;"
-        );
+        titre.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #7F5539; -fx-padding: 0 0 10 0;");
 
-        // Bouton Tout afficher
         HBox toutAfficher = new HBox();
         toutAfficher.setAlignment(Pos.CENTER_LEFT);
         toutAfficher.setPadding(new Insets(7, 14, 7, 14));
-        toutAfficher.setStyle(
-                "-fx-background-color: #B08968;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-cursor: hand;"
-        );
+        toutAfficher.setStyle("-fx-background-color: #B08968; -fx-background-radius: 8; -fx-cursor: hand;");
         Label toutLabel = new Label("Tout afficher");
-        toutLabel.setStyle(
-                "-fx-font-size: 13px;" +
-                        "-fx-text-fill: #EDE0D4;" +
-                        "-fx-font-weight: bold;"
-        );
+        toutLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #EDE0D4; -fx-font-weight: bold;");
         toutAfficher.getChildren().add(toutLabel);
         toutAfficher.setMaxWidth(Double.MAX_VALUE);
-        toutAfficher.setOnMouseEntered(e -> toutAfficher.setStyle(
-                "-fx-background-color: #9A7457;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-cursor: hand;"
-        ));
-        toutAfficher.setOnMouseExited(e -> toutAfficher.setStyle(
-                "-fx-background-color: #B08968;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-cursor: hand;"
-        ));
+        toutAfficher.setOnMouseEntered(e -> toutAfficher.setStyle("-fx-background-color: #9A7457; -fx-background-radius: 8; -fx-cursor: hand;"));
+        toutAfficher.setOnMouseExited(e -> toutAfficher.setStyle("-fx-background-color: #B08968; -fx-background-radius: 8; -fx-cursor: hand;"));
         toutAfficher.setOnMouseClicked(e -> {
             categoriesSelectionnees.clear();
             afficherCategories(tousLesProduits);
@@ -116,11 +95,7 @@ public class CatalogueView extends BorderPane {
         main.setPadding(new Insets(24, 24, 24, 16));
 
         Label titre = new Label("Catalogue Produits");
-        titre.setStyle(
-                "-fx-font-size: 26px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: #7F5539;"
-        );
+        titre.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #7F5539;");
 
         totalLabel = new Label("Chargement...");
         totalLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #7F5539;");
@@ -192,26 +167,15 @@ public class CatalogueView extends BorderPane {
             StackPane checkBox = new StackPane();
             checkBox.setPrefSize(18, 18);
             checkBox.setMinSize(18, 18);
-            checkBox.setStyle(
-                    "-fx-background-color: #EDE0D4;" +
-                            "-fx-background-radius: 4;" +
-                            "-fx-border-color: #B08968;" +
-                            "-fx-border-radius: 4;" +
-                            "-fx-border-width: 1.5;"
-            );
+            checkBox.setStyle("-fx-background-color: #EDE0D4; -fx-background-radius: 4; -fx-border-color: #B08968; -fx-border-radius: 4; -fx-border-width: 1.5;");
 
             Label checkMark = new Label("✓");
-            checkMark.setStyle(
-                    "-fx-font-size: 11px;" +
-                            "-fx-font-weight: bold;" +
-                            "-fx-text-fill: white;"
-            );
+            checkMark.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: white;");
             checkMark.setVisible(false);
             checkBox.getChildren().add(checkMark);
 
             Label catLabel = new Label(cat);
             catLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #3B1F0E;");
-
             catItem.getChildren().addAll(checkBox, catLabel);
 
             final boolean[] selected = {false};
@@ -219,54 +183,21 @@ public class CatalogueView extends BorderPane {
                 selected[0] = !selected[0];
                 if (selected[0]) {
                     categoriesSelectionnees.add(cat);
-                    checkBox.setStyle(
-                            "-fx-background-color: #B08968;" +
-                                    "-fx-background-radius: 4;" +
-                                    "-fx-border-color: #B08968;" +
-                                    "-fx-border-radius: 4;" +
-                                    "-fx-border-width: 1.5;"
-                    );
+                    checkBox.setStyle("-fx-background-color: #B08968; -fx-background-radius: 4; -fx-border-color: #B08968; -fx-border-radius: 4; -fx-border-width: 1.5;");
                     checkMark.setVisible(true);
-                    catLabel.setStyle(
-                            "-fx-font-size: 14px;" +
-                                    "-fx-text-fill: #7F5539;" +
-                                    "-fx-font-weight: bold;"
-                    );
-                    catItem.setStyle(
-                            "-fx-background-color: #E6CCB2;" +
-                                    "-fx-background-radius: 8;" +
-                                    "-fx-cursor: hand;"
-                    );
+                    catLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7F5539; -fx-font-weight: bold;");
+                    catItem.setStyle("-fx-background-color: #E6CCB2; -fx-background-radius: 8; -fx-cursor: hand;");
                 } else {
                     categoriesSelectionnees.remove(cat);
-                    checkBox.setStyle(
-                            "-fx-background-color: #EDE0D4;" +
-                                    "-fx-background-radius: 4;" +
-                                    "-fx-border-color: #B08968;" +
-                                    "-fx-border-radius: 4;" +
-                                    "-fx-border-width: 1.5;"
-                    );
+                    checkBox.setStyle("-fx-background-color: #EDE0D4; -fx-background-radius: 4; -fx-border-color: #B08968; -fx-border-radius: 4; -fx-border-width: 1.5;");
                     checkMark.setVisible(false);
                     catLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #3B1F0E;");
                     catItem.setStyle("-fx-background-radius: 8; -fx-cursor: hand;");
                 }
                 filtrerProduits();
             });
-
-            catItem.setOnMouseEntered(e -> {
-                if (!selected[0]) catItem.setStyle(
-                        "-fx-background-color: #E6CCB2;" +
-                                "-fx-background-radius: 8;" +
-                                "-fx-cursor: hand;"
-                );
-            });
-            catItem.setOnMouseExited(e -> {
-                if (!selected[0]) catItem.setStyle(
-                        "-fx-background-radius: 8;" +
-                                "-fx-cursor: hand;"
-                );
-            });
-
+            catItem.setOnMouseEntered(e -> { if (!selected[0]) catItem.setStyle("-fx-background-color: #E6CCB2; -fx-background-radius: 8; -fx-cursor: hand;"); });
+            catItem.setOnMouseExited(e -> { if (!selected[0]) catItem.setStyle("-fx-background-radius: 8; -fx-cursor: hand;"); });
             sidebarCategories.getChildren().add(catItem);
         }
     }
@@ -285,8 +216,7 @@ public class CatalogueView extends BorderPane {
     private void afficherProduits(List<Produit> produits) {
         produitsGrid.getChildren().clear();
         int nb = produits.size();
-        totalLabel.setText(nb + " produit" + (nb > 1 ? "s" : "") +
-                " disponible" + (nb > 1 ? "s" : ""));
+        totalLabel.setText(nb + " produit" + (nb > 1 ? "s" : "") + " disponible" + (nb > 1 ? "s" : ""));
         for (Produit p : produits) {
             ProduitCard card = new ProduitCard(
                     p,
@@ -312,8 +242,7 @@ public class CatalogueView extends BorderPane {
                 AppResponse response = client.sendAndParse(request);
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
-                        cartCount++;
-                        navbar.updateCartCount(cartCount);
+                        PanierUtils.chargerCartCount(client, userData, navbar);
                     }
                 });
             } catch (Exception e) {
