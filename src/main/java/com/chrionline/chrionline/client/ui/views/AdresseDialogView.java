@@ -165,10 +165,15 @@ public class AdresseDialogView extends VBox {
 
                 Platform.runLater(() -> {
                     if (resp != null && resp.isSuccess()) {
-                        onSave.accept(params);
+                        // Si la réponse contient l'adresse créée avec son id, l'utiliser
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> adresseAvecId = resp.getDataAs(Map.class);
+                        if (adresseAvecId != null) {
+                            onSave.accept(adresseAvecId);
+                        } else {
+                            onSave.accept(params); // fallback
+                        }
                         closeDialog();
-                    } else {
-                        showError(resp != null ? resp.getMessage() : "Erreur lors de l'enregistrement.");
                     }
                 });
             } catch (Exception e) {
