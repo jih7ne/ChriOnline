@@ -380,6 +380,7 @@ public class PanierView extends BorderPane {
     }
 
     private void passerCommande() {
-        System.out.println("Passer commande...");
+        if (panierItems.isEmpty()) return;
+        viewManager.showCheckoutView(userData, panierItems);
     }
 }
