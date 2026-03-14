@@ -5,6 +5,7 @@ import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.network.tcp.TCPClient;
+import com.chrionline.chrionline.server.data.models.PanierProduit;
 import com.chrionline.chrionline.server.data.models.Produit;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -12,7 +13,10 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ClientApplication extends Application implements ViewManager {
 
@@ -27,7 +31,6 @@ public class ClientApplication extends Application implements ViewManager {
         AppConfig.getLogger().info("JavaFX Application started successfully");
     }
 
-    //  LOGIN
     @Override
     public void showLoginView() {
         LoginView view = new LoginView(
@@ -49,7 +52,6 @@ public class ClientApplication extends Application implements ViewManager {
         primaryStage.show();
     }
 
-    //  REGISTER
     @Override
     public void showRegisterView() {
         RegisterView view = new RegisterView(
@@ -82,11 +84,47 @@ public class ClientApplication extends Application implements ViewManager {
         primaryStage.getScene().setRoot(view);
     }
 
-    // DETAILS PRODUIT
     @Override
     public void showDetailsProduit(Produit produit, Map<String, Object> userData) {
         DetailsProduitView view = new DetailsProduitView(client, produit, userData, this);
         primaryStage.setTitle("ChriOnline — " + produit.getNom());
+        primaryStage.getScene().setRoot(view);
+    }
+
+    @Override
+    public void showCheckoutView(Map<String, Object> userData, List<PanierProduit> panierItems) {
+        List<Map<String, Object>> lignes = panierItems.stream().map(item -> {
+            Map<String, Object> ligne = new HashMap<>();
+            ligne.put("id_produit",    item.getIdProduit());
+            ligne.put("nom",           item.getNomProduit());
+            ligne.put("quantite",      item.getQuantite());
+            ligne.put("prix_unitaire", item.getPrix());
+            return ligne;
+        }).collect(Collectors.toList());
+
+        CheckoutView view = new CheckoutView(
+                client,
+                lignes,
+                userData,                                          // ← plus de idUtilisateur séparé
+                paiementData -> showConfirmationView(paiementData),
+                () -> showPanierView(userData)
+        );
+        primaryStage.setTitle("ChriOnline — Paiement");
+        primaryStage.getScene().setRoot(view);
+    }
+
+    @Override
+    public void showConfirmationView(Map<String, Object> paiementData) {
+        // Récupérer userData depuis paiementData (ajouté dans CheckoutView)
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userData = (Map<String, Object>) paiementData.get("userData");
+
+        ConfirmationView view = new ConfirmationView(
+                paiementData,
+                () -> showPanierView(userData),        // onVoirHistorique
+                () -> showCatalogueView(userData)      // onContinuerAchats
+        );
+        primaryStage.setTitle("ChriOnline — Confirmation");
         primaryStage.getScene().setRoot(view);
     }
 
