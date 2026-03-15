@@ -15,4 +15,5 @@ public interface ViewManager {
     void showAdminView(Map<String, Object> userData);
     void showCheckoutView(Map<String, Object> userData, List<PanierProduit> panierItems);
     void showConfirmationView(Map<String, Object> paiementData);
+    void showHistoriqueCommandesView(Map<String, Object> userData);
 }
