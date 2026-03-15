@@ -130,6 +130,17 @@ public class ClientApplication extends Application implements ViewManager {
     }
 
     @Override
+    public void showConfirmationEchoueeView(Map<String, Object> userData, String messageErreur, Runnable onReessayer) {
+        ConfirmationView view = ConfirmationView.echouee(
+                messageErreur,
+                onReessayer,                         // Retour au checkout (réessayer)
+                () -> showCatalogueView(userData)    // Retour au catalogue
+        );
+        primaryStage.setTitle("ChriOnline — Paiement échoué");
+        primaryStage.getScene().setRoot(view);
+    }
+
+    @Override
     public void showHistoriqueCommandesView(Map<String, Object> userData) {
         HistoriqueCommandesView view = new HistoriqueCommandesView(client, userData, () -> showCatalogueView(userData), this);
         primaryStage.setTitle("ChriOnline — Historique des Commandes");
