@@ -27,13 +27,13 @@ public class PaiementRowMapper implements RowMapper<Paiement> {
         // Conversion String -> enum MethodePaiement
         String methodeStr = rs.getString("methode_paiement");
         if (methodeStr != null) {
-            p.setMethode_paiement(MethodePaiement.valueOf(methodeStr));
+            p.setMethode_paiement(MethodePaiement.valueOf(methodeStr.toUpperCase()));
         }
 
         // Conversion String -> enum StatutPaiement
         String statutStr = rs.getString("statut");
         if (statutStr != null) {
-            p.setStatut(StatutPaiement.valueOf(statutStr));
+            p.setStatut(StatutPaiement.valueOf(statutStr.toUpperCase()));
         }
 
         p.setNumero_masque(rs.getString("numero_masque"));
