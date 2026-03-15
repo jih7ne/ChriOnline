@@ -15,7 +15,13 @@ public class CommandeRowMapper implements RowMapper<Commande> {
         Commande c = new Commande();
 
         c.setId_commande(rs.getInt("id_commande"));
-        c.setUuid_commande(rs.getString("uuid_commande"));
+        
+        try {
+            c.setUuid_commande(rs.getString("uuid_commande"));
+        } catch (SQLException e) {
+            // Ignorer si la colonne n'existe pas
+        }
+        
         c.setId_utilisateur(rs.getInt("id_utilisateur"));
         Integer idPanier = rs.getInt("id_panier");
         if (rs.wasNull()) {
@@ -23,7 +29,12 @@ public class CommandeRowMapper implements RowMapper<Commande> {
         } else {
             c.setId_panier(idPanier);
         }
-        c.setId_adresse(rs.getInt("id_adresse"));
+        
+        try {
+            c.setId_adresse(rs.getInt("id_adresse"));
+        } catch (SQLException e) {
+            // Ignorer si la colonne n'existe pas
+        }
         // Conversion Timestamp -> LocalDateTime 
         Timestamp ts = rs.getTimestamp("date");
         if (ts != null) {
@@ -33,7 +44,12 @@ public class CommandeRowMapper implements RowMapper<Commande> {
         // Conversion String -> enum StatutCommande
         String statutStr = rs.getString("statut");
         if (statutStr != null) {
-            c.setStatut(StatutCommande.valueOf(statutStr));
+            try {
+                c.setStatut(StatutCommande.valueOf(statutStr.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                System.err.println("Statut inconnu en base de donnees : " + statutStr);
+                c.setStatut(StatutCommande.EN_ATTENTE);
+            }
         }
 
         c.setPrix_total(rs.getDouble("prix_total"));
