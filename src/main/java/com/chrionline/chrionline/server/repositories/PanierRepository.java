@@ -18,7 +18,6 @@ public class PanierRepository {
         this.connection = connection;
     }
 
-    //  CRÉER UN PANIER
     public int creerPanier(int idUtilisateur) {
         String sql = "INSERT INTO Panier (id_utilisateur) VALUES (?)";
         try (PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -59,7 +58,8 @@ public class PanierRepository {
         String sql = "SELECT pp.*, p.nom AS nom_produit, p.prix, p.url_image " +
                 "FROM Produit_Panier pp " +
                 "JOIN Produit p ON pp.id_produit = p.id " +
-                "WHERE pp.id_panier = ?";
+                "WHERE pp.id_panier = ? " +
+                "ORDER BY pp.date_ajout DESC";
         List<PanierProduit> produits = new ArrayList<>();
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, idPanier);
@@ -80,7 +80,6 @@ public class PanierRepository {
         return produits;
     }
 
-    //  AJOUTER UN PRODUIT AU PANIER
     public void ajouterProduit(int idPanier, int idProduit, int quantite) {
         // si le produit existe déjà on met à jour la quantité
         String sqlCheck = "SELECT quantite FROM Produit_Panier WHERE id_panier=? AND id_produit=?";
@@ -107,7 +106,6 @@ public class PanierRepository {
         }
     }
 
-    // SUPPRIMER UN PRODUIT DU PANIER
     public void supprimerProduit(int idPanier, int idProduit) {
         String sql = "DELETE FROM Produit_Panier WHERE id_panier=? AND id_produit=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -119,7 +117,6 @@ public class PanierRepository {
         }
     }
 
-    //  MODIFIER LA QUANTITE
     public void modifierQuantite(int idPanier, int idProduit, int nouvelleQuantite) {
         String sql = "UPDATE Produit_Panier SET quantite=? WHERE id_panier=? AND id_produit=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -132,7 +129,6 @@ public class PanierRepository {
         }
     }
 
-    //  VIDER LE PANIER
     public void viderPanier(int idPanier) {
         String sql = "DELETE FROM Produit_Panier WHERE id_panier=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
