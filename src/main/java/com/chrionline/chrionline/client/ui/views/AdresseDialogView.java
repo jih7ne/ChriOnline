@@ -28,13 +28,16 @@ public class AdresseDialogView extends VBox {
 
     private final TCPClient tcpClient;
     private final Map<String, Object> adresseExistante; // null = création, sinon modification
+    private final int idUtilisateur;
     private final Consumer<Map<String, Object>> onSave;
 
     public AdresseDialogView(TCPClient tcpClient,
                              Map<String, Object> adresseExistante,
+                             int idUtilisateur,
                              Consumer<Map<String, Object>> onSave) {
         this.tcpClient         = tcpClient;
         this.adresseExistante  = adresseExistante;
+        this.idUtilisateur     = idUtilisateur;
         this.onSave            = onSave;
 
         this.setSpacing(16);
@@ -156,6 +159,9 @@ public class AdresseDialogView extends VBox {
                 String action = adresseExistante != null ? "modifier" : "ajouter";
                 if (adresseExistante != null) {
                     params.put("id", adresseExistante.get("id"));
+                    params.put("id_utilisateur", adresseExistante.getOrDefault("id_utilisateur", idUtilisateur));
+                } else {
+                    params.put("id_utilisateur", idUtilisateur);
                 }
 
                 AppRequest req = new AppRequest.Builder()
