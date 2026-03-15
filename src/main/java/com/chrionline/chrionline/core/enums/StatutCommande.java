@@ -1,5 +1,5 @@
 package com.chrionline.chrionline.core.enums;
 
 public enum StatutCommande {
-    EN_ATTENTE, CONFIRMEE, EXPEDIEE, LIVREE, ANNULEE
+    EN_ATTENTE, VALIDEE, EXPEDIEE, LIVREE, ANNULEE
 }
