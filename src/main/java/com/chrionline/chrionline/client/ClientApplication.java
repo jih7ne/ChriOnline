@@ -122,10 +122,17 @@ public class ClientApplication extends Application implements ViewManager {
 
         ConfirmationView view = new ConfirmationView(
                 paiementData,
-                () -> showPanierView(userData),        // onVoirHistorique
+                () -> showHistoriqueCommandesView(userData), // onVoirHistorique
                 () -> showCatalogueView(userData)      // onContinuerAchats
         );
         primaryStage.setTitle("ChriOnline — Confirmation");
+        primaryStage.getScene().setRoot(view);
+    }
+
+    @Override
+    public void showHistoriqueCommandesView(Map<String, Object> userData) {
+        HistoriqueCommandesView view = new HistoriqueCommandesView(client, userData, () -> showCatalogueView(userData), this);
+        primaryStage.setTitle("ChriOnline — Historique des Commandes");
         primaryStage.getScene().setRoot(view);
     }
 

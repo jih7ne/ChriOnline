@@ -79,6 +79,7 @@ public class PanierView extends BorderPane {
 
         Label titre = new Label("Panier");
         titre.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: " + ACCENT_DARK + ";");
+        
 
         HBox mainRow = new HBox(32);
         mainRow.setAlignment(Pos.TOP_LEFT);
