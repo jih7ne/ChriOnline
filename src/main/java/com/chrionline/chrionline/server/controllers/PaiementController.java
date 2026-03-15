@@ -56,12 +56,7 @@ public class PaiementController implements IController {
             String erreurValidation = paiementService.validerPaiement(numeroCarte, cvv, dateExpiration);
             if (erreurValidation != null) {
                 logger.warn("Paiement refusé commande id={} : {}", idCommande, erreurValidation);
-
-                java.util.Map<String, Object> echec = new java.util.HashMap<>();
-                echec.put("statut",  "ECHOUE");
-                echec.put("message", erreurValidation);
-
-                return AppResponse.success(echec, "Paiement refusé");
+                return AppResponse.error(erreurValidation);
             }
 
             // Traitement complet (enregistrement + confirmation commande)
@@ -77,8 +72,10 @@ public class PaiementController implements IController {
             result.put("numeroMasque", paiement != null ? "**** **** **** " + paiement.getNumero_masque() : null);
             result.put("idCommande",   idCommande);
 
-            String message = succes ? "Paiement accepté" : "Paiement refusé";
-            return AppResponse.success(result, message);
+            if (!succes) {
+                return AppResponse.error("Paiement refusé par la banque");
+            }
+            return AppResponse.success(result, "Paiement accepté");
 
         } catch (Exception e) {
             logger.error("Erreur lors du traitement du paiement", e);
