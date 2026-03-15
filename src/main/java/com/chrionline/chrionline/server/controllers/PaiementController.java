@@ -24,11 +24,16 @@ public class PaiementController implements IController {
     // OUTPUT : { statut, numeroMasque }
     public String traiter(AppRequest request) {
         try {
-            Integer idCommande      = request.getInt("idCommande");
-            String  numeroCarte     = request.getString("numeroCarte");
-            String  cvv             = request.getString("cvv");
-            String  dateExpiration  = request.getString("dateExpiration");
-            String  methodeStr      = request.getString("methodePaiement");
+            java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
+            if (payloadMap == null) {
+                return AppResponse.badRequest("Payload invalide");
+            }
+            
+            Integer idCommande = payloadMap.get("idCommande") != null ? ((Number) payloadMap.get("idCommande")).intValue() : null;
+            String numeroCarte = (String) payloadMap.get("numeroCarte");
+            String cvv = (String) payloadMap.get("cvv");
+            String dateExpiration = (String) payloadMap.get("dateExpiration");
+            String methodeStr = (String) payloadMap.get("methodePaiement");
 
             // Validation des champs requis
             if (idCommande == null || numeroCarte == null || cvv == null || dateExpiration == null) {
@@ -86,7 +91,14 @@ public class PaiementController implements IController {
     // OUTPUT : { paiement }
     public String getPaiement(AppRequest request) {
         try {
-            Integer idCommande = request.getInt("idCommande");
+            java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
+            Integer idCommande = null;
+            if (payloadMap != null && payloadMap.get("idCommande") != null) {
+                idCommande = ((Number) payloadMap.get("idCommande")).intValue();
+            } else {
+                idCommande = request.getInt("idCommande"); // try fallback to parameters if payload is empty
+            }
+
             if (idCommande == null) {
                 return AppResponse.badRequest("idCommande est requis");
             }
