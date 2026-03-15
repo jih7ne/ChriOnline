@@ -138,6 +138,7 @@ public class ClientNavbar extends HBox {
         panierBtn.setOnMouseClicked(e -> viewManager.showPanierView(userData));
 
         StackPane commandesBtn = createIconButton(Feather.PACKAGE);
+        commandesBtn.setOnMouseClicked(e -> viewManager.showHistoriqueCommandesView(userData));
         StackPane compteBtn = createIconButton(Feather.USER);
 
         iconsBox.getChildren().addAll(panierBtn, commandesBtn, compteBtn);
