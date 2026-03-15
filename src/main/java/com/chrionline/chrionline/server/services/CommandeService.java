@@ -19,6 +19,7 @@ public class CommandeService {
     private final CommandeRepository commandeRepository;
     private final LigneCommandeRepository ligneCommandeRepository;
     private final ProduitRepository produitRepository;
+    private final PanierService panierService;
 
     public CommandeService(CommandeRepository commandeRepository,
                            LigneCommandeRepository ligneCommandeRepository,
@@ -26,6 +27,7 @@ public class CommandeService {
         this.commandeRepository = commandeRepository;
         this.ligneCommandeRepository = ligneCommandeRepository;
         this.produitRepository = produitRepository;
+        this.panierService = com.chrionline.chrionline.core.config.AppConfig.getService(PanierService.class);
         logger.info("CommandeService initialized");
     }
 
@@ -64,28 +66,22 @@ public class CommandeService {
         commande.setPrix_total(prixTotal);
 
         commandeRepository.add(commande);
-        logger.info("Commande insérée en BDD pour utilisateur id={}", idUtilisateur);
-
-        // 4 : récupérer la commande avec son UUID généré
-
-        Commande commandeInsered = commandeRepository.getCommandes(idUtilisateur)
-                .stream()
-                .reduce((first, second) -> second)
-                .orElse(null);
-
-        if (commandeInsered == null) {
-            logger.error("Impossible de retrouver la commande après insertion");
+        
+        if (commande.getId_commande() == 0 || commande.getUuid_commande() == null) {
+            logger.error("Impossible de récupérer l'ID ou l'UUID de la commande générée");
             return null;
         }
 
-        // 5 : insertion des lignes avec l'id_commande
+        logger.info("Commande insérée en BDD pour utilisateur id={} avec uuid={}", idUtilisateur, commande.getUuid_commande());
+
+        // 4 : insertion des lignes avec l'id_commande
         for (LigneCommande ligne : lignes) {
-            ligne.setId_commande(commandeInsered.getId_commande());
+            ligne.setId_commande(commande.getId_commande());
         }
         ligneCommandeRepository.addAll(lignes);
         logger.info("Lignes de commande insérées (count={})", lignes.size());
 
-        return commandeInsered;
+        return commande;
     }
 
     // CONFIRMER UNE COMMANDE APRÈS PAIEMENT ACCEPTÉ
@@ -111,8 +107,15 @@ public class CommandeService {
         }
 
         // Changement de statut
-        commandeRepository.updateStatut(idCommande, StatutCommande.CONFIRMEE);
-        logger.info("Statut commande id={} → CONFIRMEE", idCommande);
+        commandeRepository.updateStatut(idCommande, StatutCommande.VALIDEE);
+        logger.info("Statut commande id={} → VALIDEE", idCommande);
+
+        // Vider le panier
+        Commande commande = commandeRepository.getCommandeById(idCommande);
+        if (commande != null) {
+            panierService.viderPanier(commande.getId_utilisateur());
+            logger.info("Panier de l'utilisateur id={} vidé avec succès", commande.getId_utilisateur());
+        }
 
         return true;
     }
