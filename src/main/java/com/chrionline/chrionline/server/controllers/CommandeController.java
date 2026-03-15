@@ -100,8 +100,9 @@ public class CommandeController implements IController {
             return AppResponse.success(commandes, "Commandes récupérées avec succès");
 
         } catch (Exception e) {
-            logger.error("Erreur lors de la récupération des commandes", e);
-            return AppResponse.error("Erreur lors de la récupération des commandes");
+            e.printStackTrace();
+            logger.error("Erreur critique lors de la récupération des commandes pour utilisateur: " + e.getMessage(), e);
+            return AppResponse.error("Erreur lors de la récupération des commandes: " + e.getMessage());
         }
     }
 
