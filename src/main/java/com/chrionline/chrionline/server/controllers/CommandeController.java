@@ -106,9 +106,9 @@ public class CommandeController implements IController {
         }
     }
 
-    // DÉTAILS D'UNE COMMANDE + SES LIGNES
+    // DÉTAILS D'UNE COMMANDE + SES LIGNES (avec nom produit)
     // INPUT  : { idCommande }
-    // OUTPUT : { commande, lignes }
+    // OUTPUT : { idCommande, lignes: [{id, id_produit, quantite, prix_unitaire, nom_produit}] }
     public String details(AppRequest request) {
         try {
             java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
@@ -119,7 +119,7 @@ public class CommandeController implements IController {
 
             logger.info("Action: détails commande id={}", idCommande);
 
-            List<LigneCommande> lignes = commandeService.getLignesCommande(idCommande);
+            List<java.util.Map<String, Object>> lignes = commandeService.getLignesAvecNom(idCommande);
             if (lignes == null) {
                 return AppResponse.notFound("Commande");
             }
