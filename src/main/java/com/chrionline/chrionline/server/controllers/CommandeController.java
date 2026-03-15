@@ -26,9 +26,30 @@ public class CommandeController implements IController {
     // OUTPUT : { uuidCommande, idCommande, statut }
     public String valider(AppRequest request) {
         try {
-            Integer idUtilisateur = request.getInt("idUtilisateur");
-            Integer idAdresse     = request.getInt("idAdresse");
-            List<LigneCommande> lignes = request.getPayloadAsList(LigneCommande.class);
+            // First, get the entire payload as a Map
+            java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
+            if (payloadMap == null) {
+                return AppResponse.badRequest("Payload is required");
+            }
+
+            Number numUser = (Number) payloadMap.get("idUtilisateur");
+            Number numAdresse = (Number) payloadMap.get("idAdresse");
+            Integer idUtilisateur = numUser != null ? numUser.intValue() : null;
+            Integer idAdresse     = numAdresse != null ? numAdresse.intValue() : null;
+            
+            // Extract the 'lignes' array from the nested JSON object
+            java.util.List<java.util.Map<String, Object>> lignesBrutes = (java.util.List<java.util.Map<String, Object>>) payloadMap.get("lignes");
+            List<LigneCommande> lignes = null;
+            if (lignesBrutes != null) {
+                lignes = new java.util.ArrayList<>();
+                for (java.util.Map<String, Object> map : lignesBrutes) {
+                    LigneCommande lc = new LigneCommande();
+                    if (map.containsKey("id_produit")) lc.setId_produit(((Number) map.get("id_produit")).intValue());
+                    if (map.containsKey("quantite")) lc.setQuantite(((Number) map.get("quantite")).intValue());
+                    if (map.containsKey("prix_unitaire")) lc.setPrix_unitaire(((Number) map.get("prix_unitaire")).doubleValue());
+                    lignes.add(lc);
+                }
+            }
 
             if (idUtilisateur == null || idAdresse == null) {
                 return AppResponse.badRequest("idUtilisateur et idAdresse sont requis");
@@ -55,6 +76,8 @@ public class CommandeController implements IController {
             return AppResponse.success(result, "Commande validée avec succès");
 
         } catch (Exception e) {
+            System.out.println("EXCEPTION DANS LE CONTROLEUR VALIDER :");
+            e.printStackTrace(System.out);
             logger.error("Erreur lors de la validation de la commande", e);
             return AppResponse.error("Erreur lors de la validation de la commande");
         }
@@ -65,10 +88,11 @@ public class CommandeController implements IController {
     // OUTPUT : [ { idCommande, uuidCommande, statut, prixTotal, date } ]
     public String lister(AppRequest request) {
         try {
-            Integer idUtilisateur = request.getInt("idUtilisateur");
-            if (idUtilisateur == null) {
+            java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
+            if (payloadMap == null || !payloadMap.containsKey("idUtilisateur")) {
                 return AppResponse.badRequest("idUtilisateur est requis");
             }
+            Integer idUtilisateur = ((Number) payloadMap.get("idUtilisateur")).intValue();
 
             logger.info("Action: lister commandes utilisateur id={}", idUtilisateur);
 
@@ -86,10 +110,11 @@ public class CommandeController implements IController {
     // OUTPUT : { commande, lignes }
     public String details(AppRequest request) {
         try {
-            Integer idCommande = request.getInt("idCommande");
-            if (idCommande == null) {
+            java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
+            if (payloadMap == null || !payloadMap.containsKey("idCommande")) {
                 return AppResponse.badRequest("idCommande est requis");
             }
+            Integer idCommande = ((Number) payloadMap.get("idCommande")).intValue();
 
             logger.info("Action: détails commande id={}", idCommande);
 
