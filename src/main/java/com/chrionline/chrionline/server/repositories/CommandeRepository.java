@@ -16,25 +16,32 @@ public class CommandeRepository extends JdbcRepository<Commande> {
         super(connection, "commande", rowMapper);
     }
 
-    // AJOUTER UNE COMMANDE (avec generation automatique de l'UUID)
-    @Override
     public void add(Commande commande) {
         String sql = "INSERT INTO commande (uuid_commande, id_utilisateur, id_adresse, date, statut, prix_total) " +
                      "VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, UUID.randomUUID().toString());
+        try (PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            String uuid = UUID.randomUUID().toString();
+            commande.setUuid_commande(uuid);
+            stmt.setString(1, uuid);
             stmt.setInt(2, commande.getId_utilisateur());
             stmt.setInt(3, commande.getId_adresse());
             stmt.setTimestamp(4, commande.getDate() != null
                     ? Timestamp.valueOf(commande.getDate())
                     : Timestamp.valueOf(java.time.LocalDateTime.now()));
             stmt.setString(5, commande.getStatut() != null
-                    ? commande.getStatut().name()
-                    : StatutCommande.EN_ATTENTE.name());
+                    ? commande.getStatut().name().toLowerCase()
+                    : StatutCommande.EN_ATTENTE.name().toLowerCase());
             stmt.setDouble(6, commande.getPrix_total());
             stmt.executeUpdate();
+            
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    commande.setId_commande(generatedKeys.getInt(1));
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException("Erreur SQL lors de l'ajout de la commande", e);
         }
     }
 
@@ -45,15 +52,17 @@ public class CommandeRepository extends JdbcRepository<Commande> {
                 "VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             for (Commande commande : items) {
-                stmt.setString(1, UUID.randomUUID().toString());
+                String uuid = UUID.randomUUID().toString();
+                commande.setUuid_commande(uuid);
+                stmt.setString(1, uuid);
                 stmt.setInt(2, commande.getId_utilisateur());
                 stmt.setInt(3, commande.getId_adresse());
                 stmt.setTimestamp(4, commande.getDate() != null
                         ? Timestamp.valueOf(commande.getDate())
                         : Timestamp.valueOf(java.time.LocalDateTime.now()));
                 stmt.setString(5, commande.getStatut() != null
-                        ? commande.getStatut().name()
-                        : StatutCommande.EN_ATTENTE.name());
+                        ? commande.getStatut().name().toLowerCase()
+                        : StatutCommande.EN_ATTENTE.name().toLowerCase());
                 stmt.setDouble(6, commande.getPrix_total());
                 stmt.addBatch();
             }
@@ -75,7 +84,7 @@ public class CommandeRepository extends JdbcRepository<Commande> {
                     ? Timestamp.valueOf(commande.getDate())
                     : null);
             stmt.setString(4, commande.getStatut() != null
-                    ? commande.getStatut().name()
+                    ? commande.getStatut().name().toLowerCase()
                     : null);
             stmt.setDouble(5, commande.getPrix_total());
             stmt.setInt(6, Integer.parseInt(id));
@@ -121,11 +130,26 @@ public class CommandeRepository extends JdbcRepository<Commande> {
         return null;
     }
 
+    // RÉCUPÉRER UNE COMMANDE PAR SON ID
+    public Commande getCommandeById(int idCommande) {
+        String sql = "SELECT * FROM commande WHERE id_commande = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, idCommande);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rowMapper.mapRow(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     // METTRE À JOUR UNIQUEMENT LE STATUT D'UNE COMMANDE
     public void updateStatut(int idCommande, StatutCommande statut) {
         String sql = "UPDATE commande SET statut=? WHERE id_commande=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, statut.name());
+            stmt.setString(1, statut.name().toLowerCase());
             stmt.setInt(2, idCommande);
             stmt.executeUpdate();
         } catch (SQLException e) {
