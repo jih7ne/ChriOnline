@@ -99,9 +99,9 @@ public class CommandeRepository extends JdbcRepository<Commande> {
         update(String.valueOf(id), commande);
     }
 
-    // RÉCUPÉRER TOUTES LES COMMANDES D'UN UTILISATEUR
+    // RÉCUPÉRER TOUTES LES COMMANDES D'UN UTILISATEUR (plus récentes en premier)
     public List<Commande> getCommandes(int idUtilisateur) {
-        String sql = "SELECT * FROM commande WHERE id_utilisateur = ?";
+        String sql = "SELECT * FROM commande WHERE id_utilisateur = ? ORDER BY date DESC";
         List<Commande> commandes = new ArrayList<>();
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, idUtilisateur);
