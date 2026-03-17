@@ -20,7 +20,6 @@ public class CategorieController implements IController {
         this.categorieService = AppConfig.getService(CategorieService.class);
     }
 
-    // LISTER TOUTES LES CATEGORIES
     public String lister(AppRequest request) {
         try {
             logger.info("Action: lister toutes les catégories");
@@ -32,7 +31,6 @@ public class CategorieController implements IController {
         }
     }
 
-    // DETAILS D'UNE CATEGORIE
     public String details(AppRequest request) {
         try {
             Integer id = request.getInt("id");
@@ -51,7 +49,6 @@ public class CategorieController implements IController {
         }
     }
 
-    // AJOUTER UNE CATEGORIE (ADMIN)
     public String ajouter(AppRequest request) {
         try {
             Categorie categorie = request.getPayloadAs(Categorie.class);
@@ -67,7 +64,6 @@ public class CategorieController implements IController {
         }
     }
 
-    // MODIFIER UNE CATEGORIE (ADMIN)
     public String modifier(AppRequest request) {
         try {
             Integer id = request.getInt("id");
@@ -84,7 +80,6 @@ public class CategorieController implements IController {
         }
     }
 
-    // SUPPRIMER UNE CATEGORIE (ADMIN)
     public String supprimer(AppRequest request) {
         try {
             Integer id = request.getInt("id");
