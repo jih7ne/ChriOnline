@@ -7,8 +7,10 @@ import com.chrionline.chrionline.core.utils.JsonUtils;
 import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.server.data.dto.AuthPayloads.*;
+import com.chrionline.chrionline.server.data.models.Adresse;
 import com.chrionline.chrionline.server.data.models.Utilisateur;
 import com.chrionline.chrionline.server.repositories.UtilisateurRepository;
+import com.chrionline.chrionline.server.services.AdresseService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,25 +54,67 @@ public class AuthController implements IController {
     // ─── REGISTER ────────────────────────────────────────────────────────────
     public String register(AppRequest request) {
         try {
-            RegisterPayload p = JsonUtils.fromJson(request.getPayload(), RegisterPayload.class);
-            if (p == null || p.nom == null || p.prenom == null || p.email == null || p.password == null)
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> raw = JsonUtils.fromJson(request.getPayload(), Map.class);
+            if (raw == null) return AppResponse.badRequest("Payload invalide.");
+
+            String nom      = (String) raw.get("nom");
+            String prenom   = (String) raw.get("prenom");
+            String email    = (String) raw.get("email");
+            String password = (String) raw.get("password");
+
+            if (nom == null || prenom == null || email == null || password == null)
                 return AppResponse.badRequest("Tous les champs sont requis.");
-            if (!p.email.contains("@"))
+            if (!email.contains("@"))
                 return AppResponse.badRequest("Email invalide.");
-            if (p.password.length() < 6)
+            if (password.length() < 6)
                 return AppResponse.badRequest("Mot de passe trop court (min. 6 caractères).");
-            if (repo().emailExiste(p.email))
+            if (repo().emailExiste(email))
                 return AppResponse.error("Cet email est déjà utilisé.");
 
             Utilisateur u = new Utilisateur();
-            u.setNom(p.nom);
-            u.setPrenom(p.prenom);
-            u.setEmail(p.email);
-            u.setMotDePasse(hash(p.password));
+            u.setNom(nom);
+            u.setPrenom(prenom);
+            u.setEmail(email);
+            u.setMotDePasse(hash(password));
             u.setRole("client");
             u.setStatut("actif");
 
             if (!repo().add(u)) return AppResponse.error("Échec de l'inscription.");
+
+            // sauvegarde de l'adresse si elle est présente
+            @SuppressWarnings("unchecked")
+            Map<String, Object> adresseData = (Map<String, Object>) raw.get("adresse");
+            if (adresseData != null) {
+                String rue        = (String) adresseData.get("rue");
+                String ville      = (String) adresseData.get("ville");
+                String codePostal = (String) adresseData.get("code_postal");
+
+                // On ne sauvegarde que si les champs obligatoires sont présents
+                if (rue != null && !rue.isBlank()
+                        && ville != null && !ville.isBlank()
+                        && codePostal != null && !codePostal.isBlank()) {
+
+                    Adresse adresse = new Adresse();
+                    adresse.setId_utilisateur(u.getId());
+                    adresse.setRue(rue);
+                    adresse.setComplement((String) adresseData.getOrDefault("complement", ""));
+                    adresse.setVille(ville);
+                    adresse.setCode_postal(codePostal);
+                    adresse.setPays((String) adresseData.getOrDefault("pays", "Maroc"));
+                    adresse.setEst_principale(true);   // première adresse = principale
+
+                    AdresseService adresseService = AppConfig.getService(AdresseService.class);
+                    if (adresseService != null) {
+                        adresseService.ajouterAdresse(adresse);
+                        logger.info("Adresse principale créée pour utilisateur id={}", u.getId());
+                    } else {
+                        logger.warn("AdresseService non disponible, adresse non sauvegardée");
+                    }
+                }
+            }
+
 
             String token = UUID.randomUUID().toString();
             sessions.put(token, u);
@@ -172,12 +216,12 @@ public class AuthController implements IController {
 
     private Map<String, Object> userData(Utilisateur u, String token) {
         Map<String, Object> data = new HashMap<>();
-        data.put("token", token);
-        data.put("id", u.getId());
-        data.put("nom", u.getNom());
+        data.put("token",  token);
+        data.put("id",     u.getId());
+        data.put("nom",    u.getNom());
         data.put("prenom", u.getPrenom());
-        data.put("email", u.getEmail());
-        data.put("role", u.getRole());
+        data.put("email",  u.getEmail());
+        data.put("role",   u.getRole());
         data.put("statut", u.getStatut());
         return data;
     }
