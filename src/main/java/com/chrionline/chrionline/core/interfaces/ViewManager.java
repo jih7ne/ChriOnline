@@ -17,4 +17,6 @@ public interface ViewManager {
     void showConfirmationView(Map<String, Object> paiementData);
     void showConfirmationEchoueeView(Map<String, Object> userData, String messageErreur, Runnable onReessayer);
     void showHistoriqueCommandesView(Map<String, Object> userData);
+    void showProfileView(Map<String, Object> userData);
+
 }
