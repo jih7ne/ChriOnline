@@ -18,6 +18,9 @@ import java.util.Map;
 public class RegisterView extends StackPane {
 
     private final TextField prenomField, nomField, emailField;
+    // ── C01 : nouveaux champs adresse ────────────────────────────────────────
+    private final TextField rueField, villeField, codePostalField;
+    // ─────────────────────────────────────────────────────────────────────────
     private final PasswordField passwordField;
     private final Button registerButton;
     private final Label errorLabel;
@@ -32,19 +35,27 @@ public class RegisterView extends StackPane {
 
         this.setStyle("-fx-background-color: " + AppTheme.BG + ";");
 
+        // ── ScrollPane pour éviter le débordement avec les champs supplémentaires ──
+        ScrollPane scroll = new ScrollPane();
+        scroll.setFitToWidth(true);
+        scroll.setStyle(
+                "-fx-background: " + AppTheme.BG + ";" +
+                        "-fx-background-color: " + AppTheme.BG + ";"
+        );
+
         VBox card = new VBox(0);
         card.setMaxWidth(480);
         AppTheme.styleCard(card);
         card.setPadding(new Insets(40));
 
-        // ─── Icône ─────────────────────────────────────────────────────────
+        // ── Icône ──────────────────────────────────────────────────────────────
         Label icon = new Label("🛍");
         icon.setStyle("-fx-font-size: 40px;");
         VBox iconBox = new VBox(icon);
         iconBox.setAlignment(Pos.CENTER);
         VBox.setMargin(iconBox, new Insets(0, 0, 8, 0));
 
-        // ─── Titre ─────────────────────────────────────────────────────────
+        // ── Titre ──────────────────────────────────────────────────────────────
         Label title = new Label("ChriOnline");
         title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
         Label subtitle = new Label("Boutique artisanale");
@@ -53,7 +64,7 @@ public class RegisterView extends StackPane {
         titleBox.setAlignment(Pos.CENTER);
         VBox.setMargin(titleBox, new Insets(0, 0, 24, 0));
 
-        // ─── Toggle ────────────────────────────────────────────────────────
+        // ── Toggle ─────────────────────────────────────────────────────────────
         Button btnConnexion = new Button("Connexion");
         Button btnInscription = new Button("Inscription");
         AppTheme.styleToggleInactive(btnConnexion);
@@ -73,7 +84,7 @@ public class RegisterView extends StackPane {
         toggle.setMaxWidth(Double.MAX_VALUE);
         VBox.setMargin(toggle, new Insets(0, 0, 20, 0));
 
-        // ─── Champs ────────────────────────────────────────────────────────
+        // ── Champs identité ────────────────────────────────────────────────────
         prenomField = new TextField();
         prenomField.setPromptText("Prénom");
         AppTheme.styleTextField(prenomField);
@@ -95,7 +106,43 @@ public class RegisterView extends StackPane {
         passwordField.setOnAction(e -> handleRegister());
         StackPane passPane = wrapWithIcon("🔒", passwordField);
 
-        // ─── Erreur ────────────────────────────────────────────────────────
+        Separator sepAdresse = new Separator();
+        sepAdresse.setStyle("-fx-background-color: " + AppTheme.FIELD_BORDER + ";");
+        VBox.setMargin(sepAdresse, new Insets(16, 0, 8, 0));
+
+        Label adresseTitre = new Label("Adresse de livraison");
+        adresseTitre.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-text-fill: " + AppTheme.PRIMARY + ";"
+        );
+        VBox.setMargin(adresseTitre, new Insets(0, 0, 8, 0));
+
+        // Rue
+        rueField = new TextField();
+        rueField.setPromptText("Numéro et nom de rue");
+        AppTheme.styleTextField(rueField);
+        StackPane ruePane = wrapWithIcon("📍", rueField);
+
+        // Ville + Code postal côte à côte
+        codePostalField = new TextField();
+        codePostalField.setPromptText("Code postal");
+        AppTheme.styleTextField(codePostalField);
+        codePostalField.setMaxWidth(Double.MAX_VALUE);
+
+        villeField = new TextField();
+        villeField.setPromptText("Ville");
+        AppTheme.styleTextField(villeField);
+        villeField.setMaxWidth(Double.MAX_VALUE);
+
+        HBox cpVilleRow = new HBox(10, codePostalField, villeField);
+        HBox.setHgrow(codePostalField, Priority.NEVER);
+        HBox.setHgrow(villeField, Priority.ALWAYS);
+        codePostalField.setPrefWidth(130);
+        codePostalField.setMinWidth(110);
+        codePostalField.setMaxWidth(150);
+        cpVilleRow.setMaxWidth(Double.MAX_VALUE);
+
         errorLabel = new Label();
         errorLabel.setStyle(
                 "-fx-text-fill: " + AppTheme.ERROR_COLOR + ";" +
@@ -104,24 +151,36 @@ public class RegisterView extends StackPane {
         errorLabel.setVisible(false);
         errorLabel.setWrapText(true);
 
-        // ─── Bouton ────────────────────────────────────────────────────────
+        // ── Bouton ─────────────────────────────────────────────────────────────
         registerButton = new Button("S'inscrire");
         AppTheme.stylePrimaryButton(registerButton);
         registerButton.setOnAction(e -> handleRegister());
         VBox.setMargin(registerButton, new Insets(8, 0, 0, 0));
 
-        // ─── Assemblage ────────────────────────────────────────────────────
+        // ── Assemblage ─────────────────────────────────────────────────────────
         card.getChildren().addAll(
                 iconBox, titleBox, toggle,
                 createFieldLabel("Prénom"), prenomPane,
                 createFieldLabel("Nom"), nomPane,
                 createFieldLabel("Email"), emailPane,
                 createFieldLabel("Mot de passe"), passPane,
+                // C01 : section adresse
+                sepAdresse,
+                adresseTitre,
+                createFieldLabel("Rue *"), ruePane,
+                createFieldLabel("Code postal et ville *"), cpVilleRow,
+                // fin C01
                 errorLabel, registerButton
         );
 
-        StackPane.setAlignment(card, Pos.CENTER);
-        this.getChildren().add(card);
+        VBox wrapper = new VBox(card);
+        wrapper.setAlignment(Pos.CENTER);
+        wrapper.setPadding(new Insets(24));
+        wrapper.setStyle("-fx-background-color: " + AppTheme.BG + ";");
+
+        scroll.setContent(wrapper);
+        StackPane.setAlignment(scroll, Pos.CENTER);
+        this.getChildren().add(scroll);
     }
 
     private void handleRegister() {
