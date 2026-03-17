@@ -18,21 +18,19 @@ public class AdminSidebar extends VBox {
     public enum AdminPage {
         DASHBOARD, PRODUITS, CATEGORIES, COMMANDES, UTILISATEURS
     }
-    private static final Color  C_BG           = Color.web("#6B3F20");
-    private static final Color  C_ACTIVE       = Color.web("#8B5A2B");
-    private static final Color  C_HOVER        = Color.web("#7A4C24");
-    private static final Color  C_TEXT         = Color.WHITE;
-    private static final Color  C_TEXT_MUTED   = Color.web("#D4A882");
 
-    private static final String S_TEXT         = "#FFFFFF";
-    private static final String S_TEXT_MUTED   = "#D4A882";
-    private static final String S_ACTIVE       = "#8B5A2B";
-    private static final String S_HOVER        = "#7A4C24";
+    private static final Color  C_BG         = Color.web("#6B3F20");
+    private static final Color  C_ACTIVE     = Color.web("#8B5A2B");
+    private static final Color  C_HOVER      = Color.web("#7A4C24");
+    private static final Color  C_TEXT       = Color.WHITE;
+    private static final Color  C_TEXT_MUTED = Color.web("#D4A882");
+    private static final String S_TEXT       = "#FFFFFF";
+    private static final String S_TEXT_MUTED = "#D4A882";
 
-    private final ViewManager viewManager;
+    private final ViewManager         viewManager;
     private final Map<String, Object> userData;
-    private final AdminPage activePage;
-    private final AdminView adminView;
+    private final AdminPage           activePage;
+    private final AdminView           adminView;
 
     public AdminSidebar(AdminPage activePage, Map<String, Object> userData,
                         ViewManager viewManager, AdminView adminView) {
@@ -44,17 +42,22 @@ public class AdminSidebar extends VBox {
     }
 
     private void buildUI() {
+        // ── Taille fixe — ne pas rétrécir ni s'étirer en largeur ─────
         setPrefWidth(240);
-        setMinWidth(220);
-        setMaxWidth(260);
+        setMinWidth(240);
+        setMaxWidth(240);
+        // S'étire toujours en hauteur
+        setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(this, Priority.ALWAYS);
 
         setBackground(new Background(new BackgroundFill(C_BG, CornerRadii.EMPTY, Insets.EMPTY)));
         setPadding(new Insets(28, 16, 28, 16));
         setSpacing(4);
+
+        // ── Logo ─────────────────────────────────────────────────────
         HBox logoBox = new HBox(12);
         logoBox.setAlignment(Pos.CENTER_LEFT);
-        logoBox.setPadding(new Insets(4, 8, 32, 8));
+        logoBox.setPadding(new Insets(0, 8, 28, 8));
 
         FontIcon logoIcon = new FontIcon(Feather.SHOPPING_BAG);
         logoIcon.setIconSize(26);
@@ -62,18 +65,19 @@ public class AdminSidebar extends VBox {
 
         Label logoText = new Label("ChriOnline");
         logoText.setStyle(
-                "-fx-font-size: 22px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: " + S_TEXT + ";" +
-                        "-fx-font-family: 'Segoe UI Semibold', 'Segoe UI', 'Arial', sans-serif;"
+                "-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:" + S_TEXT + ";" +
+                        "-fx-font-family:'Segoe UI Semibold','Segoe UI','Arial',sans-serif;"
         );
         logoBox.getChildren().addAll(logoIcon, logoText);
+
+        // ── Menu ─────────────────────────────────────────────────────
         HBox dashboardBtn    = createMenuItem(Feather.GRID,         "Dashboard",    AdminPage.DASHBOARD);
         HBox produitsBtn     = createMenuItem(Feather.PACKAGE,      "Produits",     AdminPage.PRODUITS);
         HBox categoriesBtn   = createMenuItem(Feather.FOLDER,       "Catégories",   AdminPage.CATEGORIES);
         HBox commandesBtn    = createMenuItem(Feather.SHOPPING_BAG, "Commandes",    AdminPage.COMMANDES);
         HBox utilisateursBtn = createMenuItem(Feather.USERS,        "Utilisateurs", AdminPage.UTILISATEURS);
 
+        // ── Spacer pousse le footer en bas ────────────────────────────
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
@@ -94,6 +98,7 @@ public class AdminSidebar extends VBox {
         HBox item = new HBox(14);
         item.setAlignment(Pos.CENTER_LEFT);
         item.setPadding(new Insets(13, 18, 13, 18));
+        // S'étire en largeur pour remplir la sidebar
         item.setMaxWidth(Double.MAX_VALUE);
         item.setCursor(Cursor.HAND);
 
@@ -110,10 +115,12 @@ public class AdminSidebar extends VBox {
         Label itemLabel = new Label(label);
         itemLabel.setTextFill(isActive ? C_TEXT : C_TEXT_MUTED);
         itemLabel.setStyle(
-                "-fx-font-size: 15px;" +
-                        "-fx-font-family: 'Segoe UI', 'Arial', sans-serif;" +
-                        (isActive ? "-fx-font-weight: bold;" : "")
+                "-fx-font-size:15px;" +
+                        "-fx-font-family:'Segoe UI','Arial',sans-serif;" +
+                        (isActive ? "-fx-font-weight:bold;" : "")
         );
+        // Le label s'étire pour prendre l'espace restant
+        HBox.setHgrow(itemLabel, Priority.ALWAYS);
 
         item.getChildren().addAll(fontIcon, itemLabel);
 
