@@ -62,6 +62,12 @@ public class ClientApplication extends Application implements ViewManager {
         primaryStage.setTitle("ChriOnline — Inscription");
         primaryStage.setScene(new Scene(view, 900, 700));
     }
+    @Override
+    public void showProfileView(Map<String, Object> userData) {
+        ProfileView view = new ProfileView(client, userData, this);
+        primaryStage.setTitle("ChriOnline — Mon Profil");
+        primaryStage.getScene().setRoot(view);
+    }
 
     @Override
     public void showCatalogueView(Map<String, Object> userData) {
