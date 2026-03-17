@@ -17,13 +17,11 @@ public class CategorieService {
         logger.info("CategorieService initialized");
     }
 
-    // LISTER TOUTES LES CATEGORIES
     public List<Categorie> listerCategories() {
         logger.info("Récupération de toutes les catégories");
         return categorieRepository.findAll();
     }
 
-    // DETAILS D'UNE CATEGORIE
     public Categorie getCategorieById(int id) {
         logger.info("Récupération de la catégorie id={}", id);
         Categorie categorie = categorieRepository.findById(id);
@@ -33,13 +31,11 @@ public class CategorieService {
         return categorie;
     }
 
-    // AJOUTER UNE CATEGORIE
     public void ajouterCategorie(Categorie categorie) {
         logger.info("Ajout de la catégorie: {}", categorie.getNom());
         categorieRepository.add(categorie);
     }
 
-    // MODIFIER UNE CATEGORIE
     public void modifierCategorie(int id, Categorie categorie) {
         logger.info("Modification de la catégorie id={}", id);
         Categorie existante = categorieRepository.findById(id);
@@ -50,7 +46,6 @@ public class CategorieService {
         categorieRepository.update(String.valueOf(id), categorie);
     }
 
-    // SUPPRIMER UNE CATEGORIE
     public void supprimerCategorie(int id) {
         logger.info("Suppression de la catégorie id={}", id);
         Categorie existante = categorieRepository.findById(id);
