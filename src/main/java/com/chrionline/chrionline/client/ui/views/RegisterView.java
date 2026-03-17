@@ -10,7 +10,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,9 +17,7 @@ import java.util.Map;
 public class RegisterView extends StackPane {
 
     private final TextField prenomField, nomField, emailField;
-    // ── C01 : nouveaux champs adresse ────────────────────────────────────────
     private final TextField rueField, villeField, codePostalField;
-    // ─────────────────────────────────────────────────────────────────────────
     private final PasswordField passwordField;
     private final Button registerButton;
     private final Label errorLabel;
@@ -35,7 +32,6 @@ public class RegisterView extends StackPane {
 
         this.setStyle("-fx-background-color: " + AppTheme.BG + ";");
 
-        // ── ScrollPane pour éviter le débordement avec les champs supplémentaires ──
         ScrollPane scroll = new ScrollPane();
         scroll.setFitToWidth(true);
         scroll.setStyle(
@@ -48,14 +44,12 @@ public class RegisterView extends StackPane {
         AppTheme.styleCard(card);
         card.setPadding(new Insets(40));
 
-        // ── Icône ──────────────────────────────────────────────────────────────
         Label icon = new Label("🛍");
         icon.setStyle("-fx-font-size: 40px;");
         VBox iconBox = new VBox(icon);
         iconBox.setAlignment(Pos.CENTER);
         VBox.setMargin(iconBox, new Insets(0, 0, 8, 0));
 
-        // ── Titre ──────────────────────────────────────────────────────────────
         Label title = new Label("ChriOnline");
         title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
         Label subtitle = new Label("Boutique artisanale");
@@ -64,7 +58,6 @@ public class RegisterView extends StackPane {
         titleBox.setAlignment(Pos.CENTER);
         VBox.setMargin(titleBox, new Insets(0, 0, 24, 0));
 
-        // ── Toggle ─────────────────────────────────────────────────────────────
         Button btnConnexion = new Button("Connexion");
         Button btnInscription = new Button("Inscription");
         AppTheme.styleToggleInactive(btnConnexion);
@@ -84,7 +77,6 @@ public class RegisterView extends StackPane {
         toggle.setMaxWidth(Double.MAX_VALUE);
         VBox.setMargin(toggle, new Insets(0, 0, 20, 0));
 
-        // ── Champs identité ────────────────────────────────────────────────────
         prenomField = new TextField();
         prenomField.setPromptText("Prénom");
         AppTheme.styleTextField(prenomField);
@@ -118,17 +110,17 @@ public class RegisterView extends StackPane {
         );
         VBox.setMargin(adresseTitre, new Insets(0, 0, 8, 0));
 
-        // Rue
         rueField = new TextField();
         rueField.setPromptText("Numéro et nom de rue");
         AppTheme.styleTextField(rueField);
         StackPane ruePane = wrapWithIcon("📍", rueField);
 
-        // Ville + Code postal côte à côte
         codePostalField = new TextField();
         codePostalField.setPromptText("Code postal");
         AppTheme.styleTextField(codePostalField);
-        codePostalField.setMaxWidth(Double.MAX_VALUE);
+        codePostalField.setPrefWidth(130);
+        codePostalField.setMinWidth(110);
+        codePostalField.setMaxWidth(150);
 
         villeField = new TextField();
         villeField.setPromptText("Ville");
@@ -136,11 +128,7 @@ public class RegisterView extends StackPane {
         villeField.setMaxWidth(Double.MAX_VALUE);
 
         HBox cpVilleRow = new HBox(10, codePostalField, villeField);
-        HBox.setHgrow(codePostalField, Priority.NEVER);
         HBox.setHgrow(villeField, Priority.ALWAYS);
-        codePostalField.setPrefWidth(130);
-        codePostalField.setMinWidth(110);
-        codePostalField.setMaxWidth(150);
         cpVilleRow.setMaxWidth(Double.MAX_VALUE);
 
         errorLabel = new Label();
@@ -151,25 +139,21 @@ public class RegisterView extends StackPane {
         errorLabel.setVisible(false);
         errorLabel.setWrapText(true);
 
-        // ── Bouton ─────────────────────────────────────────────────────────────
         registerButton = new Button("S'inscrire");
         AppTheme.stylePrimaryButton(registerButton);
         registerButton.setOnAction(e -> handleRegister());
         VBox.setMargin(registerButton, new Insets(8, 0, 0, 0));
 
-        // ── Assemblage ─────────────────────────────────────────────────────────
         card.getChildren().addAll(
                 iconBox, titleBox, toggle,
                 createFieldLabel("Prénom"), prenomPane,
                 createFieldLabel("Nom"), nomPane,
                 createFieldLabel("Email"), emailPane,
                 createFieldLabel("Mot de passe"), passPane,
-                // C01 : section adresse
                 sepAdresse,
                 adresseTitre,
                 createFieldLabel("Rue *"), ruePane,
                 createFieldLabel("Code postal et ville *"), cpVilleRow,
-                // fin C01
                 errorLabel, registerButton
         );
 
@@ -184,16 +168,30 @@ public class RegisterView extends StackPane {
     }
 
     private void handleRegister() {
-        String prenom = prenomField.getText().trim();
-        String nom = nomField.getText().trim();
-        String email = emailField.getText().trim();
-        String password = passwordField.getText();
+        String prenom      = prenomField.getText().trim();
+        String nom         = nomField.getText().trim();
+        String email       = emailField.getText().trim();
+        String password    = passwordField.getText();
 
+        String rue         = rueField.getText().trim();
+        String codePostal  = codePostalField.getText().trim();
+        String ville       = villeField.getText().trim();
         if (prenom.isEmpty() || nom.isEmpty() || email.isEmpty() || password.isEmpty()) {
             showError("Remplissez tous les champs."); return;
         }
         if (!email.contains("@")) { showError("Email invalide."); return; }
         if (password.length() < 6) { showError("Mot de passe trop court (min. 6 caractères)."); return; }
+//validation adresse coté client
+        if (rue.isEmpty()) {
+            showError("Veuillez saisir votre rue."); return;
+        }
+        if (codePostal.isEmpty()) {
+            showError("Veuillez saisir le code postal."); return;
+        }
+        if (ville.isEmpty()) {
+            showError("Veuillez saisir la ville."); return;
+        }
+
 
         registerButton.setDisable(true);
         registerButton.setText("Inscription...");
@@ -201,11 +199,20 @@ public class RegisterView extends StackPane {
 
         new Thread(() -> {
             try {
-                Map<String, String> payload = new HashMap<>();
-                payload.put("nom", nom);
-                payload.put("prenom", prenom);
-                payload.put("email", email);
-                payload.put("password", password);
+                //we add address to the payload
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("nom",        nom);
+                payload.put("prenom",     prenom);
+                payload.put("email",      email);
+                payload.put("password",   password);
+                Map<String, String> adresse = new HashMap<>();
+                adresse.put("rue",         rue);
+                adresse.put("code_postal", codePostal);
+                adresse.put("ville",       ville);
+                adresse.put("pays",        "Maroc");
+                adresse.put("est_principale", "true");
+                payload.put("adresse", adresse);
+
 
                 AppRequest request = new AppRequest.Builder()
                         .controller("Auth").action("register")
