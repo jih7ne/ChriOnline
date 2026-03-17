@@ -21,14 +21,11 @@ public class AdresseController implements IController {
     }
 
     // LISTER LES ADRESSES D'UN UTILISATEUR
-    // INPUT  : { idUtilisateur }
-    // OUTPUT : [ { id, rue, ville, code_postal, pays, est_principale } ]
     public String lister(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
-            if (idUtilisateur == null) {
+            if (idUtilisateur == null)
                 return AppResponse.badRequest("idUtilisateur est requis");
-            }
             logger.info("Action: lister adresses utilisateur id={}", idUtilisateur);
             List<Adresse> adresses = adresseService.getAdressesUtilisateur(idUtilisateur);
             return AppResponse.success(adresses);
@@ -39,21 +36,15 @@ public class AdresseController implements IController {
     }
 
     // AJOUTER UNE ADRESSE
-    // INPUT  : { idUtilisateur, rue, complement, ville, code_postal, pays, est_principale }
-    // OUTPUT : { message }
     public String ajouter(AppRequest request) {
         try {
             Adresse adresse = request.getPayloadAs(Adresse.class);
-            if (adresse == null) {
+            if (adresse == null)
                 return AppResponse.badRequest("Les données de l'adresse sont requises");
-            }
             logger.info("Action: ajouter adresse utilisateur id={}", adresse.getId_utilisateur());
             adresseService.ajouterAdresse(adresse);
-
-            // Récupérer l'adresse avec son id depuis la BDD
             List<Adresse> adresses = adresseService.getAdressesUtilisateur(adresse.getId_utilisateur());
             Adresse adresseCreee = adresses.isEmpty() ? null : adresses.get(adresses.size() - 1);
-
             return AppResponse.success(adresseCreee, "Adresse ajoutée avec succès");
         } catch (Exception e) {
             logger.error("Erreur lors de l'ajout de l'adresse", e);
@@ -62,15 +53,12 @@ public class AdresseController implements IController {
     }
 
     // MODIFIER UNE ADRESSE
-    // INPUT  : { id, rue, complement, ville, code_postal, pays, est_principale }
-    // OUTPUT : { message }
     public String modifier(AppRequest request) {
         try {
             Integer id      = request.getInt("id");
             Adresse adresse = request.getPayloadAs(Adresse.class);
-            if (id == null || adresse == null) {
+            if (id == null || adresse == null)
                 return AppResponse.badRequest("id et données de l'adresse sont requis");
-            }
             logger.info("Action: modifier adresse id={}", id);
             adresseService.modifierAdresse(id, adresse);
             return AppResponse.success(null, "Adresse modifiée avec succès");
@@ -81,14 +69,11 @@ public class AdresseController implements IController {
     }
 
     // SUPPRIMER UNE ADRESSE
-    // INPUT  : { id }
-    // OUTPUT : { message }
     public String supprimer(AppRequest request) {
         try {
             Integer id = request.getInt("id");
-            if (id == null) {
+            if (id == null)
                 return AppResponse.badRequest("id est requis");
-            }
             logger.info("Action: supprimer adresse id={}", id);
             adresseService.supprimerAdresse(id);
             return AppResponse.success(null, "Adresse supprimée avec succès");
@@ -98,17 +83,15 @@ public class AdresseController implements IController {
         }
     }
 
-    // DÉFINIR ADRESSE PRINCIPALE
-    // INPUT  : { idUtilisateur, idAdresse }
-    // OUTPUT : { message }
+
     public String setPrincipale(AppRequest request) {
         try {
             Integer idUtilisateur = request.getInt("idUtilisateur");
             Integer idAdresse     = request.getInt("idAdresse");
-            if (idUtilisateur == null || idAdresse == null) {
+            if (idUtilisateur == null || idAdresse == null)
                 return AppResponse.badRequest("idUtilisateur et idAdresse sont requis");
-            }
-            logger.info("Action: set adresse principale id={}", idAdresse);
+            logger.info("Action: setPrincipale adresse id={} pour utilisateur id={}",
+                    idAdresse, idUtilisateur);
             adresseService.setAdressePrincipale(idUtilisateur, idAdresse);
             return AppResponse.success(null, "Adresse principale mise à jour");
         } catch (Exception e) {
@@ -116,4 +99,5 @@ public class AdresseController implements IController {
             return AppResponse.error("Erreur lors de la mise à jour");
         }
     }
+    // ── fin C16 ───────────────────────────────────────────────────────────────
 }
