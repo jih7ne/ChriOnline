@@ -57,9 +57,6 @@ public class AdminView extends BorderPane {
         setLeft(sidebar);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    //  Top bar — hauteur fixe, responsive en largeur
-    // ─────────────────────────────────────────────────────────────────
     private HBox buildTopBar() {
         HBox topBar = new HBox();
         topBar.setAlignment(Pos.CENTER_RIGHT);
@@ -74,7 +71,6 @@ public class AdminView extends BorderPane {
         String adminName = (userData != null && userData.containsKey("nom"))
                 ? "Admin " + userData.get("nom") : "Admin";
 
-        // ── Nom admin ─────────────────────────────────────────────────
         Label nameLabel = new Label(adminName);
         nameLabel.setStyle(
                 "-fx-font-size:15px;-fx-font-weight:600;" +
@@ -82,7 +78,6 @@ public class AdminView extends BorderPane {
                         "-fx-font-family:'Segoe UI','Arial',sans-serif;"
         );
 
-        // ── Avatar ────────────────────────────────────────────────────
         FontIcon userIcon = new FontIcon(Feather.USER);
         userIcon.setIconSize(20);
         userIcon.setIconColor(Color.WHITE);
@@ -101,7 +96,6 @@ public class AdminView extends BorderPane {
                 new BackgroundFill(C_AVATAR_BG, new CornerRadii(50), Insets.EMPTY))));
         Tooltip.install(avatar, new Tooltip("Mon profil"));
 
-        // ── Bouton logout — même style que ClientNavbar ───────────────
         FontIcon logoutIcon = new FontIcon(Feather.LOG_OUT);
         logoutIcon.setIconSize(20);
         logoutIcon.setIconColor(Color.web("#C0392B"));
@@ -133,9 +127,6 @@ public class AdminView extends BorderPane {
         return topBar;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    //  Navigation
-    // ─────────────────────────────────────────────────────────────────
     public void showDashboard() {
         currentPage = AdminSidebar.AdminPage.DASHBOARD;
         rebuildSidebar();
@@ -166,9 +157,6 @@ public class AdminView extends BorderPane {
         rightPane.setCenter(buildComingSoon("Utilisateurs"));
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    //  Placeholder responsive
-    // ─────────────────────────────────────────────────────────────────
     private Region buildComingSoon(String pageName) {
         VBox box = new VBox(16);
         box.setAlignment(Pos.CENTER);

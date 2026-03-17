@@ -42,11 +42,9 @@ public class AdminSidebar extends VBox {
     }
 
     private void buildUI() {
-        // ── Taille fixe — ne pas rétrécir ni s'étirer en largeur ─────
         setPrefWidth(240);
         setMinWidth(240);
         setMaxWidth(240);
-        // S'étire toujours en hauteur
         setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(this, Priority.ALWAYS);
 
@@ -54,7 +52,6 @@ public class AdminSidebar extends VBox {
         setPadding(new Insets(28, 16, 28, 16));
         setSpacing(4);
 
-        // ── Logo ─────────────────────────────────────────────────────
         HBox logoBox = new HBox(12);
         logoBox.setAlignment(Pos.CENTER_LEFT);
         logoBox.setPadding(new Insets(0, 8, 28, 8));
@@ -70,14 +67,12 @@ public class AdminSidebar extends VBox {
         );
         logoBox.getChildren().addAll(logoIcon, logoText);
 
-        // ── Menu ─────────────────────────────────────────────────────
         HBox dashboardBtn    = createMenuItem(Feather.GRID,         "Dashboard",    AdminPage.DASHBOARD);
         HBox produitsBtn     = createMenuItem(Feather.PACKAGE,      "Produits",     AdminPage.PRODUITS);
         HBox categoriesBtn   = createMenuItem(Feather.FOLDER,       "Catégories",   AdminPage.CATEGORIES);
         HBox commandesBtn    = createMenuItem(Feather.SHOPPING_BAG, "Commandes",    AdminPage.COMMANDES);
         HBox utilisateursBtn = createMenuItem(Feather.USERS,        "Utilisateurs", AdminPage.UTILISATEURS);
 
-        // ── Spacer pousse le footer en bas ────────────────────────────
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
@@ -98,7 +93,6 @@ public class AdminSidebar extends VBox {
         HBox item = new HBox(14);
         item.setAlignment(Pos.CENTER_LEFT);
         item.setPadding(new Insets(13, 18, 13, 18));
-        // S'étire en largeur pour remplir la sidebar
         item.setMaxWidth(Double.MAX_VALUE);
         item.setCursor(Cursor.HAND);
 
