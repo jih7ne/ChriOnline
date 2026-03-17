@@ -7,7 +7,6 @@ import com.chrionline.chrionline.core.utils.JsonUtils;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.network.tcp.TCPClient;
-import com.chrionline.chrionline.server.data.models.Adresse;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -24,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 public class ProfileView extends BorderPane {
 
     private final TCPClient client;
@@ -33,6 +33,7 @@ public class ProfileView extends BorderPane {
     private TextField nomField;
     private TextField prenomField;
     private Label profilFeedbackLabel;
+
     private PasswordField ancienMdpField;
     private PasswordField nouveauMdpField;
     private PasswordField confirmerMdpField;
@@ -40,7 +41,6 @@ public class ProfileView extends BorderPane {
 
     private VBox adressesContainer;
     private List<Map<String, Object>> adressesList = new ArrayList<>();
-
 
     public ProfileView(TCPClient client, Map<String, Object> userData, ViewManager viewManager) {
         this.client = client;
@@ -51,13 +51,13 @@ public class ProfileView extends BorderPane {
 
         ClientNavbar navbar = new ClientNavbar(0, userData, viewManager, null);
         setTop(navbar);
+
         ScrollPane scroll = new ScrollPane();
         scroll.setFitToWidth(true);
         scroll.setStyle(
                 "-fx-background: " + AppTheme.BG + ";" +
                         "-fx-background-color: " + AppTheme.BG + ";"
         );
-
 
         VBox root = new VBox(28);
         root.setPadding(new Insets(32, 64, 48, 64));
@@ -94,22 +94,27 @@ public class ProfileView extends BorderPane {
                         "-fx-font-weight: bold;" +
                         "-fx-text-fill: " + AppTheme.PRIMARY + ";"
         );
-        VBox cardInfos = buildCardInfosPersonnelles();
-        VBox cardMdp = buildCardMotDePasse();
+
+        VBox cardInfos    = buildCardInfosPersonnelles();
+        VBox cardMdp      = buildCardMotDePasse();
         VBox cardAdresses = buildCardAdresses();
 
         root.getChildren().addAll(retourBtn, titre, cardInfos, cardMdp, cardAdresses);
         scroll.setContent(root);
         setCenter(scroll);
+
         chargerAdresses();
-        // ─────────────────────────────────────────────────────────────────────
     }
 
+    // =========================================================================
+    // CARD INFOS PERSONNELLES
+    // =========================================================================
     private VBox buildCardInfosPersonnelles() {
         VBox card = buildCard();
 
         Label sectionTitre = sectionLabel("Informations personnelles");
 
+        // Email read-only
         String emailVal = userData.getOrDefault("email", "").toString();
         HBox emailRow = new HBox(8);
         emailRow.setAlignment(Pos.CENTER_LEFT);
@@ -134,19 +139,14 @@ public class ProfileView extends BorderPane {
         emailLockHint.setStyle("-fx-font-size: 11px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
         emailRow.getChildren().addAll(lockIcon, emailReadOnly);
 
+        nomField = buildTextField(userData.getOrDefault("nom", "").toString(), "Nom");
+        prenomField = buildTextField(userData.getOrDefault("prenom", "").toString(), "Prénom");
 
-        // Nom
-        nomField = buildTextField(
-                userData.getOrDefault("nom", "").toString(), "Nom"
-        );
-        // Prénom
-        prenomField = buildTextField(
-                userData.getOrDefault("prenom", "").toString(), "Prénom"
-        );
-
-        HBox nomPrenomRow = new HBox(14, buildFieldBox("Nom", nomField), buildFieldBox("Prénom", prenomField));
-        HBox.setHgrow(nomPrenomRow.getChildren().get(0), Priority.ALWAYS);
-        HBox.setHgrow(nomPrenomRow.getChildren().get(1), Priority.ALWAYS);
+        VBox nomBox    = buildFieldBox("Nom", nomField);
+        VBox prenomBox = buildFieldBox("Prénom", prenomField);
+        HBox.setHgrow(nomBox, Priority.ALWAYS);
+        HBox.setHgrow(prenomBox, Priority.ALWAYS);
+        HBox nomPrenomRow = new HBox(14, nomBox, prenomBox);
 
         profilFeedbackLabel = new Label();
         profilFeedbackLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + AppTheme.ERROR_COLOR + ";");
@@ -157,7 +157,6 @@ public class ProfileView extends BorderPane {
         AppTheme.stylePrimaryButton(saveBtn);
         saveBtn.setMaxWidth(Double.MAX_VALUE);
         saveBtn.setOnAction(e -> handleUpdateProfil());
-
 
         card.getChildren().addAll(
                 sectionTitre,
@@ -172,6 +171,8 @@ public class ProfileView extends BorderPane {
     private void handleUpdateProfil() {
         String nom    = nomField.getText().trim();
         String prenom = prenomField.getText().trim();
+
+        System.out.println("[DEBUG PROFIL] bouton cliqué nom='" + nom + "' prenom='" + prenom + "'");
 
         if (nom.isEmpty() || prenom.isEmpty()) {
             showFeedback(profilFeedbackLabel, "Le nom et le prénom sont requis.", false);
@@ -190,11 +191,14 @@ public class ProfileView extends BorderPane {
                         .authToken(client.getAuthToken())
                         .build();
 
+                System.out.println("[DEBUG PROFIL] requête = " + req.toJson());
+
                 AppResponse resp = client.sendAndParse(req);
+
+                System.out.println("[DEBUG PROFIL] réponse = " + (resp != null ? resp.toJson() : "NULL"));
 
                 Platform.runLater(() -> {
                     if (resp != null && resp.isSuccess()) {
-
                         userData.put("nom",    nom);
                         userData.put("prenom", prenom);
                         showFeedback(profilFeedbackLabel, "Profil mis à jour avec succès !", true);
@@ -204,12 +208,17 @@ public class ProfileView extends BorderPane {
                     }
                 });
             } catch (Exception ex) {
+                System.err.println("[DEBUG PROFIL] EXCEPTION : " + ex.getMessage());
+                ex.printStackTrace();
                 Platform.runLater(() ->
                         showFeedback(profilFeedbackLabel, "Erreur réseau : " + ex.getMessage(), false));
             }
         }).start();
     }
 
+    // =========================================================================
+    // CARD MOT DE PASSE
+    // =========================================================================
     private VBox buildCardMotDePasse() {
         VBox card = buildCard();
         Label sectionTitre = sectionLabel("Changer le mot de passe");
@@ -228,7 +237,6 @@ public class ProfileView extends BorderPane {
         mdpBtn.setMaxWidth(Double.MAX_VALUE);
         mdpBtn.setOnAction(e -> handleUpdatePassword());
 
-
         card.getChildren().addAll(
                 sectionTitre,
                 buildFieldBox("Mot de passe actuel", ancienMdpField),
@@ -239,10 +247,16 @@ public class ProfileView extends BorderPane {
         );
         return card;
     }
+
     private void handleUpdatePassword() {
         String ancien    = ancienMdpField.getText();
         String nouveau   = nouveauMdpField.getText();
         String confirmer = confirmerMdpField.getText();
+
+        System.out.println("[DEBUG MDP] bouton cliqué");
+        System.out.println("[DEBUG MDP] ancien vide=" + ancien.isEmpty()
+                + " nouveau vide=" + nouveau.isEmpty()
+                + " confirmer vide=" + confirmer.isEmpty());
 
         if (ancien.isEmpty() || nouveau.isEmpty() || confirmer.isEmpty()) {
             showFeedback(mdpFeedbackLabel, "Tous les champs sont requis.", false); return;
@@ -253,6 +267,8 @@ public class ProfileView extends BorderPane {
         if (!nouveau.equals(confirmer)) {
             showFeedback(mdpFeedbackLabel, "Les mots de passe ne correspondent pas.", false); return;
         }
+
+        System.out.println("[DEBUG MDP] validations OK, authToken=" + client.getAuthToken());
 
         new Thread(() -> {
             try {
@@ -266,7 +282,11 @@ public class ProfileView extends BorderPane {
                         .authToken(client.getAuthToken())
                         .build();
 
+                System.out.println("[DEBUG MDP] requête = " + req.toJson());
+
                 AppResponse resp = client.sendAndParse(req);
+
+                System.out.println("[DEBUG MDP] réponse = " + (resp != null ? resp.toJson() : "NULL"));
 
                 Platform.runLater(() -> {
                     if (resp != null && resp.isSuccess()) {
@@ -280,16 +300,20 @@ public class ProfileView extends BorderPane {
                     }
                 });
             } catch (Exception ex) {
+                System.err.println("[DEBUG MDP] EXCEPTION : " + ex.getMessage());
+                ex.printStackTrace();
                 Platform.runLater(() ->
                         showFeedback(mdpFeedbackLabel, "Erreur réseau : " + ex.getMessage(), false));
             }
         }).start();
     }
 
+    // =========================================================================
+    // CARD ADRESSES
+    // =========================================================================
     private VBox buildCardAdresses() {
         VBox card = buildCard();
 
-        // Titre + bouton ajouter sur la même ligne
         HBox headerRow = new HBox();
         headerRow.setAlignment(Pos.CENTER_LEFT);
         Label sectionTitre = sectionLabel("Mes adresses");
@@ -307,8 +331,6 @@ public class ProfileView extends BorderPane {
                         "-fx-cursor: hand;"
         );
         ajouterBtn.setOnAction(e -> openAdresseDialog(null));
-
-
         headerRow.getChildren().addAll(sectionTitre, ajouterBtn);
 
         adressesContainer = new VBox(10);
@@ -328,7 +350,6 @@ public class ProfileView extends BorderPane {
                         "-fx-cursor: hand;"
         );
         logoutBtn.setOnAction(e -> handleLogout());
-
 
         card.getChildren().addAll(headerRow, adressesContainer, sepLogout, logoutBtn);
         return card;
@@ -360,14 +381,12 @@ public class ProfileView extends BorderPane {
 
     private void afficherAdresses() {
         adressesContainer.getChildren().clear();
-
         if (adressesList.isEmpty()) {
             Label vide = new Label("Aucune adresse enregistrée.");
             vide.setStyle("-fx-text-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 13px;");
             adressesContainer.getChildren().add(vide);
             return;
         }
-
         for (Map<String, Object> adresse : adressesList) {
             adressesContainer.getChildren().add(buildAdresseRow(adresse));
         }
@@ -385,16 +404,14 @@ public class ProfileView extends BorderPane {
                         "-fx-border-width: 1;"
         );
 
-        // Icône adresse
         FontIcon adresseIcon = new FontIcon(Feather.MAP_PIN);
         adresseIcon.setIconSize(16);
         adresseIcon.setIconColor(Color.web(AppTheme.PRIMARY));
 
-        // Texte
-        String rue      = String.valueOf(adresse.getOrDefault("rue", ""));
-        String ville    = String.valueOf(adresse.getOrDefault("ville", ""));
-        String cp       = String.valueOf(adresse.getOrDefault("code_postal", ""));
-        String pays     = String.valueOf(adresse.getOrDefault("pays", ""));
+        String  rue        = str(adresse.get("rue"));
+        String  ville      = str(adresse.get("ville"));
+        String  cp         = str(adresse.get("code_postal"));
+        String  pays       = str(adresse.get("pays"));
         boolean principale = estPrincipale(adresse);
 
         VBox texteBox = new VBox(3);
@@ -421,12 +438,11 @@ public class ProfileView extends BorderPane {
             texteBox.getChildren().add(badge);
         }
 
+        // Étoile principale
         Button starBtn = new Button();
-        FontIcon starIcon = new FontIcon(principale ? Feather.STAR : Feather.STAR);
+        FontIcon starIcon = new FontIcon(Feather.STAR);
         starIcon.setIconSize(15);
-        starIcon.setIconColor(principale
-                ? Color.web("#F59E0B")
-                : Color.web(AppTheme.TEXT_MUTED));
+        starIcon.setIconColor(principale ? Color.web("#F59E0B") : Color.web(AppTheme.TEXT_MUTED));
         starBtn.setGraphic(starIcon);
         starBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;");
         starBtn.setTooltip(new Tooltip(principale ? "Adresse principale" : "Définir comme principale"));
@@ -434,44 +450,44 @@ public class ProfileView extends BorderPane {
             starBtn.setOnAction(e -> handleSetPrincipale(adresse));
         }
 
+        // Modifier
         Button editBtn = new Button();
         FontIcon editIcon = new FontIcon(Feather.EDIT_2);
         editIcon.setIconSize(15);
         editIcon.setIconColor(Color.web(AppTheme.PRIMARY));
         editBtn.setGraphic(editIcon);
         editBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;");
-        editBtn.setOnMouseEntered(e2 -> editBtn.setStyle(
+        editBtn.setOnMouseEntered(e -> editBtn.setStyle(
                 "-fx-background-color: #E6CCB2; -fx-background-radius: 7; -fx-cursor: hand; -fx-padding: 4;"));
-        editBtn.setOnMouseExited(e2 -> editBtn.setStyle(
+        editBtn.setOnMouseExited(e -> editBtn.setStyle(
                 "-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;"));
         editBtn.setOnAction(e -> openAdresseDialog(adresse));
 
+        // Supprimer
         Button deleteBtn = new Button();
         FontIcon deleteIcon = new FontIcon(Feather.TRASH_2);
         deleteIcon.setIconSize(15);
         deleteIcon.setIconColor(Color.web("#C0392B"));
         deleteBtn.setGraphic(deleteIcon);
         deleteBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;");
-        deleteBtn.setOnMouseEntered(e2 -> deleteBtn.setStyle(
+        deleteBtn.setOnMouseEntered(e -> deleteBtn.setStyle(
                 "-fx-background-color: #FEF2F2; -fx-background-radius: 7; -fx-cursor: hand; -fx-padding: 4;"));
-        deleteBtn.setOnMouseExited(e2 -> deleteBtn.setStyle(
+        deleteBtn.setOnMouseExited(e -> deleteBtn.setStyle(
                 "-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;"));
         deleteBtn.setOnAction(e -> handleSupprimerAdresse(adresse));
-
 
         row.getChildren().addAll(adresseIcon, texteBox, starBtn, editBtn, deleteBtn);
         return row;
     }
+
     private void openAdresseDialog(Map<String, Object> adresseExistante) {
         int idUtilisateur = ((Number) userData.get("id")).intValue();
-
         AdresseDialogView dialogView = new AdresseDialogView(
                 client,
                 adresseExistante,
                 idUtilisateur,
                 savedAdresse -> Platform.runLater(this::chargerAdresses)
         );
-
         Scene scene = new Scene(dialogView);
         Stage stage = new Stage();
         stage.setScene(scene);
@@ -481,7 +497,6 @@ public class ProfileView extends BorderPane {
     }
 
     private void handleSupprimerAdresse(Map<String, Object> adresse) {
-
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Supprimer l'adresse");
         confirm.setHeaderText(null);
@@ -499,7 +514,6 @@ public class ProfileView extends BorderPane {
                 Object idObj = adresse.get("id");
                 if (idObj == null) return;
                 int id = ((Number) idObj).intValue();
-
                 new Thread(() -> {
                     try {
                         AppRequest req = new AppRequest.Builder()
@@ -509,9 +523,7 @@ public class ProfileView extends BorderPane {
                                 .build();
                         AppResponse resp = client.sendAndParse(req);
                         Platform.runLater(() -> {
-                            if (resp != null && resp.isSuccess()) {
-                                chargerAdresses();
-                            }
+                            if (resp != null && resp.isSuccess()) chargerAdresses();
                         });
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -526,7 +538,6 @@ public class ProfileView extends BorderPane {
         if (idObj == null) return;
         int idAdresse     = ((Number) idObj).intValue();
         int idUtilisateur = ((Number) userData.get("id")).intValue();
-
         new Thread(() -> {
             try {
                 AppRequest req = new AppRequest.Builder()
@@ -537,9 +548,7 @@ public class ProfileView extends BorderPane {
                         .build();
                 AppResponse resp = client.sendAndParse(req);
                 Platform.runLater(() -> {
-                    if (resp != null && resp.isSuccess()) {
-                        chargerAdresses();   // rafraîchit la liste + les badges
-                    }
+                    if (resp != null && resp.isSuccess()) chargerAdresses();
                 });
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -554,12 +563,15 @@ public class ProfileView extends BorderPane {
                         .controller("Auth").action("logout")
                         .authToken(client.getAuthToken())
                         .build();
-                client.sendAndParse(req);   // best-effort, on ignore l'erreur
+                client.sendAndParse(req);
             } catch (Exception ignored) {}
             Platform.runLater(() -> viewManager.showLoginView());
         }).start();
     }
 
+    // =========================================================================
+    // Helpers UI
+    // =========================================================================
     private VBox buildCard() {
         VBox card = new VBox(14);
         card.setStyle(
@@ -633,9 +645,13 @@ public class ProfileView extends BorderPane {
 
     private boolean estPrincipale(Map<String, Object> adresse) {
         Object val = adresse.get("est_principale");
-        if (val == null) return false;
+        if (val == null)            return false;
         if (val instanceof Boolean) return (Boolean) val;
         if (val instanceof Number)  return ((Number) val).intValue() == 1;
         return "true".equalsIgnoreCase(val.toString()) || "1".equals(val.toString());
+    }
+
+    private String str(Object o) {
+        return o == null ? "" : String.valueOf(o);
     }
 }
