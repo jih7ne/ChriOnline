@@ -14,7 +14,6 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         super(connection, "Categorie", new CategorieRowMapper());
     }
 
-    // LISTER TOUTES LES CATEGORIES
     public List<Categorie> findAll() {
         String sql = "SELECT id, nom, description FROM Categorie ORDER BY nom";
         List<Categorie> categories = new ArrayList<>();
@@ -29,7 +28,6 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         return categories;
     }
 
-    // TROUVER UNE CATEGORIE PAR ID
     public Categorie findById(int id) {
         String sql = "SELECT id, nom, description FROM Categorie WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -44,7 +42,6 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         return null;
     }
 
-    // AJOUTER UNE CATEGORIE
     @Override
     public void add(Categorie item) {
         String sql = "INSERT INTO Categorie (nom, description) VALUES (?, ?)";
@@ -57,7 +54,6 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         }
     }
 
-    // AJOUTER PLUSIEURS CATEGORIES
     @Override
     public void addAll(List<Categorie> items) {
         for (Categorie c : items) {
@@ -65,7 +61,6 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         }
     }
 
-    // MODIFIER UNE CATEGORIE
     @Override
     public void update(String id, Categorie item) {
         String sql = "UPDATE Categorie SET nom=?, description=? WHERE id=?";
@@ -79,7 +74,6 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         }
     }
 
-    // SUPPRIMER UNE CATEGORIE
     public void deleteCategorie(int id) {
         String sql = "DELETE FROM Categorie WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
