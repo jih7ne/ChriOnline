@@ -134,7 +134,7 @@ public class AdminView extends BorderPane {
     public void showCategories() {
         currentPage = AdminSidebar.AdminPage.CATEGORIES;
         rebuildSidebar();
-        rightPane.setCenter(buildComingSoon("Catégories"));
+        rightPane.setCenter(new AdminCategoriesView(client, userData, viewManager, this));
     }
 
     public void showCommandes() {
