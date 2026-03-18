@@ -2,6 +2,7 @@ package com.chrionline.chrionline.client.ui.components;
 
 import com.chrionline.chrionline.client.ui.views.AdminView;
 import com.chrionline.chrionline.core.interfaces.ViewManager;
+import com.chrionline.chrionline.core.theme.AppTheme;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
@@ -19,13 +20,11 @@ public class AdminSidebar extends VBox {
         DASHBOARD, PRODUITS, CATEGORIES, COMMANDES, UTILISATEURS
     }
 
-    private static final Color  C_BG         = Color.web("#6B3F20");
-    private static final Color  C_ACTIVE     = Color.web("#8B5A2B");
-    private static final Color  C_HOVER      = Color.web("#7A4C24");
+    private static final Color  C_BG         = Color.web(AppTheme.PRIMARY);
+    private static final Color  C_ACTIVE     = Color.web("#5A3E26");
+    private static final Color  C_HOVER      = Color.web(AppTheme.PRIMARY_LIGHT);
     private static final Color  C_TEXT       = Color.WHITE;
     private static final Color  C_TEXT_MUTED = Color.web("#D4A882");
-    private static final String S_TEXT       = "#FFFFFF";
-    private static final String S_TEXT_MUTED = "#D4A882";
 
     private final ViewManager         viewManager;
     private final Map<String, Object> userData;
@@ -62,7 +61,7 @@ public class AdminSidebar extends VBox {
 
         Label logoText = new Label("ChriOnline");
         logoText.setStyle(
-                "-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:" + S_TEXT + ";" +
+                "-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:#FFFFFF;" +
                         "-fx-font-family:'Segoe UI Semibold','Segoe UI','Arial',sans-serif;"
         );
         logoBox.getChildren().addAll(logoIcon, logoText);
@@ -113,7 +112,6 @@ public class AdminSidebar extends VBox {
                         "-fx-font-family:'Segoe UI','Arial',sans-serif;" +
                         (isActive ? "-fx-font-weight:bold;" : "")
         );
-        // Le label s'étire pour prendre l'espace restant
         HBox.setHgrow(itemLabel, Priority.ALWAYS);
 
         item.getChildren().addAll(fontIcon, itemLabel);
