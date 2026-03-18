@@ -14,7 +14,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -35,11 +34,13 @@ public class AdminCategoriesView extends BorderPane {
     @SuppressWarnings("unused") private final ViewManager viewManager;
     @SuppressWarnings("unused") private final AdminView adminView;
 
-    private List<Categorie> categories     = new ArrayList<>();
+    private List<Categorie> categories         = new ArrayList<>();
     private List<Categorie> categoriesFiltrees = new ArrayList<>();
     private Label totalLabel;
     private GridPane grid;
     private String searchText = "";
+
+    private int nbCols = 3;
 
     public AdminCategoriesView(TCPClient client, Map<String, Object> userData,
                                ViewManager viewManager, AdminView adminView) {
@@ -53,7 +54,8 @@ public class AdminCategoriesView extends BorderPane {
     }
 
     private void buildUI() {
-        ScrollPane scrollPane = new ScrollPane(buildContent());
+        VBox content = buildContent();
+        ScrollPane scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(false);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
@@ -64,6 +66,33 @@ public class AdminCategoriesView extends BorderPane {
         );
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
         setCenter(scrollPane);
+
+        scrollPane.widthProperty().addListener((obs, oldW, newW) -> {
+            double w = newW.doubleValue();
+            int cols;
+            if      (w < 600)  cols = 1;
+            else if (w < 960)  cols = 2;
+            else               cols = 3;
+
+            if (cols != nbCols) {
+                nbCols = cols;
+                updateColumnConstraints();
+                afficherCategories();
+            } else {
+                updateColumnConstraints();
+            }
+        });
+    }
+
+    private void updateColumnConstraints() {
+        grid.getColumnConstraints().clear();
+        for (int i = 0; i < nbCols; i++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(100.0 / nbCols);
+            cc.setFillWidth(true);
+            cc.setHgrow(Priority.ALWAYS);
+            grid.getColumnConstraints().add(cc);
+        }
     }
 
     private VBox buildContent() {
@@ -74,6 +103,7 @@ public class AdminCategoriesView extends BorderPane {
 
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
+        header.setMaxWidth(Double.MAX_VALUE);
 
         VBox titreBox = new VBox(4);
         Label titre = new Label("Gestion des Catégories");
@@ -102,28 +132,56 @@ public class AdminCategoriesView extends BorderPane {
         ajouterBtn.setOnAction(e -> ouvrirDialogAjouter());
         header.getChildren().addAll(titreBox, ajouterBtn);
 
-        TextField searchField = new TextField();
-        searchField.setPromptText("🔍  Rechercher une catégorie...");
-        searchField.setMaxWidth(480);
-        searchField.setPrefWidth(400);
-        searchField.setStyle(
+        HBox searchBar = new HBox(10);
+        searchBar.setAlignment(Pos.CENTER_LEFT);
+        searchBar.setMaxWidth(560);
+        searchBar.setPrefWidth(460);
+        searchBar.setStyle(
                 "-fx-background-color:" + AppTheme.CARD_BG + ";" +
                         "-fx-border-color:" + AppTheme.FIELD_BORDER + ";" +
-                        "-fx-border-radius:9;-fx-background-radius:9;-fx-border-width:1.5;" +
-                        "-fx-padding:11 16 11 16;-fx-font-size:13px;" +
+                        "-fx-border-radius:10;-fx-background-radius:10;-fx-border-width:1.5;" +
+                        "-fx-padding:0 16 0 16;"
+        );
+
+        FontIcon searchIcon = new FontIcon(Feather.SEARCH);
+        searchIcon.setIconSize(15);
+        searchIcon.setIconColor(Color.web(AppTheme.TEXT_MUTED));
+
+        TextField searchField = new TextField();
+        searchField.setPromptText("Rechercher une catégorie...");
+        searchField.setMaxWidth(Double.MAX_VALUE);
+        searchField.setPrefHeight(44);
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        searchField.setStyle(
+                "-fx-background-color:transparent;" +
+                        "-fx-border-color:transparent;" +
+                        "-fx-font-size:14px;" +
                         "-fx-text-fill:" + AppTheme.TEXT_MAIN + ";" +
                         "-fx-prompt-text-fill:" + AppTheme.TEXT_MUTED + ";"
+        );
+        searchField.focusedProperty().addListener((obs, old, focused) ->
+                searchBar.setStyle(
+                        "-fx-background-color:" + AppTheme.CARD_BG + ";" +
+                                "-fx-border-color:" + (focused ? AppTheme.PRIMARY : AppTheme.FIELD_BORDER) + ";" +
+                                "-fx-border-radius:10;-fx-background-radius:10;" +
+                                "-fx-border-width:" + (focused ? "2" : "1.5") + ";" +
+                                "-fx-padding:0 16 0 16;"
+                )
         );
         searchField.textProperty().addListener((obs, o, n) -> {
             searchText = n.toLowerCase().trim();
             appliquerFiltres();
         });
+        searchBar.getChildren().addAll(searchIcon, searchField);
 
         grid = new GridPane();
         grid.setHgap(20);
         grid.setVgap(20);
         grid.setMaxWidth(Double.MAX_VALUE);
-        content.getChildren().addAll(header, searchField, grid);
+        // Colonnes initiales (seront recalculées au premier resize)
+        updateColumnConstraints();
+
+        content.getChildren().addAll(header, searchBar, grid);
         return content;
     }
 
@@ -131,7 +189,7 @@ public class AdminCategoriesView extends BorderPane {
         categoriesFiltrees = categories.stream()
                 .filter(c -> searchText.isEmpty()
                         || c.getNom().toLowerCase().contains(searchText)
-                        || (c.getDescription()!=null && c.getDescription().toLowerCase().contains(searchText)))
+                        || (c.getDescription() != null && c.getDescription().toLowerCase().contains(searchText)))
                 .collect(Collectors.toList());
         afficherCategories();
     }
@@ -142,7 +200,7 @@ public class AdminCategoriesView extends BorderPane {
         if (categoriesFiltrees.isEmpty()) {
             Label empty = new Label("Aucune catégorie trouvée");
             empty.setStyle("-fx-font-size:15px;-fx-text-fill:" + AppTheme.TEXT_MUTED + ";-fx-padding:40;");
-            GridPane.setColumnSpan(empty, 3);
+            GridPane.setColumnSpan(empty, nbCols);
             grid.add(empty, 0, 0);
             totalLabel.setText("0 catégorie");
             return;
@@ -155,12 +213,14 @@ public class AdminCategoriesView extends BorderPane {
             GridPane.setFillWidth(card, true);
             grid.add(card, col, row);
             col++;
-            if (col == 3) { col = 0; row++; }
+            if (col == nbCols) { col = 0; row++; }
         }
 
         totalLabel.setText(categoriesFiltrees.size() + " catégorie"
                 + (categoriesFiltrees.size() > 1 ? "s" : "")
-                + (categoriesFiltrees.size() < categories.size() ? " (filtrées sur " + categories.size() + ")" : " au total"));
+                + (categoriesFiltrees.size() < categories.size()
+                ? " (filtrées sur " + categories.size() + ")"
+                : " au total"));
     }
 
     private VBox buildCard(Categorie cat) {
@@ -178,16 +238,15 @@ public class AdminCategoriesView extends BorderPane {
                         "-fx-cursor:default;";
 
         VBox card = new VBox(0);
-        card.setPrefWidth(340);
-        card.setMinWidth(260);
         card.setMaxWidth(Double.MAX_VALUE);
+        card.setPrefWidth(USE_COMPUTED_SIZE); // laisse la grille décider
         card.setStyle(cardStyle);
         card.setOnMouseEntered(e -> card.setStyle(cardHover));
         card.setOnMouseExited(e  -> card.setStyle(cardStyle));
 
-        HBox cardHeader = new HBox();
+        // ── Header : nom à gauche, icônes à droite via BorderPane ─────
+        BorderPane cardHeader = new BorderPane();
         cardHeader.setPadding(new Insets(20, 16, 14, 20));
-        cardHeader.setAlignment(Pos.CENTER_LEFT);
 
         Label nomLabel = new Label(cat.getNom());
         nomLabel.setStyle(
@@ -195,7 +254,7 @@ public class AdminCategoriesView extends BorderPane {
                         "-fx-text-fill:" + AppTheme.PRIMARY + ";" +
                         "-fx-font-family:'Segoe UI Semibold','Segoe UI',sans-serif;"
         );
-        HBox.setHgrow(nomLabel, Priority.ALWAYS);
+        BorderPane.setAlignment(nomLabel, Pos.CENTER_LEFT);
 
         Button editBtn   = iconBtn(Feather.EDIT_2,  AppTheme.TEXT_MUTED, AppTheme.FIELD_BORDER);
         Button deleteBtn = iconBtn(Feather.TRASH_2, AppTheme.ERROR_COLOR, "#FEE2E2");
@@ -204,15 +263,17 @@ public class AdminCategoriesView extends BorderPane {
 
         HBox actions = new HBox(2, editBtn, deleteBtn);
         actions.setAlignment(Pos.CENTER_RIGHT);
+        BorderPane.setAlignment(actions, Pos.CENTER_RIGHT);
 
-        cardHeader.getChildren().addAll(nomLabel, actions);
+        cardHeader.setLeft(nomLabel);
+        cardHeader.setRight(actions);
 
         String desc = cat.getDescription();
         boolean hasDesc = desc != null && !desc.isBlank();
         Label descLabel = new Label(hasDesc ? desc : "Aucune description");
         descLabel.setStyle(
                 "-fx-font-size:13px;" +
-                        "-fx-text-fill:" + (hasDesc ? AppTheme.TEXT_MUTED : AppTheme.TEXT_MUTED) + ";" +
+                        "-fx-text-fill:" + AppTheme.TEXT_MUTED + ";" +
                         (hasDesc ? "" : "-fx-font-style:italic;")
         );
         descLabel.setWrapText(true);
@@ -221,23 +282,26 @@ public class AdminCategoriesView extends BorderPane {
         descBox.setPadding(new Insets(0, 20, 16, 20));
 
         Region sep = new Region();
-        sep.setPrefHeight(1); sep.setMaxHeight(1);
+        sep.setPrefHeight(1);
+        sep.setMaxHeight(1);
         sep.setStyle("-fx-background-color:#E8D9CC;");
 
-        HBox footer = new HBox();
+        BorderPane footer = new BorderPane();
         footer.setPadding(new Insets(12, 20, 14, 20));
-        footer.setAlignment(Pos.CENTER_LEFT);
 
         Label prodLabel = new Label("Produits");
         prodLabel.setStyle("-fx-font-size:13px;-fx-text-fill:" + AppTheme.TEXT_MUTED + ";");
-        HBox.setHgrow(prodLabel, Priority.ALWAYS);
+        BorderPane.setAlignment(prodLabel, Pos.CENTER_LEFT);
 
         Label countLabel = new Label(String.valueOf(cat.getNbProduits()));
         countLabel.setStyle(
                 "-fx-font-size:16px;-fx-font-weight:bold;" +
                         "-fx-text-fill:" + AppTheme.PRIMARY + ";"
         );
-        footer.getChildren().addAll(prodLabel, countLabel);
+        BorderPane.setAlignment(countLabel, Pos.CENTER_RIGHT);
+
+        footer.setLeft(prodLabel);
+        footer.setRight(countLabel);
 
         card.getChildren().addAll(cardHeader, descBox, sep, footer);
         return card;
@@ -434,7 +498,7 @@ public class AdminCategoriesView extends BorderPane {
         trashIcon.setIconSize(26);
         trashIcon.setIconColor(Color.web(AppTheme.ERROR_COLOR));
         StackPane iconCircle = new StackPane(trashIcon);
-        iconCircle.setPrefSize(56,56); iconCircle.setMinSize(56,56); iconCircle.setMaxSize(56,56);
+        iconCircle.setPrefSize(56, 56); iconCircle.setMinSize(56, 56); iconCircle.setMaxSize(56, 56);
         iconCircle.setStyle("-fx-background-color:#FEE2E2;-fx-background-radius:28;");
 
         Label titreL = new Label("Supprimer cette catégorie ?");
