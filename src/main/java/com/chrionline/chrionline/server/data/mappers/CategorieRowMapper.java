@@ -14,6 +14,7 @@ public class CategorieRowMapper implements RowMapper<Categorie> {
         c.setId(rs.getInt("id"));
         c.setNom(rs.getString("nom"));
         c.setDescription(rs.getString("description"));
+        try { c.setNbProduits(rs.getInt("nb_produits")); } catch (SQLException ignored) {}
         return c;
     }
 }
