@@ -27,7 +27,22 @@ public class ClientApplication extends Application implements ViewManager {
     public void start(Stage stage) throws Exception {
         this.primaryStage = stage;
         Platform.setImplicitExit(true);
-        showLoginView();
+
+        LoginView loginView = new LoginView(
+                client,
+                userData -> {
+                    String token = (String) userData.get("token");
+                    String role  = (String) userData.get("role");
+                    client.setAuthToken(token);
+                    if ("admin".equals(role)) showAdminView(userData);
+                    else showCatalogueView(userData);
+                },
+                this::showRegisterView
+        );
+        primaryStage.setTitle("ChriOnline — Connexion");
+        primaryStage.setScene(new Scene(loginView, 900, 700));
+        primaryStage.show();
+
         AppConfig.getLogger().info("JavaFX Application started successfully");
     }
 
@@ -39,16 +54,17 @@ public class ClientApplication extends Application implements ViewManager {
                     String token = (String) userData.get("token");
                     String role  = (String) userData.get("role");
                     client.setAuthToken(token);
-                    if ("admin".equals(role)) {
-                        showAdminView(userData);
-                    } else {
-                        showCatalogueView(userData);
-                    }
+                    if ("admin".equals(role)) showAdminView(userData);
+                    else showCatalogueView(userData);
                 },
                 this::showRegisterView
         );
         primaryStage.setTitle("ChriOnline — Connexion");
-        primaryStage.setScene(new Scene(view, 900, 700));
+        if (primaryStage.getScene() == null) {
+            primaryStage.setScene(new Scene(view, 900, 700));
+        } else {
+            primaryStage.getScene().setRoot(view);
+        }
         primaryStage.show();
     }
 
@@ -60,8 +76,9 @@ public class ClientApplication extends Application implements ViewManager {
                 this::showLoginView
         );
         primaryStage.setTitle("ChriOnline — Inscription");
-        primaryStage.setScene(new Scene(view, 900, 700));
+        primaryStage.getScene().setRoot(view);
     }
+
     @Override
     public void showProfileView(Map<String, Object> userData) {
         ProfileView view = new ProfileView(client, userData, this);
@@ -122,14 +139,12 @@ public class ClientApplication extends Application implements ViewManager {
 
     @Override
     public void showConfirmationView(Map<String, Object> paiementData) {
-        // Récupérer userData depuis paiementData (ajouté dans CheckoutView)
         @SuppressWarnings("unchecked")
         Map<String, Object> userData = (Map<String, Object>) paiementData.get("userData");
-
         ConfirmationView view = new ConfirmationView(
                 paiementData,
-                () -> showHistoriqueCommandesView(userData), // onVoirHistorique
-                () -> showCatalogueView(userData)      // onContinuerAchats
+                () -> showHistoriqueCommandesView(userData),
+                () -> showCatalogueView(userData)
         );
         primaryStage.setTitle("ChriOnline — Confirmation");
         primaryStage.getScene().setRoot(view);
@@ -139,8 +154,8 @@ public class ClientApplication extends Application implements ViewManager {
     public void showConfirmationEchoueeView(Map<String, Object> userData, String messageErreur, Runnable onReessayer) {
         ConfirmationView view = ConfirmationView.echouee(
                 messageErreur,
-                onReessayer,                         // Retour au checkout (réessayer)
-                () -> showCatalogueView(userData)    // Retour au catalogue
+                onReessayer,
+                () -> showCatalogueView(userData)
         );
         primaryStage.setTitle("ChriOnline — Paiement échoué");
         primaryStage.getScene().setRoot(view);
@@ -148,7 +163,9 @@ public class ClientApplication extends Application implements ViewManager {
 
     @Override
     public void showHistoriqueCommandesView(Map<String, Object> userData) {
-        HistoriqueCommandesView view = new HistoriqueCommandesView(client, userData, () -> showCatalogueView(userData), this);
+        HistoriqueCommandesView view = new HistoriqueCommandesView(
+                client, userData, () -> showCatalogueView(userData), this
+        );
         primaryStage.setTitle("ChriOnline — Historique des Commandes");
         primaryStage.getScene().setRoot(view);
     }
