@@ -15,7 +15,13 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
     }
 
     public List<Categorie> findAll() {
-        String sql = "SELECT id, nom, description FROM Categorie ORDER BY nom";
+        // FIX : COUNT produits par catégorie via LEFT JOIN
+        String sql =
+                "SELECT c.id, c.nom, c.description, COUNT(p.id) AS nb_produits " +
+                        "FROM Categorie c " +
+                        "LEFT JOIN Produit p ON p.id_categorie = c.id " +
+                        "GROUP BY c.id, c.nom, c.description " +
+                        "ORDER BY c.nom";
         List<Categorie> categories = new ArrayList<>();
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -33,9 +39,7 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, id);
             ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rowMapper.mapRow(rs);
-            }
+            if (rs.next()) return rowMapper.mapRow(rs);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -56,9 +60,7 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
 
     @Override
     public void addAll(List<Categorie> items) {
-        for (Categorie c : items) {
-            add(c);
-        }
+        for (Categorie c : items) add(c);
     }
 
     @Override
