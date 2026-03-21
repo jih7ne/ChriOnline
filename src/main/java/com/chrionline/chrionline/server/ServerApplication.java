@@ -2,7 +2,9 @@ package com.chrionline.chrionline.server;
 
 import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
+import com.chrionline.chrionline.network.protocol.AppNotification;
 import com.chrionline.chrionline.network.tcp.TCPServer;
+import com.chrionline.chrionline.network.udp.UDPServer;
 import com.chrionline.chrionline.server.controllers.*;
 import com.chrionline.chrionline.server.data.mappers.AdresseRowMapper;
 import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
@@ -13,10 +15,15 @@ import com.chrionline.chrionline.server.services.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketException;
 import java.sql.SQLException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class ServerApplication {
     private static final Logger logger = LoggerFactory.getLogger(ServerApplication.class);
+
 
     public static void main(String[] args) {
         try {
@@ -24,10 +31,13 @@ public class ServerApplication {
             registerRepositories();
             registerServices();
             registerControllers();
+            logger.info("Démarrage du serveur UDP");
+//            startUdp();
             logger.info("Démarrage TCP sur le port {}", AppConstants.SERVER_PORT);
             new TCPServer();
         } catch (Exception e) {
             logger.error("Échec du démarrage", e);
+//            stopInstances();
             System.exit(-1);
         }
     }
@@ -86,4 +96,7 @@ public class ServerApplication {
         AppConfig.registerController("Adresse", new AdresseController());
         logger.info("Controllers enregistrés");
     }
+
+
+
 }

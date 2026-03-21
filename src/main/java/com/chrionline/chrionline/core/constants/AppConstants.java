@@ -21,11 +21,14 @@ public final class AppConstants {
     public static final String SERVER_HOST = "localhost";
 
     public static final int SERVER_PORT = 5000;
+    public static final int UDP_PORT = 5001;
 
     public static final int SOCKET_TIMEOUT_MS = 30000;
     public static final String BUFFER_CHARSET = "UTF-8";
 
-    public static final int BUFFER_SIZE = 4096;
+    public static final int BUFFER_SIZE = 8192; //8KB
+    public static final int MAX_BUFFER_SIZE = 65507;
+    public static final int RECONNECT_DELAY_MS = 2000;
 
 
     /* =========================
