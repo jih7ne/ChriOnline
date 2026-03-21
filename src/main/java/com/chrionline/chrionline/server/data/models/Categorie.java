@@ -4,6 +4,9 @@ public class Categorie {
     private int id;
     private String nom;
     private String description;
+    private int nbProduits;
+    public int getNbProduits() { return nbProduits; }
+    public void setNbProduits(int nb) { this.nbProduits = nb; }
 
     public Categorie() {}
 

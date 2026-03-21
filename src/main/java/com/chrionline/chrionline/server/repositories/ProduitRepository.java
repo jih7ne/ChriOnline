@@ -63,7 +63,8 @@ public class ProduitRepository extends JdbcRepository<Produit> {
     public List<Produit> findAll() {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +
-                "LEFT JOIN Categorie c ON p.id_categorie = c.id";
+                "LEFT JOIN Categorie c ON p.id_categorie = c.id " +
+                "ORDER BY p.date_ajout DESC";
         List<Produit> produits = new ArrayList<>();
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -99,7 +100,8 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +
                 "LEFT JOIN Categorie c ON p.id_categorie = c.id " +
-                "WHERE p.id_categorie = ?";
+                "WHERE p.id_categorie = ? " +
+                "ORDER BY p.date_ajout DESC";
         List<Produit> produits = new ArrayList<>();
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, idCategorie);
@@ -141,7 +143,8 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +
                 "LEFT JOIN Categorie c ON p.id_categorie = c.id " +
-                "WHERE p.nom LIKE ?";
+                "WHERE p.nom LIKE ? " +
+                "ORDER BY p.date_ajout DESC";
         List<Produit> produits = new ArrayList<>();
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, "%" + nom + "%");

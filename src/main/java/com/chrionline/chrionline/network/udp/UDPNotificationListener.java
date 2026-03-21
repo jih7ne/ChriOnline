@@ -3,14 +3,16 @@ package com.chrionline.chrionline.network.udp;
 import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.network.protocol.AppNotification;
-
-
 import java.net.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
 
 public class UDPNotificationListener {
     private DatagramSocket clientSocket;
@@ -21,14 +23,20 @@ public class UDPNotificationListener {
     private int currentBufferSize;
 
 
-    // Optional: Queue for collecting notifications
-    private final BlockingQueue<AppNotification> notificationQueue = new LinkedBlockingQueue<>();
+    private final List<AppNotification> receivedNotifications = new CopyOnWriteArrayList<>();
 
-    // Optional: Callback for real-time processing
-    private Consumer<AppNotification> notificationCallback;
+    private Consumer<AppNotification> notificationHandler;
+    private ExecutorService handlerExecutor;
+
 
     public UDPNotificationListener() throws SocketException, UnknownHostException {
         initializeSocket();
+    }
+
+
+    public void setNotificationHandler(Consumer<AppNotification> handler, ExecutorService executor) {
+        this.notificationHandler = handler;
+        this.handlerExecutor = executor;
     }
 
 
@@ -46,19 +54,11 @@ public class UDPNotificationListener {
             while (listening && !Thread.currentThread().isInterrupted()) {
                 try {
                     AppNotification notification = receiveNotification();
-
-                    // Add to queue for later retrieval
-                    notificationQueue.offer(notification);
-
-                    // Trigger callback if set
-                    if (notificationCallback != null) {
-                        notificationCallback.accept(notification);
-                    }
-
+                    receivedNotifications.add(notification);
                     AppConfig.getLogger().debug("Received notification: {}", notification.getId());
+                    dispatchToHandler(notification);
 
                 } catch (SocketTimeoutException e) {
-                    // Timeout is normal - just continue listening
                     continue;
                 } catch (IOException e) {
                     if (listening) {
@@ -78,12 +78,12 @@ public class UDPNotificationListener {
         try {
             Thread.sleep(AppConstants.RECONNECT_DELAY_MS);
             if (listening) {
-                close();
+                closeSocket();
                 initializeSocket();
-                AppConfig.getLogger().info("Reconnected to server");
+                AppConfig.getLogger().info("Recreated UDP socket");
             }
         } catch (Exception e) {
-            AppConfig.getLogger().error("Reconnection failed: {}", e.getMessage());
+            AppConfig.getLogger().error("Socket recreation failed: {}", e.getMessage());
         }
     }
 
@@ -105,14 +105,25 @@ public class UDPNotificationListener {
     private void initializeSocket() throws SocketException, UnknownHostException {
         this.currentBufferSize = AppConstants.BUFFER_SIZE;
         this.clientSocket = new DatagramSocket();
-        this.clientSocket.setSoTimeout(AppConstants.SOCKET_TIMEOUT_MS);
+        this.timeout = AppConstants.SOCKET_TIMEOUT_MS;
+        this.clientSocket.setSoTimeout(this.timeout);
         this.receiveBuffer = new byte[currentBufferSize];
 
-        AppConfig.getLogger().info("UDP Notification Listener initialized on random port");
+        AppConfig.getLogger().info("UDP Notification Listener initialized");
         AppConfig.getLogger().info("Listening for notifications from server {}:{}",
-                AppConstants.SERVER_HOST, AppConstants.SERVER_PORT);
+                AppConstants.SERVER_HOST, AppConstants.UDP_PORT);
+
+        registerWithServer();
     }
 
+
+
+    private void closeSocket() {
+        if (clientSocket != null && !clientSocket.isClosed()) {
+            clientSocket.close();
+            AppConfig.getLogger().info("UDP socket closed");
+        }
+    }
 
 
     public AppNotification receiveNotification() throws IOException {
@@ -121,15 +132,13 @@ public class UDPNotificationListener {
 
 
     private String receiveRawNotification() throws IOException {
-        DatagramPacket receivePacket = new DatagramPacket(
-                receiveBuffer,
-                receiveBuffer.length
-        );
+        byte[] buffer = receiveBuffer;
+        DatagramPacket receivePacket = new DatagramPacket(buffer, buffer.length);
 
         try {
             clientSocket.receive(receivePacket);
 
-            if (receivePacket.getLength() == receiveBuffer.length) {
+            if (receivePacket.getLength() == buffer.length) {
                 AppConfig.getLogger().warn("Buffer may have been too small. Consider increasing size.");
             }
 
@@ -148,6 +157,23 @@ public class UDPNotificationListener {
     }
 
 
+    private void registerWithServer() throws UnknownHostException, SocketException {
+        try {
+            byte[] data = "REGISTER".getBytes(StandardCharsets.UTF_8);
+            DatagramPacket registration = new DatagramPacket(
+                    data,
+                    data.length,
+                    InetAddress.getByName(AppConstants.SERVER_HOST),
+                    AppConstants.UDP_PORT
+            );
+            clientSocket.send(registration);
+            AppConfig.getLogger().info("Registered with server — listening on port {}",
+                    clientSocket.getLocalPort());
+        } catch (IOException e) {
+            throw new SocketException("Failed to register with server: " + e.getMessage());
+        }
+    }
+
 
     public boolean isConnected() {
         return clientSocket != null && !clientSocket.isClosed() && listening;
@@ -155,9 +181,42 @@ public class UDPNotificationListener {
 
     public void close() {
         stopListening();
-        if (clientSocket != null && !clientSocket.isClosed()) {
-            clientSocket.close();
-            AppConfig.getLogger().info("UDP Notification Listener closed");
+        closeSocket();
+        shutdownExecutor();
+    }
+
+
+
+    private void dispatchToHandler(AppNotification notification) {
+        if (notificationHandler == null || handlerExecutor == null) return;
+
+        if (handlerExecutor.isShutdown()) {
+            AppConfig.getLogger().warn("Handler executor is shut down — skipping dispatch for: {}", notification.getId());
+            return;
+        }
+
+        handlerExecutor.submit(() -> {
+            try {
+                notificationHandler.accept(notification);
+            } catch (Exception e) {
+                AppConfig.getLogger().error("Handler threw an exception for notification {}: {}",
+                        notification.getId(), e.getMessage(), e);
+            }
+        });
+    }
+
+
+    private void shutdownExecutor() {
+        if (handlerExecutor == null || handlerExecutor.isShutdown()) return;
+        handlerExecutor.shutdown();
+        try {
+            if (!handlerExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                handlerExecutor.shutdownNow();
+                AppConfig.getLogger().warn("Handler executor forced shutdown after timeout");
+            }
+        } catch (InterruptedException e) {
+            handlerExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -172,8 +231,6 @@ public class UDPNotificationListener {
     }
 
 
-
-
     private String handleBufferOverflow() throws IOException {
         if (currentBufferSize >= AppConstants.MAX_BUFFER_SIZE) {
             throw new IOException("Buffer already at maximum size: " + currentBufferSize);
@@ -183,33 +240,28 @@ public class UDPNotificationListener {
         receiveBuffer = new byte[currentBufferSize];
         AppConfig.getLogger().info("Increased buffer size to: {}", currentBufferSize);
 
-        // Retry receiving
         return receiveRawNotification();
     }
 
 
-    public AppNotification pollNotification() {
-        return notificationQueue.poll();
-    }
 
-    public AppNotification takeNotification() throws InterruptedException {
-        return notificationQueue.take();
-    }
-
-    public int getPendingNotificationCount() {
-        return notificationQueue.size();
+    public List<AppNotification> getReceivedNotifications() {
+        return Collections.unmodifiableList(receivedNotifications);
     }
 
 
-    public void clearPendingNotifications() {
-        notificationQueue.clear();
-        AppConfig.getLogger().debug("Cleared pending notifications");
+    public AppNotification getLastNotification() {
+        if (receivedNotifications.isEmpty()) return null;
+        return receivedNotifications.get(receivedNotifications.size() - 1);
     }
 
 
-    public void setNotificationCallback(Consumer<AppNotification> callback) {
-        this.notificationCallback = callback;
+    public int getReceivedCount() {
+        return receivedNotifications.size();
     }
 
 
+    public void clearReceivedNotifications() {
+        receivedNotifications.clear();
+    }
 }

@@ -1,6 +1,5 @@
 package com.chrionline.chrionline.core.interfaces;
 
-import com.chrionline.chrionline.network.protocol.AppNotification;
 import com.chrionline.chrionline.server.data.models.PanierProduit;
 import com.chrionline.chrionline.server.data.models.Produit;
 
@@ -16,6 +15,8 @@ public interface ViewManager {
     void showAdminView(Map<String, Object> userData);
     void showCheckoutView(Map<String, Object> userData, List<PanierProduit> panierItems);
     void showConfirmationView(Map<String, Object> paiementData);
+    void showConfirmationEchoueeView(Map<String, Object> userData, String messageErreur, Runnable onReessayer);
     void showHistoriqueCommandesView(Map<String, Object> userData);
-    void showNotifications(List<AppNotification> notifications);
+    void showProfileView(Map<String, Object> userData);
+
 }

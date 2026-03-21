@@ -9,6 +9,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import org.kordamp.ikonli.feather.Feather;
@@ -16,7 +17,6 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.client.ui.components.ClientNavbar;
 
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +38,7 @@ public class HistoriqueCommandesView extends BorderPane {
         this.viewManager = viewManager;
 
         setStyle("-fx-background-color: " + AppTheme.BG + ";");
-        
+
         ClientNavbar navbar = new ClientNavbar(0, userData, viewManager, null);
         setTop(navbar);
 
@@ -52,36 +52,28 @@ public class HistoriqueCommandesView extends BorderPane {
 
         HBox headerRow = new HBox(16);
         headerRow.setAlignment(Pos.CENTER_LEFT);
-        
+
         StackPane backBtn = new StackPane();
         backBtn.setPadding(new Insets(8));
         FontIcon backIcon = new FontIcon(Feather.ARROW_LEFT);
         backIcon.setIconSize(24);
         backIcon.setIconColor(Color.web("#7F5539"));
         backBtn.getChildren().add(backIcon);
-        
         backBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-background-radius: 50%;");
         backBtn.setOnMouseEntered(e -> backBtn.setStyle("-fx-background-color: #E6CCB2; -fx-cursor: hand; -fx-background-radius: 50%;"));
         backBtn.setOnMouseExited(e -> backBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-background-radius: 50%;"));
-        backBtn.setOnMouseClicked(e -> {
-            if (this.onBackToCatalog != null) {
-                this.onBackToCatalog.run();
-            }
-        });
+        backBtn.setOnMouseClicked(e -> { if (this.onBackToCatalog != null) this.onBackToCatalog.run(); });
 
         Label title = new Label("Mes commandes");
         title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #5C3D2E;");
-        
         headerRow.getChildren().addAll(backBtn, title);
 
         // FILTERS
         HBox filtersBox = new HBox(12);
         filtersBox.setAlignment(Pos.CENTER_LEFT);
-
         String[] filters = {"Toutes", "En attente", "Validée", "Expédiée", "Livrée"};
         for (String filter : filters) {
-            StackPane chip = createFilterChip(filter);
-            filtersBox.getChildren().add(chip);
+            filtersBox.getChildren().add(createFilterChip(filter, filtersBox));
         }
 
         listContainer = new VBox(16);
@@ -94,34 +86,23 @@ public class HistoriqueCommandesView extends BorderPane {
         chargerHistorique();
     }
 
-    private StackPane createFilterChip(String text) {
+    private StackPane createFilterChip(String text, HBox filtersBox) {
         StackPane chip = new StackPane();
         Label label = new Label(text);
-        
-        Runnable updateStyle = () -> {
+
+        Runnable applyStyle = () -> {
             boolean isActive = currentFilter.equals(text);
-            String bgColor = isActive ? "#7F5539" : "#E6CCB2";
-            String textColor = isActive ? "white" : "#7F5539";
-            
-            chip.setStyle(
-                    "-fx-background-color: " + bgColor + ";" +
-                    "-fx-background-radius: 8px;" +
-                    "-fx-cursor: hand;"
-            );
-            label.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 14px;");
+            chip.setStyle("-fx-background-color: " + (isActive ? "#7F5539" : "#E6CCB2") + "; -fx-background-radius: 8px; -fx-cursor: hand;");
+            label.setStyle("-fx-text-fill: " + (isActive ? "white" : "#7F5539") + "; -fx-font-size: 14px;");
         };
 
-        updateStyle.run();
+        applyStyle.run();
         chip.setPadding(new Insets(8, 16, 8, 16));
         chip.getChildren().add(label);
 
         chip.setOnMouseClicked(e -> {
             currentFilter = text;
-            // Update all chips styles (simplified by just redrawing the list with the filter)
-            // But we need to update the visual state of the chips. We will do this by re-creating or looping through children.
-            // For now, let's just re-apply styles to all siblings
-            HBox parent = (HBox) chip.getParent();
-            for (javafx.scene.Node node : parent.getChildren()) {
+            for (javafx.scene.Node node : filtersBox.getChildren()) {
                 StackPane c = (StackPane) node;
                 Label l = (Label) c.getChildren().get(0);
                 boolean act = currentFilter.equals(l.getText());
@@ -155,7 +136,6 @@ public class HistoriqueCommandesView extends BorderPane {
                         allCommandes = (List<Map<String, Object>>) response.getData();
                         afficherCommandes();
                     } else {
-                        // Show error
                         Label err = new Label("Erreur de chargement: " + response.getMessage());
                         listContainer.getChildren().setAll(err);
                     }
@@ -176,40 +156,32 @@ public class HistoriqueCommandesView extends BorderPane {
             return;
         }
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
-
         for (Map<String, Object> cmd : allCommandes) {
             String statut = String.valueOf(cmd.get("statut")).toLowerCase();
-            
-            // Apply filtering logic based on the uppercase string presentation
-            boolean match = currentFilter.equals("Toutes") || 
-                            currentFilter.toLowerCase().replace("é", "e").equals(statut.replace("_", " "));
-            
+
+            boolean match = currentFilter.equals("Toutes") ||
+                    currentFilter.toLowerCase().replace("é", "e").equals(statut.replace("_", " "));
             if (!match) continue;
 
             String uuid = String.valueOf(cmd.get("uuid_commande"));
             String displayId = "#" + uuid.toUpperCase().substring(0, Math.min(uuid.length(), 13));
-            
             double total = ((Number) cmd.get("prix_total")).doubleValue();
+            int idCommande = ((Number) cmd.get("id_commande")).intValue();
 
-            // Card container
-            VBox card = new VBox(8);
-            card.setPadding(new Insets(24));
-            card.setStyle(
-                    "-fx-background-color: #F5EAE0;" + // Using the exact color from standard cards
-                    "-fx-background-radius: 16px;" +
-                    "-fx-cursor: hand;"
-            );
+            // ── Card principale ──
+            VBox card = new VBox(0);
+            card.setStyle(cardStyle(false));
 
-            // First Row: Title + Badge + Arrow
+            // ── Ligne du haut : titre + badge + spacer + flèche ──
             HBox topRow = new HBox();
             topRow.setAlignment(Pos.CENTER_LEFT);
+            topRow.setPadding(new Insets(20, 24, 20, 24));
 
             Label titleLabel = new Label("Commande " + displayId);
-            titleLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #5C3D2E;");
+            titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #5C3D2E;");
 
             StackPane badge = createStatusBadge(statut);
-            HBox.setMargin(badge, new Insets(0, 0, 0, 16));
+            HBox.setMargin(badge, new Insets(0, 0, 0, 14));
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -218,131 +190,212 @@ public class HistoriqueCommandesView extends BorderPane {
             arrowIcon.setIconSize(18);
             arrowIcon.setIconColor(Color.web("#7F5539"));
 
-            topRow.getChildren().addAll(titleLabel, badge, spacer, arrowIcon);
+            StackPane arrowWrapper = new StackPane(arrowIcon);
+            arrowWrapper.setPadding(new Insets(4));
+            arrowWrapper.setStyle("-fx-cursor: hand;");
 
-            // Second Row: Date + Items + Price
-            HBox bottomRow = new HBox(24);
-            bottomRow.setAlignment(Pos.CENTER_LEFT);
+            topRow.getChildren().addAll(titleLabel, badge, spacer, arrowWrapper);
 
-            // Assuming we don't fetch item count initially in `lister`.
-            // We can fake it or fetch details. For now we will just put "Voir détails"
-            Label dateLabel = new Label("Voir détails..."); // Placeholder
-            dateLabel.setStyle("-fx-text-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 13px;");
+            // ── Ligne du bas : date + articles + prix (toujours visible) ──
+            HBox summaryRow = new HBox(20);
+            summaryRow.setAlignment(Pos.CENTER_LEFT);
+            summaryRow.setPadding(new Insets(0, 24, 16, 24));
 
-            Label priceLabel = new Label(String.format("%.2f€", total));
+            Label dateLabel = new Label("Chargement...");
+            dateLabel.setStyle("-fx-text-fill: #7F5539; -fx-font-size: 13px;");
+
+            Label artLabel = new Label("");
+            artLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #7F5539; -fx-font-size: 13px;");
+
+            Region spacerSum = new Region();
+            HBox.setHgrow(spacerSum, Priority.ALWAYS);
+
+            Label priceLabel = new Label(String.format("%.2f MAD", total));
             priceLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #5C3D2E; -fx-font-size: 14px;");
 
-            bottomRow.getChildren().addAll(dateLabel, priceLabel);
+            summaryRow.getChildren().addAll(dateLabel, artLabel, spacerSum, priceLabel);
 
-            card.getChildren().addAll(topRow, bottomRow);
+            // ── Panneau de détails (caché par défaut) ──
+            VBox detailsPane = new VBox(0);
+            detailsPane.setVisible(false);
+            detailsPane.setManaged(false);
+            detailsPane.setStyle("-fx-background-color: #EFE2D5; -fx-padding: 0 24 16 24;");
 
-            // Fetch details for the date and articles
-            fetchOrderDetails(card, bottomRow, ((Number) cmd.get("id_commande")).intValue(), cmd);
+            Separator sep = new Separator();
+            sep.setStyle("-fx-background-color: #D4B896;");
+            detailsPane.getChildren().add(sep);
 
-            // Hover effect
-            card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: #EFE2D5; -fx-background-radius: 16px; -fx-cursor: hand;"));
-            card.setOnMouseExited(e -> card.setStyle("-fx-background-color: #F5EAE0; -fx-background-radius: 16px; -fx-cursor: hand;"));
+            // ── État du toggle ──
+            final boolean[] expanded = {false};
+
+            // ── Toggle au clic sur la flèche ──
+            Runnable toggleDetails = () -> {
+                expanded[0] = !expanded[0];
+                detailsPane.setVisible(expanded[0]);
+                detailsPane.setManaged(expanded[0]);
+                arrowIcon.setIconCode(expanded[0] ? Feather.CHEVRON_UP : Feather.CHEVRON_DOWN);
+                card.setStyle(cardStyle(expanded[0]));
+
+                if (expanded[0] && detailsPane.getChildren().size() == 1) {
+                    // Premier chargement des détails
+                    chargerDetails(detailsPane, idCommande, cmd);
+                }
+            };
+
+            arrowWrapper.setOnMouseClicked(e -> { toggleDetails.run(); e.consume(); });
+            topRow.setOnMouseClicked(e -> toggleDetails.run());
+            topRow.setStyle("-fx-cursor: hand;");
+
+            card.getChildren().addAll(topRow, summaryRow, detailsPane);
+
+            // Pré-charger date + count articles en arrière-plan
+            prechargerResume(dateLabel, artLabel, idCommande, cmd);
+
+            // Hover effect (seulement quand fermé)
+            card.setOnMouseEntered(e -> { if (!expanded[0]) card.setStyle("-fx-background-color: #EFE2D5; -fx-background-radius: 16px;"); });
+            card.setOnMouseExited(e -> { if (!expanded[0]) card.setStyle(cardStyle(false)); });
 
             listContainer.getChildren().add(card);
         }
     }
 
-    private void fetchOrderDetails(VBox card, HBox bottomRow, int idCommande, Map<String, Object> cmd) {
+    /** Pré-charge uniquement la date et le nombre d'articles pour le résumé */
+    private void prechargerResume(Label dateLabel, Label artLabel, int idCommande, Map<String, Object> cmd) {
         new Thread(() -> {
             try {
                 java.util.Map<String, Object> payload = new java.util.HashMap<>();
                 payload.put("idCommande", idCommande);
                 AppRequest req = new AppRequest.Builder()
-                        .controller("Commande")
-                        .action("details")
-                        .payload(payload)
-                        .build();
-                String jsonRes = client.sendRequest(req);
-                AppResponse res = AppResponse.fromJson(jsonRes);
+                        .controller("Commande").action("details").payload(payload).build();
+                AppResponse res = AppResponse.fromJson(client.sendRequest(req));
 
                 Platform.runLater(() -> {
                     if (res.isSuccess()) {
                         Map<String, Object> data = (Map<String, Object>) res.getData();
                         List<Map<String, Object>> lignes = (List<Map<String, Object>>) data.get("lignes");
-                        
-                        int articlesCount = lignes != null ? lignes.size() : 0;
-                        
-                        // Parse date from commande
-                        Object dateObj = cmd.get("date");
-                        String dateStr = "";
-                        if (dateObj != null) {
-                            try {
-                                if (dateObj instanceof java.util.Map) {
-                                    Map<String, Object> dm = (java.util.Map<String, Object>) dateObj;
-                                    java.time.LocalDate ld = java.time.LocalDate.of(
-                                        ((Number) dm.get("year")).intValue(),
-                                        ((Number) dm.get("monthValue")).intValue(),
-                                        ((Number) dm.get("dayOfMonth")).intValue()
-                                    );
-                                    dateStr = ld.format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.FRANCE));
-                                } else {
-                                    dateStr = dateObj.toString();
-                                }
-                            } catch (Exception e) {
-                                dateStr = dateObj.toString();
-                            }
+                        int count = lignes != null ? lignes.size() : 0;
+                        artLabel.setText(count + (count > 1 ? " articles" : " article"));
+                    }
+                    dateLabel.setText(parseDate(cmd.get("date")));
+                });
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
+    /** Charge et affiche le détail complet des lignes dans le panneau expansible */
+    private void chargerDetails(VBox detailsPane, int idCommande, Map<String, Object> cmd) {
+        new Thread(() -> {
+            try {
+                java.util.Map<String, Object> payload = new java.util.HashMap<>();
+                payload.put("idCommande", idCommande);
+                AppRequest req = new AppRequest.Builder()
+                        .controller("Commande").action("details").payload(payload).build();
+                AppResponse res = AppResponse.fromJson(client.sendRequest(req));
+
+                Platform.runLater(() -> {
+                    if (res.isSuccess()) {
+                        Map<String, Object> data = (Map<String, Object>) res.getData();
+                        List<Map<String, Object>> lignes = (List<Map<String, Object>>) data.get("lignes");
+
+                        if (lignes == null || lignes.isEmpty()) {
+                            Label noItem = new Label("Aucun article trouvé.");
+                            noItem.setStyle("-fx-text-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 13px; -fx-padding: 8 0 0 0;");
+                            detailsPane.getChildren().add(noItem);
+                            return;
                         }
 
-                        Label dateL = new Label(dateStr);
-                        dateL.setStyle("-fx-text-fill: #7F5539; -fx-font-size: 13px;");
+                        for (Map<String, Object> ligne : lignes) {
+                            String nom = String.valueOf(ligne.getOrDefault("nom_produit", ligne.getOrDefault("nom", "Produit")));
+                            int qte = ((Number) ligne.getOrDefault("quantite", 1)).intValue();
+                            double prix = ((Number) ligne.getOrDefault("prix_unitaire", 0)).doubleValue();
 
-                        Label artL = new Label(articlesCount + (articlesCount > 1 ? " articles" : " article"));
-                        artL.setStyle("-fx-text-fill: #7F5539; -fx-font-size: 13px;");
+                            Label nomLbl = new Label(nom);
+                            nomLbl.setStyle("-fx-font-size: 13px; -fx-text-fill: #5C3D2E; -fx-font-weight: bold;");
+                            HBox.setHgrow(nomLbl, Priority.ALWAYS);
 
-                        // Add to UI
-                        bottomRow.getChildren().clear();
-                        bottomRow.getChildren().addAll(dateL, artL, bottomRow.getChildren().isEmpty() ? new Label("") : bottomRow.getChildren().get(bottomRow.getChildren().size()-1));
-                        
-                        // Retain the price label from original
-                        Label priceLabel = new Label(String.format("%.2f€", ((Number) cmd.get("prix_total")).doubleValue()));
-                        priceLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #5C3D2E; -fx-font-size: 14px;");
-                        bottomRow.getChildren().add(priceLabel);
+                            Label qteLbl = new Label(qte + " × " + String.format("%.2f MAD", prix));
+                            qteLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #7F5539;");
+
+                            Region sp = new Region();
+                            HBox.setHgrow(sp, Priority.ALWAYS);
+
+                            Label montantLbl = new Label(String.format("%.2f MAD", prix * qte));
+                            montantLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #5C3D2E;");
+
+                            VBox leftInfo = new VBox(2, nomLbl, qteLbl);
+                            HBox.setHgrow(leftInfo, Priority.ALWAYS);
+
+                            HBox row = new HBox(leftInfo, montantLbl);
+                            row.setAlignment(Pos.CENTER_LEFT);
+                            row.setPadding(new Insets(10, 0, 0, 0));
+
+                            detailsPane.getChildren().add(row);
+                        }
+
+                        // Ligne totale
+                        Separator sepTotal = new Separator();
+                        sepTotal.setStyle("-fx-background-color: #D4B896;");
+                        sepTotal.setPadding(new Insets(8, 0, 0, 0));
+
+                        Label totalTxt = new Label("Total");
+                        totalTxt.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #5C3D2E;");
+                        Region sp2 = new Region();
+                        HBox.setHgrow(sp2, Priority.ALWAYS);
+                        double total = ((Number) cmd.get("prix_total")).doubleValue();
+                        Label totalVal = new Label(String.format("%.2f MAD", total));
+                        totalVal.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #7F5539;");
+                        HBox totalRow = new HBox(totalTxt, sp2, totalVal);
+                        totalRow.setAlignment(Pos.CENTER_LEFT);
+                        totalRow.setPadding(new Insets(10, 0, 4, 0));
+
+                        detailsPane.getChildren().addAll(sepTotal, totalRow);
                     }
                 });
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }).start();
+    }
+
+    private String parseDate(Object dateObj) {
+        if (dateObj == null) return "";
+        try {
+            if (dateObj instanceof Map) {
+                Map<String, Object> dm = (Map<String, Object>) dateObj;
+                java.time.LocalDate ld = java.time.LocalDate.of(
+                        ((Number) dm.get("year")).intValue(),
+                        ((Number) dm.get("monthValue")).intValue(),
+                        ((Number) dm.get("dayOfMonth")).intValue()
+                );
+                return ld.format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.FRANCE));
+            }
+            return dateObj.toString();
+        } catch (Exception e) {
+            return dateObj.toString();
+        }
+    }
+
+    private String cardStyle(boolean expanded) {
+        return "-fx-background-color: " + (expanded ? "#EFE2D5" : "#F5EAE0") + ";" +
+               "-fx-background-radius: 16px;";
     }
 
     private StackPane createStatusBadge(String statutCode) {
         StackPane badge = new StackPane();
         badge.setPadding(new Insets(4, 12, 4, 12));
-        
-        String bg = "#E6CCB2"; // Default
-        String textCol = "white";
-        String labelText = "Inconnu";
 
-        if (statutCode.equals("en_attente")) {
-            bg = "#E6CCB2";
-            textCol = "#7F5539";
-            labelText = "En attente";
-        } else if (statutCode.equals("validee")) {
-            bg = "#7F5539"; // Using standard brown for Validée if we don't want green yet
-            labelText = "Validée";
-        } else if (statutCode.equals("expediee")) {
-            bg = "#7F5539"; // Darker brown
-            labelText = "Expédiée";
-        } else if (statutCode.equals("livree")) {
-            bg = "#00C853"; // Green
-            labelText = "Livrée";
-        } else if (statutCode.equals("annulee")) {
-            bg = "#E74C3C"; // Red
-            labelText = "Annulée";
+        String bg, textCol, labelText;
+        switch (statutCode) {
+            case "en_attente" -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "En attente"; }
+            case "validee"    -> { bg = "#7F5539"; textCol = "white";   labelText = "Validée"; }
+            case "expediee"   -> { bg = "#5C3D2E"; textCol = "white";   labelText = "Expédiée"; }
+            case "livree"     -> { bg = "#00C853"; textCol = "white";   labelText = "Livrée"; }
+            case "annulee"    -> { bg = "#E74C3C"; textCol = "white";   labelText = "Annulée"; }
+            default           -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "Inconnu"; }
         }
 
-        badge.setStyle(
-                "-fx-background-color: " + bg + ";" +
-                "-fx-background-radius: 12px;"
-        );
-
+        badge.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 12px;");
         Label lbl = new Label(labelText);
         lbl.setStyle("-fx-text-fill: " + textCol + "; -fx-font-size: 12px; -fx-font-weight: bold;");
         badge.getChildren().add(lbl);
-
         return badge;
     }
 }

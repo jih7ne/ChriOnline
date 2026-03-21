@@ -17,18 +17,26 @@ module com.chrionline.chrionline {
     requires org.kordamp.ikonli.feather;
     requires org.kordamp.ikonli.core;
 
+    exports com.chrionline.chrionline.core.interfaces;
+    exports com.chrionline.chrionline.core.enums;
+
     exports com.chrionline.chrionline.client;
     exports com.chrionline.chrionline.client.controllers;
+    exports com.chrionline.chrionline.client.ui.components;
+    exports com.chrionline.chrionline.client.ui.views;
+
     exports com.chrionline.chrionline.server.controllers;
-    exports com.chrionline.chrionline.core.enums;
     exports com.chrionline.chrionline.server.data.models;
 
     opens com.chrionline.chrionline to javafx.fxml, com.google.gson;
     opens com.chrionline.chrionline.client to javafx.fxml;
     opens com.chrionline.chrionline.client.controllers to javafx.fxml;
+    opens com.chrionline.chrionline.client.ui.components to javafx.fxml;
+    opens com.chrionline.chrionline.client.ui.views to javafx.fxml;
     opens com.chrionline.chrionline.server.controllers to javafx.fxml;
 
     opens com.chrionline.chrionline.network.protocol to com.google.gson;
+    exports com.chrionline.chrionline.network.tcp;
     exports com.chrionline.chrionline.network.enums;
     opens com.chrionline.chrionline.network.enums to com.google.gson;
     opens com.chrionline.chrionline.server.data.models to com.google.gson;

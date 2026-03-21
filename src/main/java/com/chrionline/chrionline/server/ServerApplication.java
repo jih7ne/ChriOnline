@@ -2,9 +2,7 @@ package com.chrionline.chrionline.server;
 
 import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
-import com.chrionline.chrionline.network.protocol.AppNotification;
 import com.chrionline.chrionline.network.tcp.TCPServer;
-import com.chrionline.chrionline.network.udp.UDPServer;
 import com.chrionline.chrionline.server.controllers.*;
 import com.chrionline.chrionline.server.data.mappers.AdresseRowMapper;
 import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
@@ -14,12 +12,7 @@ import com.chrionline.chrionline.server.repositories.*;
 import com.chrionline.chrionline.server.services.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.SocketException;
 import java.sql.SQLException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class ServerApplication {
     private static final Logger logger = LoggerFactory.getLogger(ServerApplication.class);
@@ -43,6 +36,8 @@ public class ServerApplication {
     }
 
     private static void registerRepositories() throws SQLException {
+        AppConfig.registerRepo(CategorieRepository.class,
+                new CategorieRepository(AppConfig.getConnection()));
         AppConfig.registerRepo(ProduitRepository.class,
                 new ProduitRepository(AppConfig.getConnection()));
         AppConfig.registerRepo(UtilisateurRepository.class,
@@ -61,6 +56,8 @@ public class ServerApplication {
     }
 
     private static void registerServices() {
+        AppConfig.registerService(CategorieService.class,
+                new CategorieService(AppConfig.getRepo(CategorieRepository.class)));
         AppConfig.registerService(ProduitService.class,
                 new ProduitService(AppConfig.getRepo(ProduitRepository.class)));
         AppConfig.registerService(PanierService.class,
@@ -94,6 +91,7 @@ public class ServerApplication {
         AppConfig.registerController("Commande",  new CommandeController());
         AppConfig.registerController("Paiement",  new PaiementController());
         AppConfig.registerController("Adresse", new AdresseController());
+        AppConfig.registerController("Categorie", new CategorieController());
         logger.info("Controllers enregistrés");
     }
 

@@ -7,13 +7,14 @@ import com.chrionline.chrionline.network.protocol.AppNotification;
 import java.io.IOException;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-public class UDPServer {
+public class UDPNotificationDispatcher {
     private DatagramSocket serverSocket;
     private volatile boolean running = false;
     private Thread serverThread;
@@ -21,10 +22,10 @@ public class UDPServer {
     private byte[] receiveBuffer;
     private Consumer<AppNotification> notificationHandler;
 
-    // For broadcasting to multiple clients
+
     private final List<ClientInfo> clients = new CopyOnWriteArrayList<>();
 
-    public UDPServer() throws SocketException {
+    public UDPNotificationDispatcher() throws SocketException {
         initializeSocket();
     }
 
@@ -36,9 +37,7 @@ public class UDPServer {
         AppConfig.getLogger().info("UDP Server initialized on port {}", AppConstants.UDP_PORT);
     }
 
-    /**
-     * Start the UDP server
-     */
+
     public void start() {
         if (running) {
             AppConfig.getLogger().warn("Server already running");
@@ -105,7 +104,7 @@ public class UDPServer {
                         clientAddress, clientPort, notification.getType());
 
             } catch (Exception e) {
-                // Not a valid notification - might be a client registration
+
                 handleClientRegistration(receivedJson, clientAddress, clientPort);
             }
 
@@ -116,14 +115,13 @@ public class UDPServer {
 
     private void handleClientRegistration(String message, InetAddress address, int port) {
         if ("REGISTER".equals(message)) {
+            clients.removeIf(c -> c.address.equals(address));
             clients.add(new ClientInfo(address, port, System.currentTimeMillis()));
             AppConfig.getLogger().info("Client registered: {}:{}", address, port);
         }
     }
 
-    /**
-     * Send a notification to a specific client
-     */
+
     public void sendNotification(AppNotification notification, InetAddress address, int port)
             throws IOException {
         String json = notification.toJson();
@@ -140,12 +138,11 @@ public class UDPServer {
         AppConfig.getLogger().debug("Sent notification to {}:{}", address, port);
     }
 
-    /**
-     * Broadcast notification to all registered clients
-     */
+
     public void broadcastNotification(AppNotification notification) {
         String json = notification.toJson();
         byte[] sendData = json.getBytes(StandardCharsets.UTF_8);
+        List<ClientInfo> deadClients = new ArrayList<>();
 
         for (ClientInfo client : clients) {
             try {
@@ -161,23 +158,24 @@ public class UDPServer {
             } catch (IOException e) {
                 AppConfig.getLogger().error("Failed to send to {}:{} - {}",
                         client.address, client.port, e.getMessage());
-                // Remove dead clients? Mark for cleanup?
+                deadClients.add(client);
             }
+        }
+
+        if (!deadClients.isEmpty()) {
+            clients.removeAll(deadClients);
+            AppConfig.getLogger().info("Removed {} dead client(s)", deadClients.size());
         }
 
         AppConfig.getLogger().debug("Broadcast notification to {} clients", clients.size());
     }
 
-    /**
-     * Set handler for received notifications
-     */
+
     public void setNotificationHandler(Consumer<AppNotification> handler) {
         this.notificationHandler = handler;
     }
 
-    /**
-     * Stop the UDP server
-     */
+
     public void stop() {
         running = false;
 
@@ -202,9 +200,7 @@ public class UDPServer {
         AppConfig.getLogger().info("UDP Server stopped");
     }
 
-    /**
-     * Get number of connected clients
-     */
+
     public int getConnectedClientCount() {
         return clients.size();
     }

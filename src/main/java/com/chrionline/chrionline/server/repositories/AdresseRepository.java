@@ -17,6 +17,10 @@ public class AdresseRepository extends JdbcRepository<Adresse> {
     // AJOUTER UNE ADRESSE
     @Override
     public void add(Adresse adresse) {
+        // Si la nouvelle adresse est principale, remettre toutes les autres à 0
+        if (Boolean.TRUE.equals(adresse.getEst_principale())) {
+            resetAdressesPrincipales(adresse.getId_utilisateur());
+        }
         String sql = "INSERT INTO adresse (id_utilisateur, rue, complement, ville, code_postal, pays, est_principale) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -58,6 +62,10 @@ public class AdresseRepository extends JdbcRepository<Adresse> {
     // MODIFIER UNE ADRESSE (id sous forme de String)
     @Override
     public void update(String id, Adresse adresse) {
+        // Si l'adresse modifiée devient principale, remettre toutes les autres à 0
+        if (Boolean.TRUE.equals(adresse.getEst_principale())) {
+            resetAdressesPrincipales(adresse.getId_utilisateur());
+        }
         String sql = "UPDATE adresse SET id_utilisateur=?, rue=?, complement=?, ville=?, " +
                 "code_postal=?, pays=?, est_principale=? WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -111,17 +119,24 @@ public class AdresseRepository extends JdbcRepository<Adresse> {
         return null;
     }
 
+    // RESET toutes les adresses principales d'un utilisateur à 0
+    private void resetAdressesPrincipales(int idUtilisateur) {
+        String sqlReset = "UPDATE adresse SET est_principale = 0 WHERE id_utilisateur = ?";
+        try (PreparedStatement stmtReset = connection.prepareStatement(sqlReset)) {
+            stmtReset.setInt(1, idUtilisateur);
+            stmtReset.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     // DÉFINIR UNE ADRESSE COMME PRINCIPALE
     // (remet toutes les autres à 0 d'abord pour garantir l'unicité)
     public void setAdressePrincipale(int idUtilisateur, int idAdresse) {
-        String sqlReset = "UPDATE adresse SET est_principale = 0 WHERE id_utilisateur = ?";
-        String sqlSet   = "UPDATE adresse SET est_principale = 1 WHERE id = ? AND id_utilisateur = ?";
+        String sqlSet = "UPDATE adresse SET est_principale = 1 WHERE id = ? AND id_utilisateur = ?";
         try {
             // Étape 1 : reset toutes les adresses de l'utilisateur
-            try (PreparedStatement stmtReset = connection.prepareStatement(sqlReset)) {
-                stmtReset.setInt(1, idUtilisateur);
-                stmtReset.executeUpdate();
-            }
+            resetAdressesPrincipales(idUtilisateur);
             // Étape 2 : marquer la nouvelle adresse principale
             try (PreparedStatement stmtSet = connection.prepareStatement(sqlSet)) {
                 stmtSet.setInt(1, idAdresse);

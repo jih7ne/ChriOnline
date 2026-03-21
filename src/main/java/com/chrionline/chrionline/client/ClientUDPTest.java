@@ -1,49 +1,51 @@
 package com.chrionline.chrionline.client;
 
 import com.chrionline.chrionline.core.config.AppConfig;
-import com.chrionline.chrionline.core.constants.AppConstants;
-import com.chrionline.chrionline.network.protocol.AppNotification;
-import com.chrionline.chrionline.network.tcp.TCPClient;
 import com.chrionline.chrionline.network.udp.UDPNotificationListener;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ClientUDPTest {
 
-    private static UDPNotificationListener notificationListener;
-    private List<AppNotification> notifications = new ArrayList<>();
+    private final ExecutorService executor = Executors.newFixedThreadPool(4);
+    private final UDPNotificationListener listener;
 
+    public ClientUDPTest() throws SocketException, UnknownHostException {
+        listener = new UDPNotificationListener();
 
-    public static void startNotificationListener() {
-        try {
-            // Create and start listener
-            notificationListener = new UDPNotificationListener();
+        listener.setNotificationHandler(notification -> {
+            //dbService.save(notification);
+            //cacheService.invalidate(notification.getId());
+            //auditLog.record(notification);
+            System.out.println(notification.toJson());
+        }, executor);
 
-            // Optional: Set callback for real-time updates
-            notificationListener.setNotificationCallback(notification -> {
-                // Update UI or trigger events
-                //updateNotificationPanel(notification);
-            });
-
-            // Start listening
-            notificationListener.startListening();
-
-            // Later, you can access notifications:
-            // 1. From callback (real-time)
-            // 2. From queue (batch processing)
-            // 3. From your own collection (if you store them)
-
-        } catch (Exception e) {
-            AppConfig.getLogger().error(e.getMessage());
-        }
+        listener.startListening();
     }
 
+    public void stop() {
+        listener.close();
+        executor.shutdown();
+    }
 
-    public static void main(String[] args) {
-        AppConfig.getLogger().info("Starting application...");
-        AppConfig.getLogger().info("Starting UDP Notification Listener...");
-        startNotificationListener();
+    public static void main(String[] args) throws Exception {
+        ClientUDPTest client = new ClientUDPTest();
+
+        AppConfig.getLogger().info("Client listening for notifications. Press Ctrl+C to stop.");
+
+        // Shutdown hook — fires on Ctrl+C or SIGTERM so we clean up gracefully
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            AppConfig.getLogger().info("Shutdown signal received — stopping client...");
+            client.stop();
+            AppConfig.getLogger().info("Client stopped. Total notifications received: {}",
+                    client.listener.getReceivedCount());
+        }));
+
+        // Keep the main thread alive — the listener runs on its own daemon thread
+        // so without this the JVM would exit immediately after main() returns.
+        Thread.currentThread().join();
     }
 }

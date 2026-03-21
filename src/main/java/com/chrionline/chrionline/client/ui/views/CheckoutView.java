@@ -118,7 +118,7 @@ public class CheckoutView extends BorderPane {
         HBox.setHgrow(adresseComboBox, Priority.ALWAYS);
         adresseRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox sectionAdresse = buildCard("📍  Adresse de livraison", adresseRow);
+        VBox sectionAdresse = buildCard(" Adresse de livraison", adresseRow);
 
         // ── Aperçu carte bancaire ──────────────────────────────────────────
         cardPreviewLabel = new Label("•••• •••• •••• ••••");
@@ -207,17 +207,14 @@ public class CheckoutView extends BorderPane {
         errorLabel.setVisible(false);
         errorLabel.setWrapText(true);
 
-        Label sslLabel = new Label("🔒  Paiement sécurisé — Données chiffrées SSL");
-        sslLabel.setStyle("-fx-text-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 12px;");
-        sslLabel.setMaxWidth(Double.MAX_VALUE);
-        sslLabel.setAlignment(Pos.CENTER);
 
-        VBox sectionPaiement = buildCard("💳  Informations de paiement",
+
+        VBox sectionPaiement = buildCard(" Informations de paiement",
                 cardVisual,
                 new VBox(6, fieldLabel("Numéro de carte"), numeroCarteField),
                 dateCvvRow,
-                errorLabel,
-                sslLabel);
+                errorLabel
+                );
 
         // ── Boutons ───────────────────────────────────────────────────────
         Button btnAnnulerBtn = new Button("Annuler");
@@ -270,7 +267,7 @@ public class CheckoutView extends BorderPane {
         Separator sep2 = new Separator();
         sep2.setStyle("-fx-background-color: " + AppTheme.FIELD_BORDER + ";");
 
-        VBox rightCol = buildCard("🛒  Récapitulatif",
+        VBox rightCol = buildCard("Récapitulatif",
                 produitsContainer, sep1, livraisonRow, sep2, totalRow);
         rightCol.setMinWidth(300);
         rightCol.setMaxWidth(340);
@@ -353,24 +350,37 @@ public class CheckoutView extends BorderPane {
     private void chargerAdresses(int idUtilisateur) {
         new Thread(() -> {
             try {
-                Map<String, Object> params = new HashMap<>();
-                params.put("idUtilisateur", idUtilisateur);
                 AppRequest req = new AppRequest.Builder()
                         .controller("Adresse").action("lister")
-                        .payload(JsonUtils.toJson(params)).build();
+                        .parameter("idUtilisateur", idUtilisateur).build();
                 AppResponse resp = tcpClient.sendAndParse(req);
                 if (resp != null && resp.isSuccess()) {
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> adresses = resp.getDataAs(List.class);
                     Platform.runLater(() -> {
-                        if (adresses != null)
+                        if (adresses != null) {
                             adresseComboBox.getItems().addAll(adresses);
+                            // Sélectionner automatiquement l'adresse principale
+                            adresses.stream()
+                                    .filter(a -> estPrincipale(a))
+                                    .findFirst()
+                                    .ifPresent(adresseComboBox::setValue);
+                        }
                     });
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    /** Vérifie si une adresse a est_principale = true (gère Boolean, Number, String) */
+    private boolean estPrincipale(Map<String, Object> adresse) {
+        Object val = adresse.get("est_principale");
+        if (val == null) return false;
+        if (val instanceof Boolean) return (Boolean) val;
+        if (val instanceof Number) return ((Number) val).intValue() == 1;
+        return "true".equalsIgnoreCase(val.toString()) || "1".equals(val.toString());
     }
 
     private void handlePaiement() {
@@ -449,22 +459,58 @@ public class CheckoutView extends BorderPane {
                         .payload(JsonUtils.toJson(paiementParams)).build();
                 AppResponse respPaiement = tcpClient.sendAndParse(reqPaiement);
 
+                // ── Annuler la commande si le paiement échoue ─────────────
+                if (respPaiement == null || !respPaiement.isSuccess()) {
+                    // Rollback : annuler la commande côté serveur
+                    try {
+                        Map<String, Object> annulParams = new HashMap<>();
+                        annulParams.put("idCommande", idCommandeCreee);
+                        AppRequest reqAnnul = new AppRequest.Builder()
+                                .controller("Commande").action("annuler")
+                                .payload(com.chrionline.chrionline.core.utils.JsonUtils.toJson(annulParams))
+                                .build();
+                        tcpClient.sendAndParse(reqAnnul); // best-effort, on ignore l'erreur
+                    } catch (Exception ignored) {}
+
+                    final String errMsg = respPaiement != null
+                            ? respPaiement.getMessage()
+                            : "Paiement échoué. Veuillez vérifier vos informations bancaires.";
+
+                    Platform.runLater(() -> {
+                        btnConfirmer.setDisable(false);
+                        btnConfirmer.setText("🔒   Payer maintenant");
+                        // Naviguer vers la page d'échec. onReessayer = retour au checkout.
+                        viewManager.showConfirmationEchoueeView(
+                                userData,
+                                errMsg,
+                                () -> viewManager.showCheckoutView(
+                                        userData,
+                                        // Reconstituer les PanierProduit depuis les lignes
+                                        lignes.stream().map(l -> {
+                                            com.chrionline.chrionline.server.data.models.PanierProduit pp =
+                                                    new com.chrionline.chrionline.server.data.models.PanierProduit();
+                                            pp.setIdProduit(((Number) l.getOrDefault("id_produit", 0)).intValue());
+                                            pp.setNomProduit(String.valueOf(l.getOrDefault("nom", "")));
+                                            pp.setQuantite(((Number) l.getOrDefault("quantite", 1)).intValue());
+                                            pp.setPrix(((Number) l.getOrDefault("prix_unitaire", 0.0)).doubleValue());
+                                            return pp;
+                                        }).collect(java.util.stream.Collectors.toList())
+                                )
+                        );
+                    });
+                    return;
+                }
+
+                // ── Paiement réussi ───────────────────────────────────────
                 Platform.runLater(() -> {
                     btnConfirmer.setDisable(false);
                     btnConfirmer.setText("🔒   Payer maintenant");
-
-                    if (respPaiement != null && respPaiement.isSuccess()) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> data = respPaiement.getDataAs(Map.class);
-                        if (data != null) {
-                            data.put("uuidCommande", uuidCommande);
-                            data.put("userData", userData);
-                            onPaiementSuccess.accept(data);
-                        }
-                    } else {
-                        showError(respPaiement != null
-                                ? respPaiement.getMessage()
-                                : "Paiement échoué.");
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> data = respPaiement.getDataAs(Map.class);
+                    if (data != null) {
+                        data.put("uuidCommande", uuidCommande);
+                        data.put("userData", userData);
+                        onPaiementSuccess.accept(data);
                     }
                 });
 
@@ -539,7 +585,19 @@ public class CheckoutView extends BorderPane {
     private void openAdresseDialog() {
         int idUtilisateur = ((Number) userData.get("id")).intValue();
         AdresseDialogView dialog = new AdresseDialogView(tcpClient, null, idUtilisateur,
-                adresse -> Platform.runLater(() -> adresseComboBox.getItems().add(adresse)));
+                adresse -> Platform.runLater(() -> {
+                    if (estPrincipale(adresse)) {
+                        // Si la nouvelle adresse est principale, recharger toute la liste
+                        // pour que l'ancienne adresse principale soit remise à 0 visuellement
+                        adresseComboBox.getItems().clear();
+                        chargerAdresses(idUtilisateur);
+                        // On sélectionnera automatiquement dans chargerAdresses() via le filtre est_principale
+                    } else {
+                        // Sinon, juste ajouter et sélectionner
+                        adresseComboBox.getItems().add(adresse);
+                        adresseComboBox.setValue(adresse);
+                    }
+                }));
         javafx.scene.Scene scene = new javafx.scene.Scene(dialog);
         javafx.stage.Stage stage = new javafx.stage.Stage();
         stage.setScene(scene);

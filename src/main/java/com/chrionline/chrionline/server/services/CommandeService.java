@@ -140,4 +140,10 @@ public class CommandeService {
         }
         return lignes;
     }
+
+    // LIGNES AVEC NOM DU PRODUIT (jointure)
+    public List<java.util.Map<String, Object>> getLignesAvecNom(int idCommande) {
+        logger.info("Récupération des lignes avec nom produit pour commande id={}", idCommande);
+        return ligneCommandeRepository.getLignesAvecNom(idCommande);
+    }
 }

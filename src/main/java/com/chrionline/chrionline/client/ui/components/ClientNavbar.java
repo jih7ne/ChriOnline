@@ -6,6 +6,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import org.kordamp.ikonli.Ikon;
@@ -32,7 +33,7 @@ public class ClientNavbar extends HBox {
         setPadding(new Insets(12, 32, 12, 60));
         setAlignment(Pos.CENTER_LEFT);
 
-        // LOGO
+        // ── LOGO ──────────────────────────────────────────────────────────────
         HBox logoBox = new HBox(8);
         logoBox.setAlignment(Pos.CENTER_LEFT);
         logoBox.setPrefWidth(220);
@@ -50,7 +51,7 @@ public class ClientNavbar extends HBox {
         );
         logoBox.getChildren().addAll(logoIcon, logoText);
 
-        // CENTRE — recherche
+        // ── CENTRE — recherche ────────────────────────────────────────────────
         HBox centerBox = new HBox();
         centerBox.setAlignment(Pos.CENTER);
         HBox.setHgrow(centerBox, Priority.ALWAYS);
@@ -113,12 +114,12 @@ public class ClientNavbar extends HBox {
 
         HBox iconsBox = new HBox(6);
         iconsBox.setAlignment(Pos.CENTER_RIGHT);
-        iconsBox.setPrefWidth(180);
-        iconsBox.setMinWidth(180);
+        iconsBox.setPrefWidth(210);
+        iconsBox.setMinWidth(210);
         HBox.setMargin(iconsBox, new Insets(0, 43, 0, 0));
 
-        StackPane panierBtn = createIconButton(Feather.SHOPPING_CART);
-
+        // Panier
+        StackPane panierBtn = createIconButton(Feather.SHOPPING_CART, "Mon panier");
         cartCountLabel = new Label(String.valueOf(cartCount));
         cartCountLabel.setStyle(
                 "-fx-background-color: #7F5539;" +
@@ -137,20 +138,41 @@ public class ClientNavbar extends HBox {
         panierBtn.getChildren().add(cartCountLabel);
         panierBtn.setOnMouseClicked(e -> viewManager.showPanierView(userData));
 
-        StackPane commandesBtn = createIconButton(Feather.PACKAGE);
+        // Commandes
+        StackPane commandesBtn = createIconButton(Feather.PACKAGE, "Mes commandes");
         commandesBtn.setOnMouseClicked(e -> viewManager.showHistoriqueCommandesView(userData));
-        StackPane compteBtn = createIconButton(Feather.USER);
 
-        iconsBox.getChildren().addAll(panierBtn, commandesBtn, compteBtn);
+        // Profil
+        StackPane compteBtn = createIconButton(Feather.USER, "Mon profil");
+        compteBtn.setOnMouseClicked(e -> viewManager.showProfileView(userData));
 
+        // ── Déconnexion ───────────────────────────────────────────────────────
+        StackPane logoutBtn = createIconButton(Feather.LOG_OUT, "Se déconnecter");
+
+        FontIcon logoutIcon = (FontIcon) logoutBtn.getChildren().get(0);
+        logoutIcon.setIconColor(Color.web("#C0392B"));
+        logoutBtn.setOnMouseEntered(e -> logoutBtn.setStyle(
+                "-fx-background-color: #FEF2F2;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-cursor: hand;"
+        ));
+        logoutBtn.setOnMouseExited(e -> logoutBtn.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-cursor: hand;"
+        ));
+        logoutBtn.setOnMouseClicked(e ->
+                new Thread(() -> Platform.runLater(() -> viewManager.showLoginView())).start()
+        );
+        // ─────────────────────────────────────────────────────────────────────
+
+        iconsBox.getChildren().addAll(panierBtn, commandesBtn, compteBtn, logoutBtn);
         getChildren().addAll(logoBox, centerBox, iconsBox);
 
-        Platform.runLater(() -> {
-            logoBox.requestFocus();
-        });
+        Platform.runLater(() -> logoBox.requestFocus());
     }
 
-    private StackPane createIconButton(Ikon icon) {
+    private StackPane createIconButton(Ikon icon, String tooltipText) {
         StackPane btn = new StackPane();
         btn.setPrefSize(38, 38);
         btn.setMinSize(38, 38);
@@ -163,6 +185,7 @@ public class ClientNavbar extends HBox {
         fontIcon.setIconSize(21);
         fontIcon.setIconColor(Color.web("#7F5539"));
         btn.getChildren().add(fontIcon);
+
         btn.setOnMouseEntered(e -> btn.setStyle(
                 "-fx-background-color: #E6CCB2;" +
                         "-fx-background-radius: 8;" +
@@ -173,6 +196,11 @@ public class ClientNavbar extends HBox {
                         "-fx-background-radius: 8;" +
                         "-fx-cursor: hand;"
         ));
+
+        if (tooltipText != null) {
+            Tooltip.install(btn, new Tooltip(tooltipText));
+        }
+
         return btn;
     }
 

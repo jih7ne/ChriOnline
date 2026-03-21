@@ -87,6 +87,33 @@ public class LigneCommandeRepository extends JdbcRepository<LigneCommande> {
         return lignes;
     }
 
+    // RÉCUPÉRER LES LIGNES AVEC LE NOM DU PRODUIT (jointure)
+    public List<java.util.Map<String, Object>> getLignesAvecNom(int idCommande) {
+        String sql = "SELECT lc.id, lc.id_commande, lc.id_produit, lc.quantite, lc.prix_unitaire, " +
+                     "p.nom AS nom_produit " +
+                     "FROM ligne_commande lc " +
+                     "JOIN produit p ON lc.id_produit = p.id " +
+                     "WHERE lc.id_commande = ?";
+        List<java.util.Map<String, Object>> result = new ArrayList<>();
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, idCommande);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+                row.put("id",          rs.getInt("id"));
+                row.put("id_commande", rs.getInt("id_commande"));
+                row.put("id_produit",  rs.getInt("id_produit"));
+                row.put("quantite",    rs.getInt("quantite"));
+                row.put("prix_unitaire", rs.getDouble("prix_unitaire"));
+                row.put("nom_produit", rs.getString("nom_produit"));
+                result.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
     // SUPPRIMER TOUTES LES LIGNES D'UNE COMMANDE (nettoyage en cascade)
     public void deleteLignesCommande(int idCommande) {
         String sql = "DELETE FROM ligne_commande WHERE id_commande = ?";
