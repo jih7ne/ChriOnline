@@ -83,6 +83,8 @@ public class UDPNotificationDispatcher {
             InetAddress clientAddress = packet.getAddress();
             int clientPort = packet.getPort();
 
+            AppNotification notification = null;
+
 
             String receivedJson = new String(
                     packet.getData(),
@@ -92,20 +94,29 @@ public class UDPNotificationDispatcher {
             );
 
 
+
+
+
             try {
-                AppNotification notification = AppNotification.fromJson(receivedJson);
+                notification = AppNotification.fromJson(receivedJson);
+
+                if ("REGISTER".equals(notification.getMessage().trim())) {
+                    handleClientRegistration(clientAddress, clientPort);
+                    return;
+                }
 
 
                 if (notificationHandler != null) {
                     notificationHandler.accept(notification);
                 }
 
+
                 AppConfig.getLogger().debug("Received notification from {}:{} - Type: {}",
                         clientAddress, clientPort, notification.getType());
 
             } catch (Exception e) {
-
-                handleClientRegistration(receivedJson, clientAddress, clientPort);
+                AppConfig.getLogger().warn("Unrecognised packet from {}:{} — {}",
+                        clientAddress, clientPort, receivedJson);
             }
 
         } catch (Exception e) {
@@ -113,12 +124,11 @@ public class UDPNotificationDispatcher {
         }
     }
 
-    private void handleClientRegistration(String message, InetAddress address, int port) {
-        if ("REGISTER".equals(message)) {
-            clients.removeIf(c -> c.address.equals(address));
-            clients.add(new ClientInfo(address, port, System.currentTimeMillis()));
-            AppConfig.getLogger().info("Client registered: {}:{}", address, port);
-        }
+    private void handleClientRegistration(InetAddress address, int port) {
+        clients.removeIf(c -> c.address.equals(address)); // evict stale entry
+        clients.add(new ClientInfo(address, port, System.currentTimeMillis()));
+        AppConfig.getLogger().info("Client registered: {}:{} — total clients: {}",
+                address, port, clients.size());
     }
 
 

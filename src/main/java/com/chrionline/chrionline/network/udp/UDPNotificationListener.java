@@ -159,7 +159,11 @@ public class UDPNotificationListener {
 
     private void registerWithServer() throws UnknownHostException, SocketException {
         try {
-            byte[] data = "REGISTER".getBytes(StandardCharsets.UTF_8);
+            AppNotification notification = new AppNotification.Builder()
+                    .message("REGISTER")
+                    .build();
+
+            byte[] data = notification.toJson().getBytes(StandardCharsets.UTF_8);
             DatagramPacket registration = new DatagramPacket(
                     data,
                     data.length,
