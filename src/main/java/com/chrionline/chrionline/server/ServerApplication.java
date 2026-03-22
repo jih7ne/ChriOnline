@@ -3,6 +3,8 @@ package com.chrionline.chrionline.server;
 import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.network.tcp.TCPServer;
+import com.chrionline.chrionline.network.udp.UDPNotificationDispatcher;
+import com.chrionline.chrionline.network.udp.UDPNotificationListener;
 import com.chrionline.chrionline.server.controllers.*;
 import com.chrionline.chrionline.server.data.mappers.AdresseRowMapper;
 import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
@@ -14,25 +16,45 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 
+
 public class ServerApplication {
     private static final Logger logger = LoggerFactory.getLogger(ServerApplication.class);
-
+    private static UDPNotificationDispatcher udpNotificationDispatcher;
 
     public static void main(String[] args) {
         try {
             logger.info("Démarrage du serveur ChriOnline...");
             registerRepositories();
+            setupUDP();
             registerServices();
             registerControllers();
-            logger.info("Démarrage du serveur UDP");
-//            startUdp();
             logger.info("Démarrage TCP sur le port {}", AppConstants.SERVER_PORT);
             new TCPServer();
+
         } catch (Exception e) {
             logger.error("Échec du démarrage", e);
-//            stopInstances();
+            stopInstances();
             System.exit(-1);
         }
+    }
+
+
+    private static void setupUDP() throws Exception {
+        AppConfig.getLogger().info("Setting up UDP Services");
+
+        udpNotificationDispatcher = new UDPNotificationDispatcher();
+        udpNotificationDispatcher.setNotificationHandler(notification -> {
+            logger.info("Server received notification: {}", notification.getMessage());
+        });
+        udpNotificationDispatcher.start();
+
+        Thread.sleep(500);
+        logger.info("Setup complete — UDP Services Initialized");
+    }
+
+    private static void stopInstances() {
+        AppConfig.getLogger().info("--- Tearing down ---");
+        if (udpNotificationDispatcher != null) udpNotificationDispatcher.stop();
     }
 
     private static void registerRepositories() throws SQLException {

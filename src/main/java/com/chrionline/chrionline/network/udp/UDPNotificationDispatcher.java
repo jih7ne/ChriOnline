@@ -125,9 +125,11 @@ public class UDPNotificationDispatcher {
     }
 
     private void handleClientRegistration(InetAddress address, int port) {
-        clients.removeIf(c -> c.address.equals(address)); // evict stale entry
+        // Also check for port when removing for testing on localhost
+        // To be removed in production
+        clients.removeIf(c -> c.address.equals(address) && c.port == port); // evict stale entry
         clients.add(new ClientInfo(address, port, System.currentTimeMillis()));
-        AppConfig.getLogger().info("Client registered: {}:{} — total clients: {}",
+        AppConfig.getLogger().info("[{}] Client registered: {}:{} — total clients: {}", UDPNotificationDispatcher.class.getSimpleName(),
                 address, port, clients.size());
     }
 

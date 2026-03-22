@@ -6,23 +6,28 @@ import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.network.protocol.AppNotification;
 import com.chrionline.chrionline.network.tcp.TCPClient;
+import com.chrionline.chrionline.network.udp.UDPNotificationListener;
 import com.chrionline.chrionline.server.data.models.PanierProduit;
 import com.chrionline.chrionline.server.data.models.Produit;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class ClientApplication extends Application implements ViewManager {
 
     private static TCPClient client;
+    private static UDPNotificationListener udpListener;
+    private static ExecutorService listenerHandlerExecutor;
+    private static List<AppNotification> notifications = new ArrayList<>();
 
     private Stage primaryStage;
 
@@ -183,10 +188,30 @@ public class ClientApplication extends Application implements ViewManager {
     }
 
 
+    private static void setupUdpServices() throws Exception {
+        AppConfig.getLogger().info("--- Setting up UDP Services ---");
+        // Client listener
+        listenerHandlerExecutor = Executors.newFixedThreadPool(2);
+        udpListener = new UDPNotificationListener();
+        udpListener.setNotificationHandler(notification -> {
+            AppConfig.getLogger().debug("Client received notification: {}", notification.getMessage());
+            notifications.add(notification);
+        }, listenerHandlerExecutor);
+        udpListener.startListening();
+
+        Thread.sleep(500);
+
+    }
+
+
     public static void main(String[] args) {
         try {
             AppConfig.getLogger().info("Initializing TCP client...");
             client = new TCPClient();
+            AppConfig.getLogger().info("TCP client initialized");
+            AppConfig.getLogger().info("Initializing UDP client...");
+            setupUdpServices();
+            AppConfig.getLogger().info("UDP client initialized");
             if (!client.isConnected()) throw new RuntimeException("Failed to connect to server");
             AppConfig.getLogger().info("Successfully connected to server");
             launch(args);
@@ -196,6 +221,9 @@ public class ClientApplication extends Application implements ViewManager {
             System.err.println("Make sure the server is running on " +
                     AppConstants.SERVER_HOST + ":" + AppConstants.SERVER_PORT);
             System.exit(1);
+        } catch (Exception e) {
+            AppConfig.getLogger().error("Failed to initialize client", e);
+            throw new RuntimeException(e);
         }
     }
 }
