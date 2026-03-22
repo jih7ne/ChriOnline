@@ -9,6 +9,7 @@ import java.util.Map;
 public interface ViewManager {
     void showLoginView();
     void showRegisterView();
+    void showForgotPasswordView();
     void showCatalogueView(Map<String, Object> userData);
     void showPanierView(Map<String, Object> userData);
     void showDetailsProduit(Produit produit, Map<String, Object> userData);
@@ -18,5 +19,4 @@ public interface ViewManager {
     void showConfirmationEchoueeView(Map<String, Object> userData, String messageErreur, Runnable onReessayer);
     void showHistoriqueCommandesView(Map<String, Object> userData);
     void showProfileView(Map<String, Object> userData);
-
 }
