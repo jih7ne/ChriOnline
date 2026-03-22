@@ -18,6 +18,8 @@ public interface ViewManager {
     void showConfirmationEchoueeView(Map<String, Object> userData, String messageErreur, Runnable onReessayer);
     void showHistoriqueCommandesView(Map<String, Object> userData);
     void showProfileView(Map<String, Object> userData);
-    void showAdminDashboard();
 
+    void showForgotPasswordView();
+
+    void showAdminDashboard();
 }

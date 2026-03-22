@@ -47,11 +47,13 @@ public class UtilisateurRepository {
         u.setMotDePasse(rs.getString("mot_de_passe"));
         u.setRole(rs.getString("role"));
         u.setStatut(rs.getString("statut"));
+        u.setQuestionSecrete(rs.getString("question_secrete"));
+        u.setReponseSecrete(rs.getString("reponse_secrete"));
         return u;
     }
 
     public boolean add(Utilisateur u) {
-        String sql = "INSERT INTO Utilisateur (nom, prenom, email, mot_de_passe, role, statut) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO Utilisateur (nom, prenom, email, mot_de_passe, role, statut, question_secrete, reponse_secrete) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, u.getNom());
             stmt.setString(2, u.getPrenom());
@@ -59,6 +61,8 @@ public class UtilisateurRepository {
             stmt.setString(4, u.getMotDePasse());
             stmt.setString(5, u.getRole() != null ? u.getRole() : "client");
             stmt.setString(6, u.getStatut() != null ? u.getStatut() : "actif");
+            stmt.setString(7, u.getQuestionSecrete());
+            stmt.setString(8, u.getReponseSecrete());
             int rows = stmt.executeUpdate();
             if (rows > 0) {
                 ResultSet keys = stmt.getGeneratedKeys();
