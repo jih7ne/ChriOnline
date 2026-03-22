@@ -14,6 +14,8 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         super(connection, "Categorie", new CategorieRowMapper());
     }
 
+
+
     public List<Categorie> findAll() {
         // FIX : COUNT produits par catégorie via LEFT JOIN
         String sql =

@@ -4,7 +4,6 @@ import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.network.tcp.TCPServer;
 import com.chrionline.chrionline.network.udp.UDPNotificationDispatcher;
-import com.chrionline.chrionline.network.udp.UDPNotificationListener;
 import com.chrionline.chrionline.server.controllers.*;
 import com.chrionline.chrionline.server.data.mappers.AdresseRowMapper;
 import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
@@ -100,6 +99,16 @@ public class ServerApplication {
                 ));
         AppConfig.registerService(AdresseService.class,
                 new AdresseService(AppConfig.getRepo(AdresseRepository.class)));
+
+        //AdminService
+        AppConfig.registerService(AdminService.class, new AdminService(
+                AppConfig.getRepo(ProduitRepository.class),
+                AppConfig.getRepo(CommandeRepository.class),
+                AppConfig.getRepo(UtilisateurRepository.class),
+                AppConfig.getRepo(PaiementRepository.class),
+                AppConfig.getRepo(CategorieRepository.class)
+        ));
+
         logger.info("Services enregistrés");
     }
 
