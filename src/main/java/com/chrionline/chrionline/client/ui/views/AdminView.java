@@ -34,8 +34,10 @@ public class AdminView extends BorderPane {
     }
 
     private void buildUI() {
-        setBackground(new Background(new BackgroundFill(Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
-        rightPane.setBackground(new Background(new BackgroundFill(Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
+        setBackground(new Background(new BackgroundFill(
+                Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
+        rightPane.setBackground(new Background(new BackgroundFill(
+                Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
         rightPane.setTop(buildTopBar());
         HBox.setHgrow(rightPane, Priority.ALWAYS);
         VBox.setVgrow(rightPane, Priority.ALWAYS);
@@ -45,8 +47,7 @@ public class AdminView extends BorderPane {
     }
 
     private void rebuildSidebar() {
-        AdminSidebar sidebar = new AdminSidebar(currentPage, userData, viewManager, this);
-        setLeft(sidebar);
+        setLeft(new AdminSidebar(currentPage, userData, viewManager, this));
     }
 
     private HBox buildTopBar() {
@@ -57,7 +58,8 @@ public class AdminView extends BorderPane {
         topBar.setPrefHeight(60);
         topBar.setMaxHeight(60);
         topBar.setMaxWidth(Double.MAX_VALUE);
-        topBar.setBackground(new Background(new BackgroundFill(Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
+        topBar.setBackground(new Background(new BackgroundFill(
+                Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
         topBar.setStyle("-fx-border-color:" + AppTheme.FIELD_BORDER + ";-fx-border-width:0 0 1 0;");
 
         String adminName = (userData != null && userData.containsKey("nom"))
@@ -73,40 +75,30 @@ public class AdminView extends BorderPane {
         FontIcon userIcon = new FontIcon(Feather.USER);
         userIcon.setIconSize(19);
         userIcon.setIconColor(Color.WHITE);
-
         StackPane avatar = new StackPane(userIcon);
-        avatar.setPrefSize(38, 38);
-        avatar.setMinSize(38, 38);
-        avatar.setMaxSize(38, 38);
+        avatar.setPrefSize(38, 38); avatar.setMinSize(38, 38); avatar.setMaxSize(38, 38);
         avatar.setCursor(Cursor.HAND);
-        avatar.setBackground(new Background(
-                new BackgroundFill(Color.web(AppTheme.PRIMARY), new CornerRadii(50), Insets.EMPTY)
-        ));
-        avatar.setOnMouseEntered(e -> avatar.setBackground(new Background(
-                new BackgroundFill(Color.web(AppTheme.PRIMARY_LIGHT), new CornerRadii(50), Insets.EMPTY))));
-        avatar.setOnMouseExited(e -> avatar.setBackground(new Background(
-                new BackgroundFill(Color.web(AppTheme.PRIMARY), new CornerRadii(50), Insets.EMPTY))));
+        avatar.setBackground(new Background(new BackgroundFill(
+                Color.web(AppTheme.PRIMARY), new CornerRadii(50), Insets.EMPTY)));
+        avatar.setOnMouseEntered(e -> avatar.setBackground(new Background(new BackgroundFill(
+                Color.web(AppTheme.PRIMARY_LIGHT), new CornerRadii(50), Insets.EMPTY))));
+        avatar.setOnMouseExited(e -> avatar.setBackground(new Background(new BackgroundFill(
+                Color.web(AppTheme.PRIMARY), new CornerRadii(50), Insets.EMPTY))));
         Tooltip.install(avatar, new Tooltip("Mon profil"));
 
         FontIcon logoutIcon = new FontIcon(Feather.LOG_OUT);
         logoutIcon.setIconSize(19);
         logoutIcon.setIconColor(Color.web(AppTheme.ERROR_COLOR));
-
         StackPane logoutBtn = new StackPane(logoutIcon);
-        logoutBtn.setPrefSize(38, 38);
-        logoutBtn.setMinSize(38, 38);
-        logoutBtn.setMaxSize(38, 38);
+        logoutBtn.setPrefSize(38, 38); logoutBtn.setMinSize(38, 38); logoutBtn.setMaxSize(38, 38);
         logoutBtn.setCursor(Cursor.HAND);
         logoutBtn.setStyle("-fx-background-color:transparent;-fx-background-radius:8;");
         logoutBtn.setOnMouseEntered(e -> logoutBtn.setStyle(
-                "-fx-background-color:#FEF2F2;-fx-background-radius:8;-fx-cursor:hand;"
-        ));
+                "-fx-background-color:#FEF2F2;-fx-background-radius:8;"));
         logoutBtn.setOnMouseExited(e -> logoutBtn.setStyle(
-                "-fx-background-color:transparent;-fx-background-radius:8;-fx-cursor:hand;"
-        ));
+                "-fx-background-color:transparent;-fx-background-radius:8;"));
         logoutBtn.setOnMouseClicked(e ->
-                new Thread(() -> Platform.runLater(() -> viewManager.showLoginView())).start()
-        );
+                new Thread(() -> Platform.runLater(() -> viewManager.showLoginView())).start());
         Tooltip.install(logoutBtn, new Tooltip("Se déconnecter"));
 
         HBox profileBox = new HBox(10, nameLabel, avatar, logoutBtn);
@@ -118,6 +110,8 @@ public class AdminView extends BorderPane {
         topBar.getChildren().addAll(spacer, profileBox);
         return topBar;
     }
+
+    // ─── Page navigation ──────────────────────────────────────────────────────
 
     public void showDashboard() {
         currentPage = AdminSidebar.AdminPage.DASHBOARD;
@@ -146,8 +140,10 @@ public class AdminView extends BorderPane {
     public void showUtilisateurs() {
         currentPage = AdminSidebar.AdminPage.UTILISATEURS;
         rebuildSidebar();
-        rightPane.setCenter(buildComingSoon("Utilisateurs"));
+        rightPane.setCenter(new AdminUtilisateursView(client, userData, viewManager, this));
     }
+
+    // ─── Coming soon placeholder ──────────────────────────────────────────────
 
     private Region buildComingSoon(String pageName) {
         VBox box = new VBox(16);
@@ -156,13 +152,10 @@ public class AdminView extends BorderPane {
         box.setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(box, Priority.ALWAYS);
         HBox.setHgrow(box, Priority.ALWAYS);
-        box.setBackground(new Background(new BackgroundFill(Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
-
+        box.setBackground(new Background(new BackgroundFill(
+                Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
         Label label = new Label(pageName + " — Bientôt disponible");
-        label.setStyle(
-                "-fx-font-size:24px;-fx-font-weight:bold;" +
-                        "-fx-text-fill:" + AppTheme.PRIMARY + ";"
-        );
+        label.setStyle("-fx-font-size:24px;-fx-font-weight:bold;-fx-text-fill:" + AppTheme.PRIMARY + ";");
         box.getChildren().add(label);
         return box;
     }
