@@ -9,11 +9,7 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.SVGPath;
-import javafx.scene.text.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,58 +17,57 @@ import java.util.function.Consumer;
 
 public class LoginView extends StackPane {
 
-    private final TextField emailField;
-    private final PasswordField passwordField;
-    private final Button loginButton;
-    private final Label errorLabel;
-    private final TCPClient tcpClient;
-    private final Consumer<Map<String, Object>> onLoginSuccess; // passe toutes les données user
-    private final Runnable onGoToRegister;
+    private final TextField                    emailField;
+    private final PasswordField                passwordField;
+    private final Button                       loginButton;
+    private final Label                        errorLabel;
+    private final TCPClient                    tcpClient;
+    private final Consumer<Map<String, Object>> onLoginSuccess;
+    private final Runnable                     onGoToRegister;
+    private final Runnable                     onGoToForgotPassword;
 
     public LoginView(TCPClient tcpClient,
                      Consumer<Map<String, Object>> onLoginSuccess,
-                     Runnable onGoToRegister) {
-        this.tcpClient = tcpClient;
-        this.onLoginSuccess = onLoginSuccess;
-        this.onGoToRegister = onGoToRegister;
+                     Runnable onGoToRegister,
+                     Runnable onGoToForgotPassword) {
+        this.tcpClient            = tcpClient;
+        this.onLoginSuccess       = onLoginSuccess;
+        this.onGoToRegister       = onGoToRegister;
+        this.onGoToForgotPassword = onGoToForgotPassword;
 
-        // ─── Fond beige ────────────────────────────────────────────────────
         this.setStyle("-fx-background-color: " + AppTheme.BG + ";");
 
-        // ─── Card centrale ─────────────────────────────────────────────────
         VBox card = new VBox(0);
         card.setMaxWidth(480);
         card.setMaxHeight(Double.MAX_VALUE);
         AppTheme.styleCard(card);
         card.setPadding(new Insets(40, 40, 40, 40));
 
-        // ─── Icône sac ─────────────────────────────────────────────────────
+        // Icon
         Label icon = new Label("🛍");
         icon.setStyle("-fx-font-size: 40px;");
         VBox iconBox = new VBox(icon);
         iconBox.setAlignment(Pos.CENTER);
         VBox.setMargin(iconBox, new Insets(0, 0, 8, 0));
 
-        // ─── Titre + subtitle ──────────────────────────────────────────────
+        // Title
         Label title = new Label("ChriOnline");
-        title.setStyle(
-                "-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";"
-        );
+        title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
         Label subtitle = new Label("Boutique artisanale");
         subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
         VBox titleBox = new VBox(4, title, subtitle);
         titleBox.setAlignment(Pos.CENTER);
         VBox.setMargin(titleBox, new Insets(0, 0, 24, 0));
 
-        // ─── Toggle Connexion / Inscription ────────────────────────────────
-        Button btnConnexion = new Button("Connexion");
+        // Toggle Connexion / Inscription
+        Button btnConnexion   = new Button("Connexion");
         Button btnInscription = new Button("Inscription");
         AppTheme.styleToggleActive(btnConnexion);
         AppTheme.styleToggleInactive(btnInscription);
         btnInscription.setOnAction(e -> onGoToRegister.run());
         btnConnexion.setMaxWidth(Double.MAX_VALUE);
         btnInscription.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnConnexion, Priority.ALWAYS);
+        HBox.setHgrow(btnConnexion,   Priority.ALWAYS);
         HBox.setHgrow(btnInscription, Priority.ALWAYS);
 
         HBox toggle = new HBox(0, btnConnexion, btnInscription);
@@ -84,7 +79,7 @@ public class LoginView extends StackPane {
         toggle.setMaxWidth(Double.MAX_VALUE);
         VBox.setMargin(toggle, new Insets(0, 0, 24, 0));
 
-        // ─── Champ Email ───────────────────────────────────────────────────
+        // Email
         emailField = new TextField();
         emailField.setPromptText("votre@email.com");
         AppTheme.styleTextField(emailField);
@@ -92,7 +87,7 @@ public class LoginView extends StackPane {
         StackPane emailPane = wrapWithIcon("✉", emailField);
         VBox.setMargin(emailPane, new Insets(0, 0, 14, 0));
 
-        // ─── Champ Mot de passe ────────────────────────────────────────────
+        // Password
         passwordField = new PasswordField();
         passwordField.setPromptText("••••••••");
         AppTheme.styleTextField(passwordField);
@@ -101,18 +96,20 @@ public class LoginView extends StackPane {
         StackPane passPane = wrapWithIcon("🔒", passwordField);
         VBox.setMargin(passPane, new Insets(0, 0, 6, 0));
 
-        // ─── Mot de passe oublié ───────────────────────────────────────────
-        Hyperlink forgot = new Hyperlink("Mot de passe oublié?");
+        // Forgot password — navigates via the Runnable callback (safe, no getScene() call)
+        Hyperlink forgot = new Hyperlink("Mot de passe oublié ?");
         forgot.setStyle(
                 "-fx-text-fill: " + AppTheme.TEXT_MUTED + ";" +
                         "-fx-font-size: 12px;" +
                         "-fx-border-color: transparent;"
         );
+        forgot.setOnAction(e -> onGoToForgotPassword.run());
+
         HBox forgotRow = new HBox(forgot);
         forgotRow.setAlignment(Pos.CENTER_RIGHT);
         VBox.setMargin(forgotRow, new Insets(0, 0, 18, 0));
 
-        // ─── Erreur ────────────────────────────────────────────────────────
+        // Error label
         errorLabel = new Label();
         errorLabel.setStyle(
                 "-fx-text-fill: " + AppTheme.ERROR_COLOR + ";" +
@@ -122,16 +119,14 @@ public class LoginView extends StackPane {
         errorLabel.setVisible(false);
         errorLabel.setWrapText(true);
 
-        // ─── Bouton Se connecter ───────────────────────────────────────────
+        // Login button
         loginButton = new Button("Se connecter");
         AppTheme.stylePrimaryButton(loginButton);
         loginButton.setOnAction(e -> handleLogin());
-        VBox.setMargin(loginButton, new Insets(0, 0, 0, 0));
 
-        // ─── Assemblage card ───────────────────────────────────────────────
         card.getChildren().addAll(
                 iconBox, titleBox, toggle,
-                createFieldLabel("Email"), emailPane,
+                createFieldLabel("Email"),        emailPane,
                 createFieldLabel("Mot de passe"), passPane,
                 forgotRow, errorLabel, loginButton
         );
@@ -141,11 +136,11 @@ public class LoginView extends StackPane {
     }
 
     private void handleLogin() {
-        String email = emailField.getText().trim();
+        String email    = emailField.getText().trim();
         String password = passwordField.getText();
 
         if (email.isEmpty() || password.isEmpty()) { showError("Veuillez remplir tous les champs."); return; }
-        if (!email.contains("@")) { showError("Adresse e-mail invalide."); return; }
+        if (!email.contains("@"))                  { showError("Adresse e-mail invalide."); return; }
 
         loginButton.setDisable(true);
         loginButton.setText("Connexion...");
@@ -154,7 +149,7 @@ public class LoginView extends StackPane {
         new Thread(() -> {
             try {
                 Map<String, String> payload = new HashMap<>();
-                payload.put("email", email);
+                payload.put("email",    email);
                 payload.put("password", password);
 
                 AppRequest request = new AppRequest.Builder()
@@ -171,9 +166,7 @@ public class LoginView extends StackPane {
                     if (response != null && response.isSuccess()) {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> data = response.getDataAs(Map.class);
-                        if (data != null) {
-                            onLoginSuccess.accept(data); // passe role + token + tout
-                        }
+                        if (data != null) onLoginSuccess.accept(data);
                     } else {
                         showError(response != null && response.getMessage() != null
                                 ? response.getMessage()
@@ -189,8 +182,6 @@ public class LoginView extends StackPane {
             }
         }).start();
     }
-
-    // ─── Helpers UI ────────────────────────────────────────────────────────
 
     private Label createFieldLabel(String text) {
         Label lbl = new Label(text);
@@ -215,5 +206,5 @@ public class LoginView extends StackPane {
     }
 
     private void showError(String msg) { errorLabel.setText(msg); errorLabel.setVisible(true); }
-    private void hideError() { errorLabel.setVisible(false); }
+    private void hideError()           { errorLabel.setVisible(false); }
 }
