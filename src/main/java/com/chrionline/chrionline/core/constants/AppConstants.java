@@ -12,6 +12,9 @@ public final class AppConstants {
 
     public static final String APP_NAME = "ChriOnline";
     public static final String APP_VERSION = "1.0.0";
+    public static final int LOW_STOCK_PRODUCTS_THRESHOLD = 10;
+    public static final int HIGH_STOCK_PRODUCTS_THRESHOLD = 100;
+    public static final int HEAD_LIMIT = 5;
 
 
     /* =========================
@@ -29,6 +32,7 @@ public final class AppConstants {
     public static final int BUFFER_SIZE = 8192; //8KB
     public static final int MAX_BUFFER_SIZE = 65507;
     public static final int RECONNECT_DELAY_MS = 2000;
+
 
 
     /* =========================

@@ -8,15 +8,6 @@ public class MonthlyRevenueStats {
     private String monthName;
     private BigDecimal revenue;
 
-
-
-    public MonthlyRevenueStats(int year, int month, String monthName, BigDecimal revenue) {
-        this.year = year;
-        this.month = month;
-        this.monthName = monthName;
-        this.revenue = revenue;
-    }
-
     public int getYear() {
         return year;
     }

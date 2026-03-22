@@ -9,6 +9,7 @@ public class UserSummary {
     private LocalDateTime registrationDate;
     private long orderCount;
 
+    public UserSummary(){}
     public UserSummary(Long userId, String username, String email, LocalDateTime registrationDate, long orderCount) {
         this.userId = userId;
         this.username = username;

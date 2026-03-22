@@ -6,12 +6,7 @@ public class MonthlyStats {
     private String monthName;
     private long count;
 
-    public MonthlyStats(int year, int month, String monthName, long count) {
-        this.year = year;
-        this.month = month;
-        this.monthName = monthName;
-        this.count = count;
-    }
+
 
     public int getYear() {
         return year;

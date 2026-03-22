@@ -5,6 +5,9 @@ public class CategoryStats {
     private String categoryName;
     private long productCount;
 
+
+    public CategoryStats(){}
+
     public CategoryStats(Long categoryId, String categoryName, long productCount) {
         this.categoryId = categoryId;
         this.categoryName = categoryName;

@@ -6,6 +6,9 @@ public class MonthlyUserStats {
     private String monthName;
     private long newUsers;
 
+
+    public MonthlyUserStats(){}
+
     public MonthlyUserStats(int year, int month, String monthName, long newUsers) {
         this.year = year;
         this.month = month;

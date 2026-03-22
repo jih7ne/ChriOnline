@@ -11,6 +11,10 @@ public class DashboardStats {
     private long totalPayments;
     private long activeUsers;
     private long pendingOrders;
+    private long deliveredOrders;
+    private long approvedOrders;
+    private long cancelledOrders;
+    private long shippedOrders;
     private long completedOrders;
     private BigDecimal totalRevenue;
     private long lowStockProducts;
@@ -156,5 +160,37 @@ public class DashboardStats {
 
     public void setRecentUsers(List<UserSummary> recentUsers) {
         this.recentUsers = recentUsers;
+    }
+
+    public long getDeliveredOrders() {
+        return deliveredOrders;
+    }
+
+    public void setDeliveredOrders(long deliveredOrders) {
+        this.deliveredOrders = deliveredOrders;
+    }
+
+    public long getApprovedOrders() {
+        return approvedOrders;
+    }
+
+    public void setApprovedOrders(long approvedOrders) {
+        this.approvedOrders = approvedOrders;
+    }
+
+    public long getCancelledOrders() {
+        return cancelledOrders;
+    }
+
+    public void setCancelledOrders(long cancelledOrders) {
+        this.cancelledOrders = cancelledOrders;
+    }
+
+    public long getShippedOrders() {
+        return shippedOrders;
+    }
+
+    public void setShippedOrders(long shippedOrders) {
+        this.shippedOrders = shippedOrders;
     }
 }

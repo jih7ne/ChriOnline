@@ -4,8 +4,13 @@ import com.chrionline.chrionline.core.enums.StatutCommande;
 import com.chrionline.chrionline.server.data.JdbcRepository;
 import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
 import com.chrionline.chrionline.server.data.models.Commande;
+import com.chrionline.chrionline.server.data.models.MonthlyRevenueStats;
+import com.chrionline.chrionline.server.data.models.MonthlyStats;
+import com.chrionline.chrionline.server.data.models.OrderSummary;
 
+import java.math.BigDecimal;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -155,5 +160,192 @@ public class CommandeRepository extends JdbcRepository<Commande> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+
+
+
+    public BigDecimal getTotalRevenue() {
+        String sql = "SELECT sum(prix_total) FROM commande WHERE statut=?";
+
+        try(PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, StatutCommande.VALIDEE.name().toLowerCase());
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getBigDecimal(1);
+            }
+
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+
+        return new BigDecimal(0);
+    }
+
+
+    public List<MonthlyStats> getMonthlyOrders() {
+        List<MonthlyStats> monthlyStats = new ArrayList<>();
+        LocalDate now = LocalDate.now();
+
+        String query = """
+            SELECT 
+                YEAR(date) AS year,
+                MONTH(date) AS month,
+                COUNT(*) AS count
+            FROM Commande
+            WHERE YEAR(date) = ?
+                      AND statut = ?
+            GROUP BY YEAR(date), MONTH(date)
+            ORDER BY year, month
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, now.getYear());
+            stmt.setString(2, StatutCommande.VALIDEE.name().toLowerCase());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int year = rs.getInt("year");
+                    int month = rs.getInt("month");
+                    long count = rs.getLong("count");
+
+                    MonthlyStats stats = new MonthlyStats();
+                    stats.setYear(year);
+                    stats.setMonth(month);
+                    stats.setMonthName(
+                            java.time.Month.of(month)
+                                    .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH)
+                    );
+                    stats.setCount(count);
+
+                    monthlyStats.add(stats);
+                }
+            }
+
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return monthlyStats;
+    }
+
+    public List<MonthlyRevenueStats> getMonthlyRevenue() {
+        List<MonthlyRevenueStats> monthlyRevenue = new ArrayList<>();
+        LocalDate now = LocalDate.now();
+
+        String query = """
+            SELECT 
+                YEAR(date) AS year,
+                MONTH(date) AS month,
+                SUM(prix_total) AS revenue
+            FROM Commande
+            WHERE YEAR(date) = ?
+              AND statut = ?
+            GROUP BY YEAR(date), MONTH(date)
+            ORDER BY month
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, now.getYear());
+            stmt.setString(2, StatutCommande.VALIDEE.name().toLowerCase());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int year = rs.getInt("year");
+                    int month = rs.getInt("month");
+                    BigDecimal revenue = rs.getBigDecimal("revenue");
+
+
+                    if (revenue == null) {
+                        revenue = BigDecimal.ZERO;
+                    }
+
+                    MonthlyRevenueStats stats = new MonthlyRevenueStats();
+                    stats.setYear(year);
+                    stats.setMonth(month);
+                    stats.setMonthName(
+                            java.time.Month.of(month)
+                                    .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH)
+                    );
+                    stats.setRevenue(revenue);
+
+                    monthlyRevenue.add(stats);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return monthlyRevenue;
+    }
+
+    public int getCommandeCountByStatus(StatutCommande statut) {
+        String sql = "SELECT COUNT(*) FROM commande WHERE statut=? ";
+
+        try(PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, statut.name().toLowerCase());
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+
+        return 0;
+
+    }
+
+    public List<OrderSummary> getRecentOrders(int limit) {
+        List<OrderSummary> orders = new ArrayList<>();
+
+        String query = """
+            SELECT 
+                c.id_commande,
+                u.nom,
+                u.prenom,
+                c.prix_total,
+                c.statut,
+                c.date
+            FROM Commande c
+            JOIN Utilisateur u ON c.id_utilisateur = u.id
+            ORDER BY c.date DESC
+            LIMIT ?
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, limit);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    OrderSummary order = new OrderSummary();
+
+                    order.setOrderId(rs.getLong("id_commande"));
+                    order.setUsername(rs.getString("nom").toUpperCase() + " " + rs.getString("prenom"));
+                    order.setTotal(rs.getBigDecimal("prix_total"));
+
+
+                    String statusStr = rs.getString("statut");
+                    order.setStatus(StatutCommande.valueOf(statusStr.toUpperCase()));
+
+                    order.setDate(rs.getTimestamp("date").toLocalDateTime());
+
+                    orders.add(order);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return orders;
     }
 }

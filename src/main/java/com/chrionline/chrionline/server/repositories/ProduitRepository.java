@@ -2,6 +2,7 @@ package com.chrionline.chrionline.server.repositories;
 
 import com.chrionline.chrionline.server.data.JdbcRepository;
 import com.chrionline.chrionline.server.data.mappers.ProductRowMapper;
+import com.chrionline.chrionline.server.data.models.CategoryStats;
 import com.chrionline.chrionline.server.data.models.Produit;
 
 import java.sql.*;
@@ -32,6 +33,25 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         }
     }
 
+
+    public int getProductStock(int threshold){
+
+        String sql = "SELECT count(*) FROM Produit WHERE stock <= ?";
+
+        try(PreparedStatement stmt = connection.prepareStatement(sql)){
+            stmt.setInt(1, threshold);
+            ResultSet rs = stmt.executeQuery();
+
+            if(rs.next()){
+                return rs.getInt(1);
+            }
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
     //  AJOUTER PLUSIEURS PRODUITS
     @Override
     public void addAll(List<Produit> items) {
@@ -57,6 +77,41 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+
+    public List<CategoryStats> getProductsByCategory() {
+        List<CategoryStats> statsList = new ArrayList<>();
+
+        String query = """
+            SELECT 
+                c.id AS category_id,
+                c.nom AS category_name,
+                COUNT(p.id) AS product_count
+            FROM Categorie c
+            LEFT JOIN Produit p ON c.id = p.id_categorie
+            GROUP BY c.id, c.nom
+            ORDER BY product_count DESC
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                CategoryStats stats = new CategoryStats();
+
+                stats.setCategoryId(rs.getLong("category_id"));
+                stats.setCategoryName(rs.getString("category_name"));
+                stats.setProductCount(rs.getLong("product_count"));
+
+                statsList.add(stats);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return statsList;
     }
 
     //  LISTER TOUS LES PRODUITS AVEC CATEGORIE

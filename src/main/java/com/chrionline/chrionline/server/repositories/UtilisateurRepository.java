@@ -1,10 +1,13 @@
 package com.chrionline.chrionline.server.repositories;
 
+import com.chrionline.chrionline.server.data.models.MonthlyUserStats;
+import com.chrionline.chrionline.server.data.models.UserSummary;
 import com.chrionline.chrionline.server.data.models.Utilisateur;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +18,24 @@ public class UtilisateurRepository {
 
     public UtilisateurRepository(Connection connection) {
         this.connection = connection;
+    }
+
+
+    public int count() {
+        String query = "SELECT COUNT(*) FROM Utilisateur ";
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(query)) {
+
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
     }
 
     private Utilisateur mapRow(ResultSet rs) throws SQLException {
@@ -78,6 +99,97 @@ public class UtilisateurRepository {
         return list;
     }
 
+    public List<MonthlyUserStats> getMonthlyNewUsers() {
+        List<MonthlyUserStats> statsList = new ArrayList<>();
+        LocalDate now = LocalDate.now();
+
+        String query = """
+            SELECT 
+                YEAR(u.date) AS year,
+                MONTH(u.date) AS month,
+                COUNT(*) AS new_users
+            FROM Utilisateur u
+            WHERE YEAR(u.date) = ?
+            GROUP BY YEAR(u.date), MONTH(u.date)
+            ORDER BY month
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, now.getYear());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int year = rs.getInt("year");
+                    int month = rs.getInt("month");
+                    long newUsers = rs.getLong("new_users");
+
+                    MonthlyUserStats stats = new MonthlyUserStats();
+                    stats.setYear(year);
+                    stats.setMonth(month);
+                    stats.setMonthName(
+                            java.time.Month.of(month)
+                                    .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH)
+                    );
+                    stats.setNewUsers(newUsers);
+
+                    statsList.add(stats);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return statsList;
+    }
+
+    public List<UserSummary> getRecentUsers(int limit) {
+        List<UserSummary> users = new ArrayList<>();
+
+        String query = """
+            SELECT 
+                u.id,
+                CONCAT(u.nom, ' ', u.prenom) AS username,
+                u.email,
+                u.date,
+                COUNT(c.id_commande) AS order_count
+            FROM Utilisateur u
+            LEFT JOIN Commande c ON u.id = c.id_utilisateur
+            GROUP BY u.id, u.nom, u.prenom, u.email, u.date
+            ORDER BY u.date DESC
+            LIMIT ?
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, limit);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    UserSummary user = new UserSummary();
+
+                    user.setUserId(rs.getLong("id"));
+                    user.setUsername(rs.getString("username"));
+                    user.setEmail(rs.getString("email"));
+
+                    user.setRegistrationDate(
+                            rs.getTimestamp("date").toLocalDateTime()
+                    );
+
+                    user.setOrderCount(rs.getLong("order_count"));
+
+                    users.add(user);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return users;
+    }
+
     public boolean update(Utilisateur u) {
         String sql = "UPDATE Utilisateur SET nom=?, prenom=?, email=?, role=?, statut=? WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -120,6 +232,8 @@ public class UtilisateurRepository {
         } catch (SQLException e) { logger.error("Erreur delete : {}", e.getMessage()); }
         return false;
     }
+
+
 
     public boolean emailExiste(String email) { return getByEmail(email) != null; }
 }

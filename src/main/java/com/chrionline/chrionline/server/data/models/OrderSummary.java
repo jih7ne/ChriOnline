@@ -12,6 +12,8 @@ public class OrderSummary {
     private StatutCommande status;
     private LocalDateTime date;
 
+    public OrderSummary() {}
+
     public OrderSummary(Long orderId, String username, BigDecimal total, StatutCommande status, LocalDateTime date) {
         this.orderId = orderId;
         this.username = username;

@@ -18,6 +18,23 @@ public abstract class JdbcRepository<T> implements IBaseRepository<T> {
         this.rowMapper = rowMapper;
     }
 
+    public int count() {
+        String query = "SELECT COUNT(*) FROM " + tableName;
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(query)) {
+
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
     @Override
     public T getById(String id) {
         String sql = "SELECT * FROM " + tableName + " WHERE id = ?";
