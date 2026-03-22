@@ -13,11 +13,12 @@ import com.chrionline.chrionline.server.repositories.*;
 import com.chrionline.chrionline.server.services.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.sql.SQLException;
 
-
 public class ServerApplication {
-    private static final Logger logger = LoggerFactory.getLogger(ServerApplication.class);
+
+    private static final Logger              logger = LoggerFactory.getLogger(ServerApplication.class);
     private static UDPNotificationDispatcher udpNotificationDispatcher;
 
     public static void main(String[] args) {
@@ -29,7 +30,6 @@ public class ServerApplication {
             registerControllers();
             logger.info("Démarrage TCP sur le port {}", AppConstants.SERVER_PORT);
             new TCPServer();
-
         } catch (Exception e) {
             logger.error("Échec du démarrage", e);
             stopInstances();
@@ -37,16 +37,12 @@ public class ServerApplication {
         }
     }
 
-
     private static void setupUDP() throws Exception {
         AppConfig.getLogger().info("Setting up UDP Services");
-
         udpNotificationDispatcher = new UDPNotificationDispatcher();
-        udpNotificationDispatcher.setNotificationHandler(notification -> {
-            logger.info("Server received notification: {}", notification.getMessage());
-        });
+        udpNotificationDispatcher.setNotificationHandler(notification ->
+                logger.info("Server received UDP notification: {}", notification.getMessage()));
         udpNotificationDispatcher.start();
-
         Thread.sleep(500);
         logger.info("Setup complete — UDP Services Initialized");
     }
@@ -84,48 +80,42 @@ public class ServerApplication {
         AppConfig.registerService(PanierService.class,
                 new PanierService(
                         AppConfig.getRepo(PanierRepository.class),
-                        AppConfig.getRepo(ProduitRepository.class)
-                ));
+                        AppConfig.getRepo(ProduitRepository.class)));
         AppConfig.registerService(CommandeService.class,
                 new CommandeService(
                         AppConfig.getRepo(CommandeRepository.class),
                         AppConfig.getRepo(LigneCommandeRepository.class),
-                        AppConfig.getRepo(ProduitRepository.class)
-                ));
+                        AppConfig.getRepo(ProduitRepository.class)));
         AppConfig.registerService(PaiementService.class,
                 new PaiementService(
                         AppConfig.getRepo(PaiementRepository.class),
-                        AppConfig.getService(CommandeService.class)
-                ));
+                        AppConfig.getService(CommandeService.class)));
         AppConfig.registerService(AdresseService.class,
                 new AdresseService(AppConfig.getRepo(AdresseRepository.class)));
-
-        //AdminService
         AppConfig.registerService(AdminService.class, new AdminService(
                 AppConfig.getRepo(ProduitRepository.class),
                 AppConfig.getRepo(CommandeRepository.class),
                 AppConfig.getRepo(UtilisateurRepository.class),
                 AppConfig.getRepo(PaiementRepository.class),
-                AppConfig.getRepo(CategorieRepository.class)
-        ));
-
+                AppConfig.getRepo(CategorieRepository.class)));
         logger.info("Services enregistrés");
     }
 
     public static void registerControllers() {
-        AppConfig.registerController("Auth", new AuthController());
-        AppConfig.registerController("Admin", new AdminController());
-        AppConfig.registerController("Commande", new CommandeController());
-        AppConfig.registerController("Panier", new PanierController());
-        AppConfig.registerController("Produit", new ProduitController());
-        AppConfig.registerController("Test", new TestClientController());
+        AppConfig.registerController("Auth",      new AuthController());
+        AppConfig.registerController("Admin",     new AdminController());
         AppConfig.registerController("Commande",  new CommandeController());
+        AppConfig.registerController("Panier",    new PanierController());
+        AppConfig.registerController("Produit",   new ProduitController());
+        AppConfig.registerController("Test",      new TestClientController());
         AppConfig.registerController("Paiement",  new PaiementController());
-        AppConfig.registerController("Adresse", new AdresseController());
+        AppConfig.registerController("Adresse",   new AdresseController());
         AppConfig.registerController("Categorie", new CategorieController());
+
+        // ── Inject UDP dispatcher BEFORE registering the controller ──────────
+        NotificationController.setDispatcher(udpNotificationDispatcher);
+        AppConfig.registerController("Notification", new NotificationController());
+
         logger.info("Controllers enregistrés");
     }
-
-
-
 }
