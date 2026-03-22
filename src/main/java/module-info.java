@@ -41,5 +41,7 @@ module com.chrionline.chrionline {
     opens com.chrionline.chrionline.network.enums to com.google.gson;
     opens com.chrionline.chrionline.server.data.models to com.google.gson;
     opens com.chrionline.chrionline.server.data.dto to com.google.gson;
+    exports com.chrionline.chrionline.shared.models;
+    opens com.chrionline.chrionline.shared.models to com.google.gson;
 
 }

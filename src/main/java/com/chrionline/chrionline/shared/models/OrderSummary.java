@@ -1,4 +1,4 @@
-package com.chrionline.chrionline.server.data.models;
+package com.chrionline.chrionline.shared.models;
 
 import com.chrionline.chrionline.core.enums.StatutCommande;
 

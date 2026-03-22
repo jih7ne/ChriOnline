@@ -1,5 +1,7 @@
 package com.chrionline.chrionline.server.data.models;
 
+import com.chrionline.chrionline.shared.models.*;
+
 import java.math.BigDecimal;
 import java.util.List;
 

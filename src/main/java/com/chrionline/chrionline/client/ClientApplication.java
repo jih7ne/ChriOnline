@@ -88,6 +88,13 @@ public class ClientApplication extends Application implements ViewManager {
     }
 
     @Override
+    public void showAdminDashboard(){
+        AdminDashboardView adminDashboardView = new AdminDashboardView(client);
+        primaryStage.setTitle("Admin Dashboard");
+        primaryStage.getScene().setRoot(adminDashboardView);
+    }
+
+    @Override
     public void showProfileView(Map<String, Object> userData) {
         ProfileView view = new ProfileView(client, userData, this);
         primaryStage.setTitle("ChriOnline — Mon Profil");

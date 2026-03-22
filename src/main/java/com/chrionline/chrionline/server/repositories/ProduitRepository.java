@@ -2,7 +2,7 @@ package com.chrionline.chrionline.server.repositories;
 
 import com.chrionline.chrionline.server.data.JdbcRepository;
 import com.chrionline.chrionline.server.data.mappers.ProductRowMapper;
-import com.chrionline.chrionline.server.data.models.CategoryStats;
+import com.chrionline.chrionline.shared.models.CategoryStats;
 import com.chrionline.chrionline.server.data.models.Produit;
 
 import java.sql.*;

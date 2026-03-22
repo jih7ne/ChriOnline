@@ -1,7 +1,7 @@
 package com.chrionline.chrionline.server.repositories;
 
-import com.chrionline.chrionline.server.data.models.MonthlyUserStats;
-import com.chrionline.chrionline.server.data.models.UserSummary;
+import com.chrionline.chrionline.shared.models.MonthlyUserStats;
+import com.chrionline.chrionline.shared.models.UserSummary;
 import com.chrionline.chrionline.server.data.models.Utilisateur;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,12 +1,12 @@
-package com.chrionline.chrionline.server.data.models;
+package com.chrionline.chrionline.shared.models;
 
-public class MonthlyStats {
+import java.math.BigDecimal;
+
+public class MonthlyRevenueStats {
     private int year;
     private int month;
     private String monthName;
-    private long count;
-
-
+    private BigDecimal revenue;
 
     public int getYear() {
         return year;
@@ -32,11 +32,11 @@ public class MonthlyStats {
         this.monthName = monthName;
     }
 
-    public long getCount() {
-        return count;
+    public BigDecimal getRevenue() {
+        return revenue;
     }
 
-    public void setCount(long count) {
-        this.count = count;
+    public void setRevenue(BigDecimal revenue) {
+        this.revenue = revenue;
     }
 }

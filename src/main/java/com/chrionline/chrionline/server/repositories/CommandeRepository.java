@@ -4,9 +4,9 @@ import com.chrionline.chrionline.core.enums.StatutCommande;
 import com.chrionline.chrionline.server.data.JdbcRepository;
 import com.chrionline.chrionline.server.data.mappers.CommandeRowMapper;
 import com.chrionline.chrionline.server.data.models.Commande;
-import com.chrionline.chrionline.server.data.models.MonthlyRevenueStats;
-import com.chrionline.chrionline.server.data.models.MonthlyStats;
-import com.chrionline.chrionline.server.data.models.OrderSummary;
+import com.chrionline.chrionline.shared.models.MonthlyRevenueStats;
+import com.chrionline.chrionline.shared.models.MonthlyStats;
+import com.chrionline.chrionline.shared.models.OrderSummary;
 
 import java.math.BigDecimal;
 import java.sql.*;

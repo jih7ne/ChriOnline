@@ -114,7 +114,7 @@ public class ServerApplication {
 
     public static void registerControllers() {
         AppConfig.registerController("Auth", new AuthController());
-        AppConfig.registerController("Admin", new AdminController());
+        AppConfig.registerController("Admin", new AdminController( ));
         AppConfig.registerController("Commande", new CommandeController());
         AppConfig.registerController("Panier", new PanierController());
         AppConfig.registerController("Produit", new ProduitController());
