@@ -45,7 +45,8 @@ public class ClientApplication extends Application implements ViewManager {
                     if ("admin".equals(role)) showAdminView(userData);
                     else showCatalogueView(userData);
                 },
-                this::showRegisterView
+                this::showRegisterView,
+                this::showForgotPasswordView   // ← pass the forgot-password callback
         );
         primaryStage.setTitle("ChriOnline — Connexion");
         primaryStage.setScene(new Scene(loginView, 900, 700));
@@ -53,6 +54,8 @@ public class ClientApplication extends Application implements ViewManager {
 
         AppConfig.getLogger().info("JavaFX Application started successfully");
     }
+
+    // ─── ViewManager implementations ──────────────────────────────────────────
 
     @Override
     public void showLoginView() {
@@ -65,7 +68,8 @@ public class ClientApplication extends Application implements ViewManager {
                     if ("admin".equals(role)) showAdminView(userData);
                     else showCatalogueView(userData);
                 },
-                this::showRegisterView
+                this::showRegisterView,
+                this::showForgotPasswordView
         );
         primaryStage.setTitle("ChriOnline — Connexion");
         if (primaryStage.getScene() == null) {
@@ -84,6 +88,16 @@ public class ClientApplication extends Application implements ViewManager {
                 this::showLoginView
         );
         primaryStage.setTitle("ChriOnline — Inscription");
+        primaryStage.getScene().setRoot(view);
+    }
+
+    @Override
+    public void showForgotPasswordView() {
+        ForgotPasswordView view = new ForgotPasswordView(
+                client,
+                this::showLoginView   // onGoToLogin callback
+        );
+        primaryStage.setTitle("ChriOnline — Mot de passe oublié");
         primaryStage.getScene().setRoot(view);
     }
 
@@ -178,7 +192,7 @@ public class ClientApplication extends Application implements ViewManager {
         primaryStage.getScene().setRoot(view);
     }
 
-
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     @Override
     public void stop() throws Exception {
@@ -187,10 +201,8 @@ public class ClientApplication extends Application implements ViewManager {
         super.stop();
     }
 
-
     private static void setupUdpServices() throws Exception {
         AppConfig.getLogger().info("--- Setting up UDP Services ---");
-        // Client listener
         listenerHandlerExecutor = Executors.newFixedThreadPool(2);
         udpListener = new UDPNotificationListener();
         udpListener.setNotificationHandler(notification -> {
@@ -198,11 +210,8 @@ public class ClientApplication extends Application implements ViewManager {
             notifications.add(notification);
         }, listenerHandlerExecutor);
         udpListener.startListening();
-
         Thread.sleep(500);
-
     }
-
 
     public static void main(String[] args) {
         try {
