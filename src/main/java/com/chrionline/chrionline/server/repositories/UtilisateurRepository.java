@@ -109,12 +109,12 @@ public class UtilisateurRepository {
 
         String query = """
             SELECT 
-                YEAR(u.date) AS year,
-                MONTH(u.date) AS month,
+                YEAR(u.created_at) AS year,
+                MONTH(u.created_at) AS month,
                 COUNT(*) AS new_users
             FROM Utilisateur u
-            WHERE YEAR(u.date) = ?
-            GROUP BY YEAR(u.date), MONTH(u.date)
+            WHERE YEAR(u.created_at) = ?
+            GROUP BY YEAR(u.created_at), MONTH(u.created_at)
             ORDER BY month
         """;
 
@@ -156,12 +156,12 @@ public class UtilisateurRepository {
                 u.id,
                 CONCAT(u.nom, ' ', u.prenom) AS username,
                 u.email,
-                u.date,
+                u.created_at,
                 COUNT(c.id_commande) AS order_count
             FROM Utilisateur u
             LEFT JOIN Commande c ON u.id = c.id_utilisateur
-            GROUP BY u.id, u.nom, u.prenom, u.email, u.date
-            ORDER BY u.date DESC
+            GROUP BY u.id, u.nom, u.prenom, u.email, u.created_at
+            ORDER BY u.created_at DESC
             LIMIT ?
         """;
 
@@ -178,7 +178,7 @@ public class UtilisateurRepository {
                     user.setEmail(rs.getString("email"));
 
                     user.setRegistrationDate(
-                            rs.getTimestamp("date").toLocalDateTime()
+                            rs.getTimestamp("created_at").toLocalDateTime()
                     );
 
                     user.setOrderCount(rs.getLong("order_count"));

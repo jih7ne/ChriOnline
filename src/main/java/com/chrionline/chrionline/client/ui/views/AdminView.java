@@ -116,7 +116,7 @@ public class AdminView extends BorderPane {
     public void showDashboard() {
         currentPage = AdminSidebar.AdminPage.DASHBOARD;
         rebuildSidebar();
-        rightPane.setCenter(buildComingSoon("Dashboard"));
+        rightPane.setCenter(new AdminDashboardView(client, viewManager));
     }
 
     public void showProduits() {

@@ -1,5 +1,6 @@
 package com.chrionline.chrionline.client.ui.views;
 
+import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.core.theme.AppTheme;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.protocol.AppResponse;
@@ -16,142 +17,88 @@ import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 
 public class AdminDashboardView extends BorderPane {
 
     private final TCPClient client;
+    private final ViewManager viewManager;
     private VBox contentArea;
     private Label refreshTimeLabel;
     private DashboardStats currentStats;
 
-    // Chart references for updates
-    private LineChart<String, Number> ordersChart;
-    private LineChart<String, Number> revenueChart;
-    private PieChart categoryChart;
-
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    public AdminDashboardView(TCPClient client) {
+
+    private static final String CHART_CSS =
+            ".chart-title { -fx-text-fill: " + AppTheme.TEXT_MAIN + "; -fx-font-size: 13px; }" +
+                    ".axis-label { -fx-text-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 12px; }" +
+                    ".axis { -fx-tick-label-fill: " + AppTheme.TEXT_MAIN + "; }" +
+                    ".chart-plot-background { -fx-background-color: transparent; }" +
+                    ".chart-content { -fx-background-color: transparent; }" +
+                    ".chart-series-line { -fx-stroke-width: 2.5; }" +
+                    ".chart-legend-item { -fx-text-fill: " + AppTheme.TEXT_MAIN + "; }" +
+                    ".chart-legend { -fx-background-color: transparent; }" +
+                    ".pie-label { -fx-fill: " + AppTheme.TEXT_MAIN + "; }" +
+                    ".default-color0.chart-line-symbol { -fx-background-color: " + AppTheme.PRIMARY + ", white; }" +
+                    ".default-color0.chart-series-line { -fx-stroke: " + AppTheme.PRIMARY + "; }";
+
+    public AdminDashboardView(TCPClient client, ViewManager viewManager) {
         this.client = client;
+        this.viewManager = viewManager;
         createMainLayout();
         loadStatistics();
     }
 
     private void createMainLayout() {
         setStyle(AppTheme.getBackgroundStyle());
-
-        // Header
         setTop(createHeader());
 
-        // Left Sidebar
-        setLeft(createSidebar());
-
-        // Content Area
-        contentArea = new VBox(20);
-        contentArea.setPadding(new Insets(20));
+        contentArea = new VBox(24);
+        contentArea.setPadding(new Insets(24, 28, 28, 28));
         contentArea.setStyle("-fx-background-color: transparent;");
 
         ScrollPane scrollPane = new ScrollPane(contentArea);
         scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         scrollPane.getStyleClass().add("edge-to-edge");
 
         setCenter(scrollPane);
-
-        // Apply styles to scroll pane
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
     }
 
     private HBox createHeader() {
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(20, 30, 20, 30));
-        header.setStyle("-fx-background-color: " + AppTheme.CARD_BG +
-                ";-fx-border-color: " + AppTheme.FIELD_BORDER +
-                ";-fx-border-width: 0 0 1 0;");
-        header.setSpacing(20);
+        header.setPadding(new Insets(18, 28, 18, 28));
+        header.setStyle(
+                "-fx-background-color: " + AppTheme.CARD_BG + ";" +
+                        "-fx-border-color: " + AppTheme.FIELD_BORDER + ";" +
+                        "-fx-border-width: 0 0 1 0;"
+        );
+        header.setSpacing(16);
 
-        // Title
         Label titleLabel = new Label("Admin Dashboard");
-        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+        titleLabel.setStyle(
+                "-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";"
+        );
 
-        // Refresh button
-        Button refreshBtn = new Button("⟳ Refresh");
+        refreshTimeLabel = new Label("Last update: --");
+        refreshTimeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
+
+        Button refreshBtn = new Button("⟳  Refresh");
         AppTheme.stylePrimaryButton(refreshBtn);
         refreshBtn.setPrefWidth(120);
         refreshBtn.setOnAction(e -> loadStatistics());
 
-        // Last update label
-        refreshTimeLabel = new Label("Last update: --");
-        refreshTimeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        header.getChildren().addAll(titleLabel, spacer, refreshBtn, refreshTimeLabel);
+        header.getChildren().addAll(titleLabel, spacer, refreshTimeLabel, refreshBtn);
         return header;
-    }
-
-    private VBox createSidebar() {
-        VBox sidebar = new VBox(15);
-        sidebar.setPadding(new Insets(30, 20, 30, 20));
-        sidebar.setStyle("-fx-background-color: " + AppTheme.CARD_BG + ";" +
-                "-fx-border-color: " + AppTheme.FIELD_BORDER + ";" +
-                "-fx-border-width: 0 1 0 0;");
-        sidebar.setPrefWidth(250);
-
-        // Logo/Title
-        Label logo = new Label("AdminPanel");
-        logo.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";");
-        logo.setPadding(new Insets(0, 0, 20, 0));
-
-        // Navigation items
-        Button dashboardBtn = createNavButton("Dashboard", true);
-        Button productsBtn = createNavButton("Products", false);
-        Button ordersBtn = createNavButton("Orders", false);
-        Button usersBtn = createNavButton("Users", false);
-        Button categoriesBtn = createNavButton("Categories", false);
-        Button paymentsBtn = createNavButton("Payments", false);
-
-        // Settings at bottom
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
-        Button settingsBtn = createNavButton("Settings", false);
-
-        sidebar.getChildren().addAll(logo, dashboardBtn, productsBtn, ordersBtn,
-                usersBtn, categoriesBtn, paymentsBtn,
-                spacer, settingsBtn);
-
-        return sidebar;
-    }
-
-    private Button createNavButton(String text, boolean isActive) {
-        Button btn = new Button(text);
-        btn.setMaxWidth(Double.MAX_VALUE);
-        btn.setAlignment(Pos.CENTER_LEFT);
-        btn.setPadding(new Insets(12, 20, 12, 20));
-
-        if (isActive) {
-            AppTheme.styleToggleActive(btn);
-        } else {
-            AppTheme.styleToggleInactive(btn);
-            btn.setOnMouseEntered(e -> btn.setStyle(
-                    "-fx-background-color: " + AppTheme.FIELD_BG + ";" +
-                            "-fx-text-fill: " + AppTheme.TEXT_MAIN + ";" +
-                            "-fx-font-size: 14px;" +
-                            "-fx-background-radius: 30px;" +
-                            "-fx-padding: 12px 20px;" +
-                            "-fx-cursor: hand;"
-            ));
-            btn.setOnMouseExited(e -> AppTheme.styleToggleInactive(btn));
-        }
-
-        return btn;
     }
 
     private void loadStatistics() {
@@ -166,7 +113,6 @@ public class AdminDashboardView extends BorderPane {
 
             refreshContent();
 
-            // Update refresh time
             refreshTimeLabel.setText("Last update: " +
                     java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
 
@@ -179,296 +125,441 @@ public class AdminDashboardView extends BorderPane {
     public void refreshContent() {
         contentArea.getChildren().clear();
 
-        // Stats Cards Grid
+        // Section: KPI Cards
+        Label kpiTitle = createSectionLabel("Key Metrics");
+        contentArea.getChildren().add(kpiTitle);
         contentArea.getChildren().add(createStatsGrid());
 
-        // Charts Section
-        contentArea.getChildren().add(createChartsSection());
+        // Divider
+        contentArea.getChildren().add(createDivider());
 
-        // Recent Activity Section
+        // Section: Analytics (Tabbed Charts)
+        Label analyticsTitle = createSectionLabel("Analytics Overview");
+        contentArea.getChildren().add(analyticsTitle);
+        contentArea.getChildren().add(createChartsTabPane());
+
+        // Divider
+        contentArea.getChildren().add(createDivider());
+
+        // Section: Recent Activity Tables
+        Label activityTitle = createSectionLabel("Recent Activity");
+        contentArea.getChildren().add(activityTitle);
         contentArea.getChildren().add(createRecentActivitySection());
-
     }
 
-    private GridPane createStatsGrid() {
-        GridPane grid = new GridPane();
-        grid.setHgap(20);
-        grid.setVgap(20);
-        grid.setPadding(new Insets(0, 0, 10, 0));
+    // ─── Section Label ────────────────────────────────────────────────────────
 
-        // Row 1 - Main metrics
-        grid.add(createStatCard("Total Products",
-                String.valueOf(currentStats.getTotalProducts()),
-                "Products in catalog"), 0, 0);
-        grid.add(createStatCard("Categories",
-                String.valueOf(currentStats.getTotalCategories()),
-                "Product categories"), 1, 0);
-        grid.add(createStatCard("Total Users",
-                String.valueOf(currentStats.getTotalUsers()),
-                "Registered users"), 2, 0);
-        grid.add(createStatCard("Total Orders",
-                String.valueOf(currentStats.getTotalOrders()),
-                "All time orders"), 3, 0);
+    private Label createSectionLabel(String text) {
+        Label label = new Label(text);
+        label.setStyle(
+                "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";"
+        );
+        return label;
+    }
 
-        // Row 2 - Financial metrics
-        grid.add(createStatCard("Total Revenue",
-                formatCurrency(currentStats.getTotalRevenue()),
-                "From completed payments"), 0, 1);
+    private Region createDivider() {
+        Region divider = new Region();
+        divider.setPrefHeight(1);
+        divider.setMaxWidth(Double.MAX_VALUE);
+        divider.setStyle("-fx-background-color: " + AppTheme.FIELD_BORDER + ";");
+        VBox.setMargin(divider, new Insets(4, 0, 4, 0));
+        return divider;
+    }
 
-        // Row 3 - Order status & stock
-        grid.add(createStatCard("Pending Orders",
-                String.valueOf(currentStats.getPendingOrders()),
-                "Awaiting processing"), 0, 2);
-        grid.add(createStatCard("Completed Orders",
-                String.valueOf(currentStats.getCompletedOrders()),
-                "Successfully delivered"), 1, 2);
-        grid.add(createStatCard("Low Stock",
-                String.valueOf(currentStats.getLowStockProducts()),
-                "Products below 10 units"), 2, 2);
-        grid.add(createStatCard("Out of Stock",
-                String.valueOf(currentStats.getOutOfStockProducts()),
-                "Products unavailable"), 3, 2);
+    // ─── Stats Grid ───────────────────────────────────────────────────────────
 
-        return grid;
+    private FlowPane createStatsGrid() {
+        FlowPane flow = new FlowPane();
+        flow.setHgap(16);
+        flow.setVgap(16);
+
+
+        // Row 1: main metrics
+        flow.getChildren().add(createStatCard("📦  Total Products",
+                String.valueOf(currentStats.getTotalProducts()), "Products in catalog"));
+        flow.getChildren().add(createStatCard("🏷️  Categories",
+                String.valueOf(currentStats.getTotalCategories()), "Product categories"));
+        flow.getChildren().add(createStatCard("👤  Total Users",
+                String.valueOf(currentStats.getTotalUsers()), "Registered users"));
+        flow.getChildren().add(createStatCard("🛒  Total Orders",
+                String.valueOf(currentStats.getTotalOrders()), "All time orders"));
+
+        // Row 2: financial
+        flow.getChildren().add(createStatCard("💰  Total Revenue",
+                formatCurrency(currentStats.getTotalRevenue()), "From completed payments"));
+
+        // Row 3: status & stock
+        flow.getChildren().add(createStatCard("⏳  Pending Orders",
+                String.valueOf(currentStats.getPendingOrders()), "Awaiting processing"));
+        flow.getChildren().add(createStatCard("✅  Completed Orders",
+                String.valueOf(currentStats.getCompletedOrders()), "Successfully delivered"));
+        flow.getChildren().add(createStatCard("⚠️  Low Stock",
+                String.valueOf(currentStats.getLowStockProducts()), "Below 10 units"));
+        flow.getChildren().add(createStatCard("❌  Out of Stock",
+                String.valueOf(currentStats.getOutOfStockProducts()), "Products unavailable"));
+
+        return flow;
     }
 
     private VBox createStatCard(String title, String value, String subtitle) {
-        VBox card = new VBox(10);
-        card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(20));
+        VBox card = new VBox(8);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(18, 22, 18, 22));
         AppTheme.styleCard(card);
-        card.setPrefWidth(200);
+        card.setPrefWidth(190);
+        card.setMinWidth(170);
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
+        titleLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
+        titleLabel.setWrapText(true);
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";");
+        valueLabel.setStyle(
+                "-fx-font-size: 30px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.PRIMARY + ";"
+        );
 
         Label subtitleLabel = new Label(subtitle);
         subtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
+        subtitleLabel.setWrapText(true);
 
         card.getChildren().addAll(titleLabel, valueLabel, subtitleLabel);
         return card;
     }
 
-    private VBox createChartsSection() {
-        VBox section = new VBox(15);
-        section.setPadding(new Insets(0, 0, 20, 0));
+    // ─── Charts Tab Pane ──────────────────────────────────────────────────────
 
-        Label sectionTitle = new Label("Analytics Overview");
-        sectionTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+    private TabPane createChartsTabPane() {
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.setStyle(
+                "-fx-background-color: " + AppTheme.CARD_BG + ";" +
+                        "-fx-border-color: " + AppTheme.FIELD_BORDER + ";" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;"
+        );
 
-        HBox chartsBox = new HBox(20);
-        chartsBox.setAlignment(Pos.CENTER);
+        Tab ordersTab = new Tab("📈  Monthly Orders");
+        ordersTab.setContent(createChartTabContent(createOrdersChart()));
 
-        // Orders Chart
-        VBox ordersChartCard = createChartCard("Monthly Orders", createOrdersChart());
-        // Revenue Chart
-        VBox revenueChartCard = createChartCard("Monthly Revenue", createRevenueChart());
-        // Category Distribution
-        VBox categoryChartCard = createChartCard("Products by Category", createCategoryChart());
+        Tab revenueTab = new Tab("💶  Monthly Revenue");
+        revenueTab.setContent(createChartTabContent(createRevenueChart()));
 
-        chartsBox.getChildren().addAll(ordersChartCard, revenueChartCard, categoryChartCard);
+        Tab categoryTab = new Tab("🥧  By Category");
+        categoryTab.setContent(createChartTabContent(createCategoryChart()));
 
-        section.getChildren().addAll(sectionTitle, chartsBox);
-        return section;
+        tabPane.getTabs().addAll(ordersTab, revenueTab, categoryTab);
+        tabPane.setPrefHeight(420);
+
+        return tabPane;
     }
 
-    private VBox createChartCard(String title, Chart chart) {
-        VBox card = new VBox(10);
-        card.setPadding(new Insets(15));
-        AppTheme.styleCard(card);
-
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
-
-        card.getChildren().addAll(titleLabel, chart);
-        return card;
+    private VBox createChartTabContent(Chart chart) {
+        VBox wrapper = new VBox(chart);
+        wrapper.setPadding(new Insets(16));
+        wrapper.setStyle("-fx-background-color: transparent;");
+        VBox.setVgrow(chart, Priority.ALWAYS);
+        return wrapper;
     }
 
     private LineChart<String, Number> createOrdersChart() {
-        final CategoryAxis xAxis = new CategoryAxis();
-        final NumberAxis yAxis = new NumberAxis();
-        xAxis.setLabel("Month");
-        yAxis.setLabel("Number of Orders");
+        CategoryAxis xAxis = new CategoryAxis();
+        NumberAxis yAxis = new NumberAxis();
+        styleAxis(xAxis, "Month");
+        styleAxis(yAxis, "Number of Orders");
 
-        ordersChart = new LineChart<>(xAxis, yAxis);
-        ordersChart.setAnimated(false);
-        ordersChart.setCreateSymbols(true);
-        ordersChart.setPrefHeight(300);
-        ordersChart.setPrefWidth(350);
+        LineChart<String, Number> chart = new LineChart<>(xAxis, yAxis);
+        chart.setAnimated(false);
+        chart.setCreateSymbols(true);
+        chart.setPrefHeight(360);
+        chart.setStyle("-fx-background-color: transparent;");
+        applyChartCSS(chart);
 
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Orders");
 
         if (currentStats != null && currentStats.getMonthlyOrders() != null) {
-            for (MonthlyStats stats : currentStats.getMonthlyOrders()) {
-                series.getData().add(new XYChart.Data<>(stats.getMonthName(), stats.getCount()));
+            for (MonthlyStats s : currentStats.getMonthlyOrders()) {
+                series.getData().add(new XYChart.Data<>(s.getMonthName(), s.getCount()));
             }
         }
 
-        ordersChart.getData().add(series);
-        return ordersChart;
+        chart.getData().add(series);
+        applyChartCSS(chart);
+        return chart;
     }
 
     private LineChart<String, Number> createRevenueChart() {
-        final CategoryAxis xAxis = new CategoryAxis();
-        final NumberAxis yAxis = new NumberAxis();
-        xAxis.setLabel("Month");
-        yAxis.setLabel("Revenue (€)");
+        CategoryAxis xAxis = new CategoryAxis();
+        NumberAxis yAxis = new NumberAxis();
+        styleAxis(xAxis, "Month");
+        styleAxis(yAxis, "Revenue (MAD)");
 
-        revenueChart = new LineChart<>(xAxis, yAxis);
-        revenueChart.setAnimated(false);
-        revenueChart.setCreateSymbols(true);
-        revenueChart.setPrefHeight(300);
-        revenueChart.setPrefWidth(350);
+        LineChart<String, Number> chart = new LineChart<>(xAxis, yAxis);
+        chart.setAnimated(false);
+        chart.setCreateSymbols(true);
+        chart.setPrefHeight(360);
+        chart.setStyle("-fx-background-color: transparent;");
+        applyChartCSS(chart);
 
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Revenue");
 
         if (currentStats != null && currentStats.getMonthlyRevenue() != null) {
-            for (MonthlyRevenueStats stats : currentStats.getMonthlyRevenue()) {
-                series.getData().add(new XYChart.Data<>(stats.getMonthName(), stats.getRevenue()));
+            for (MonthlyRevenueStats s : currentStats.getMonthlyRevenue()) {
+                series.getData().add(new XYChart.Data<>(s.getMonthName(), s.getRevenue()));
             }
         }
 
-        revenueChart.getData().add(series);
-        return revenueChart;
+        chart.getData().add(series);
+        applyChartCSS(chart);
+        return chart;
     }
 
     private PieChart createCategoryChart() {
-        categoryChart = new PieChart();
-        categoryChart.setPrefHeight(300);
-        categoryChart.setPrefWidth(350);
-        categoryChart.setLabelsVisible(true);
-        categoryChart.setLegendVisible(true);
+        PieChart chart = new PieChart();
+        chart.setPrefHeight(360);
+        chart.setLabelsVisible(true);
+        chart.setLegendVisible(true);
+        chart.setStyle("-fx-background-color: transparent;");
+        applyChartCSS(chart);
 
         if (currentStats != null && currentStats.getProductsByCategory() != null) {
             ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
-            for (CategoryStats stats : currentStats.getProductsByCategory()) {
-                pieData.add(new PieChart.Data(stats.getCategoryName(), stats.getProductCount()));
+            for (CategoryStats s : currentStats.getProductsByCategory()) {
+                pieData.add(new PieChart.Data(s.getCategoryName(), s.getProductCount()));
             }
-            categoryChart.setData(pieData);
+            chart.setData(pieData);
         }
 
-        return categoryChart;
+        applyChartCSS(chart);
+
+        return chart;
     }
 
-    private VBox createRecentActivitySection() {
-        VBox section = new VBox(15);
-        section.setPadding(new Insets(0, 0, 20, 0));
 
-        Label sectionTitle = new Label("Recent Activity");
-        sectionTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+    private void applyChartCSS(Chart chart) {
 
-        HBox activityBox = new HBox(20);
-        activityBox.setAlignment(Pos.CENTER);
+        chart.getStylesheets().clear();
+        chart.setStyle(CHART_CSS);
+    }
 
-        // Recent Orders Table
+
+    private void styleAxis(Axis<?> axis, String label) {
+        axis.setLabel(label);
+        // Force label color to be readable regardless of theme
+        axis.setStyle(
+                "-fx-tick-label-fill: " + AppTheme.TEXT_MAIN + ";" +
+                        "-fx-text-fill: " + AppTheme.TEXT_MAIN + ";"
+        );
+        axis.lookup(".axis-label");
+    }
+
+    // ─── Recent Activity Tables ───────────────────────────────────────────────
+
+    private HBox createRecentActivitySection() {
+        HBox box = new HBox(20);
+        box.setAlignment(Pos.TOP_LEFT);
+
         VBox ordersCard = createRecentOrdersTable();
-        // Recent Users Table
         VBox usersCard = createRecentUsersTable();
 
-        activityBox.getChildren().addAll(ordersCard, usersCard);
+        HBox.setHgrow(ordersCard, Priority.ALWAYS);
+        HBox.setHgrow(usersCard, Priority.ALWAYS);
 
-        section.getChildren().addAll(sectionTitle, activityBox);
-        return section;
+        box.getChildren().addAll(ordersCard, usersCard);
+        return box;
     }
 
     private VBox createRecentOrdersTable() {
-        VBox card = new VBox(10);
-        card.setPadding(new Insets(15));
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(18));
         AppTheme.styleCard(card);
-        card.setPrefWidth(400);
 
         Label title = new Label("Recent Orders");
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
 
-        TableView<OrderSummary> tableView = new TableView<>();
-        tableView.setStyle("-fx-background-color: transparent;");
+        TableView<OrderSummary> table = new TableView<>();
+        styleTable(table);
 
-        TableColumn<OrderSummary, Long> idCol = new TableColumn<>("Order ID");
+        TableColumn<OrderSummary, Long> idCol = makeColumn("Order ID", 80);
         idCol.setCellValueFactory(new PropertyValueFactory<>("orderId"));
-        idCol.setPrefWidth(80);
 
-        TableColumn<OrderSummary, String> userCol = new TableColumn<>("User");
+        TableColumn<OrderSummary, String> userCol = makeColumn("User", 110);
         userCol.setCellValueFactory(new PropertyValueFactory<>("username"));
-        userCol.setPrefWidth(100);
 
-        TableColumn<OrderSummary, String> totalCol = new TableColumn<>("Total");
-        totalCol.setCellValueFactory(cellData ->
-                new SimpleObjectProperty<>(formatCurrency(cellData.getValue().getTotal())));
-        totalCol.setPrefWidth(80);
+        TableColumn<OrderSummary, String> totalCol = makeColumn("Total", 90);
+        totalCol.setCellValueFactory(c -> new SimpleObjectProperty<>(formatCurrency(c.getValue().getTotal())));
 
-        TableColumn<OrderSummary, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getStatus().toString()));
-        statusCol.setPrefWidth(80);
+        TableColumn<OrderSummary, String> statusCol = makeColumn("Status", 100);
+        statusCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getStatus().toString()));
+        statusCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                if (empty || status == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    Label badge = new Label(status);
+                    badge.setPadding(new Insets(3, 10, 3, 10));
+                    badge.setStyle(
+                            "-fx-background-radius: 20px;" +
+                                    "-fx-font-size: 11px;" +
+                                    "-fx-font-weight: bold;" +
+                                    getStatusStyle(status)
+                    );
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
 
-        TableColumn<OrderSummary, String> dateCol = new TableColumn<>("Date");
-        dateCol.setCellValueFactory(cellData ->
-                new SimpleObjectProperty<>(cellData.getValue().getDate().format(dateFormatter)));
-        dateCol.setPrefWidth(120);
+        TableColumn<OrderSummary, String> dateCol = makeColumn("Date", 130);
+        dateCol.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getDate().format(dateFormatter)));
 
-        tableView.getColumns().addAll(idCol, userCol, totalCol, statusCol, dateCol);
+        table.getColumns().addAll(idCol, userCol, totalCol, statusCol, dateCol);
 
         if (currentStats != null && currentStats.getRecentOrders() != null) {
-            tableView.setItems(FXCollections.observableArrayList(currentStats.getRecentOrders()));
+            table.setItems(FXCollections.observableArrayList(currentStats.getRecentOrders()));
         }
 
-        tableView.setPrefHeight(250);
+        table.setPrefHeight(280);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        card.getChildren().addAll(title, tableView);
+        card.getChildren().addAll(title, table);
         return card;
     }
 
     private VBox createRecentUsersTable() {
-        VBox card = new VBox(10);
-        card.setPadding(new Insets(15));
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(18));
         AppTheme.styleCard(card);
-        card.setPrefWidth(400);
 
         Label title = new Label("New Users");
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
 
-        TableView<UserSummary> tableView = new TableView<>();
-        tableView.setStyle("-fx-background-color: transparent;");
+        TableView<UserSummary> table = new TableView<>();
+        styleTable(table);
 
-        TableColumn<UserSummary, String> usernameCol = new TableColumn<>("Username");
+        TableColumn<UserSummary, String> usernameCol = makeColumn("Username", 110);
         usernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
-        usernameCol.setPrefWidth(100);
+        // Add avatar indicator
+        usernameCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String username, boolean empty) {
+                super.updateItem(username, empty);
+                if (empty || username == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    HBox cell = new HBox(8);
+                    cell.setAlignment(Pos.CENTER_LEFT);
 
-        TableColumn<UserSummary, String> emailCol = new TableColumn<>("Email");
+                    // Simple colored circle avatar with initial
+                    StackPane avatar = new StackPane();
+                    Circle circle = new Circle(13);
+                    circle.setFill(Color.web(AppTheme.PRIMARY, 0.2));
+                    Label initial = new Label(username.substring(0, 1).toUpperCase());
+                    initial.setStyle("-fx-text-fill: " + AppTheme.PRIMARY + "; -fx-font-size: 11px; -fx-font-weight: bold;");
+                    avatar.getChildren().addAll(circle, initial);
+
+                    Label nameLabel = new Label(username);
+                    nameLabel.setStyle("-fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+
+                    cell.getChildren().addAll(avatar, nameLabel);
+                    setGraphic(cell);
+                    setText(null);
+                }
+            }
+        });
+
+        TableColumn<UserSummary, String> emailCol = makeColumn("Email", 160);
         emailCol.setCellValueFactory(new PropertyValueFactory<>("email"));
-        emailCol.setPrefWidth(150);
 
-        TableColumn<UserSummary, String> dateCol = new TableColumn<>("Joined");
-        dateCol.setCellValueFactory(cellData ->
-                new SimpleObjectProperty<>(cellData.getValue().getRegistrationDate().format(dateFormatter)));
-        dateCol.setPrefWidth(120);
+        TableColumn<UserSummary, String> dateCol = makeColumn("Joined", 130);
+        dateCol.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getRegistrationDate().format(dateFormatter)));
 
-        TableColumn<UserSummary, Long> ordersCol = new TableColumn<>("Orders");
+        TableColumn<UserSummary, Long> ordersCol = makeColumn("Orders", 70);
         ordersCol.setCellValueFactory(new PropertyValueFactory<>("orderCount"));
-        ordersCol.setPrefWidth(80);
 
-        tableView.getColumns().addAll(usernameCol, emailCol, dateCol, ordersCol);
+        table.getColumns().addAll(usernameCol, emailCol, dateCol, ordersCol);
 
         if (currentStats != null && currentStats.getRecentUsers() != null) {
-            tableView.setItems(FXCollections.observableArrayList(currentStats.getRecentUsers()));
+            table.setItems(FXCollections.observableArrayList(currentStats.getRecentUsers()));
         }
 
-        tableView.setPrefHeight(250);
+        table.setPrefHeight(280);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        card.getChildren().addAll(title, tableView);
+        card.getChildren().addAll(title, table);
         return card;
     }
 
+    // ─── Table helpers ────────────────────────────────────────────────────────
 
+    private <T> void styleTable(TableView<T> table) {
+        table.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: " + AppTheme.FIELD_BORDER + ";" +
+                        "-fx-border-radius: 6px;"
+        );
+        // Alternating row colors via row factory
+        table.setRowFactory(tv -> {
+            TableRow<T> row = new TableRow<>();
+            row.itemProperty().addListener((obs, oldItem, newItem) -> {
+                if (row.getIndex() % 2 == 0) {
+                    row.setStyle("-fx-background-color: transparent;");
+                } else {
+                    row.setStyle("-fx-background-color: " + AppTheme.FIELD_BG + ";");
+                }
+            });
+            // Hover highlight
+            row.setOnMouseEntered(e -> {
+                if (!row.isEmpty()) {
+                    row.setStyle("-fx-background-color: " + AppTheme.PRIMARY + "22;");
+                }
+            });
+            row.setOnMouseExited(e -> {
+                if (!row.isEmpty()) {
+                    if (row.getIndex() % 2 == 0) {
+                        row.setStyle("-fx-background-color: transparent;");
+                    } else {
+                        row.setStyle("-fx-background-color: " + AppTheme.FIELD_BG + ";");
+                    }
+                }
+            });
+            return row;
+        });
+    }
+
+    private <S, T> TableColumn<S, T> makeColumn(String header, double prefWidth) {
+        TableColumn<S, T> col = new TableColumn<>(header);
+        col.setPrefWidth(prefWidth);
+        col.setStyle("-fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+        return col;
+    }
+
+
+    private String getStatusStyle(String status) {
+        return switch (status.toUpperCase()) {
+            case "COMPLETED", "DELIVERED" ->
+                    "-fx-background-color: #d1fae5; -fx-text-fill: #065f46;";
+            case "PENDING" ->
+                    "-fx-background-color: #fef3c7; -fx-text-fill: #92400e;";
+            case "CANCELLED", "CANCELED" ->
+                    "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b;";
+            case "PROCESSING", "SHIPPED" ->
+                    "-fx-background-color: #dbeafe; -fx-text-fill: #1e40af;";
+            default ->
+                    "-fx-background-color: " + AppTheme.FIELD_BG + "; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";";
+        };
+    }
+
+    // ─── Utilities ────────────────────────────────────────────────────────────
 
     private String formatCurrency(BigDecimal amount) {
-        if (amount == null) return "€0.00";
-        return String.format("€%.2f", amount);
+        if (amount == null) return "0.00 MAD";
+        return String.format("%.2f MAD", amount);
     }
 
     private void showError(String message) {

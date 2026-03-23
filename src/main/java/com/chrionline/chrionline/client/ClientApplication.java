@@ -124,9 +124,8 @@ public class ClientApplication extends Application implements ViewManager {
 
     @Override
     public void showAdminDashboard(){
-        AdminDashboardView adminDashboardView = new AdminDashboardView(client);
         primaryStage.setTitle("Admin Dashboard");
-        primaryStage.getScene().setRoot(adminDashboardView);
+        setView(new AdminDashboardView(client, this));
     }
 
     @Override
