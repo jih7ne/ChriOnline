@@ -41,8 +41,6 @@ public class AdminService {
         //Have to check sockets
         dashboardStats.setActiveUsers(0);
         dashboardStats.setPendingOrders(commandeRepository.getCommandeCountByStatus(StatutCommande.EN_ATTENTE));
-        dashboardStats.setCompletedOrders(commandeRepository.getCommandeCountByStatus(StatutCommande.LIVREE));
-        dashboardStats.setShippedOrders(commandeRepository.getCommandeCountByStatus(StatutCommande.EXPEDIEE));
         dashboardStats.setCancelledOrders(commandeRepository.getCommandeCountByStatus(StatutCommande.ANNULEE));
         dashboardStats.setApprovedOrders(commandeRepository.getCommandeCountByStatus(StatutCommande.VALIDEE));
         dashboardStats.setTotalRevenue(commandeRepository.getTotalRevenue());
