@@ -28,6 +28,8 @@ public class CheckoutView extends BorderPane {
     private final ViewManager viewManager;
     private final Consumer<Map<String, Object>> onPaiementSuccess;
     private final Runnable onAnnuler;
+    private int idCommandeEnAttente = -1;
+    private String uuidCommandeEnAttente = null;
 
     private final ComboBox<Map<String, Object>> adresseComboBox;
     private final TextField numeroCarteField;
@@ -104,6 +106,7 @@ public class CheckoutView extends BorderPane {
                         : item.get("rue") + ", " + item.get("ville"));
             }
         });
+
 
         Button btnNouvelleAdresse = new Button("+ Nouvelle adresse");
         btnNouvelleAdresse.setStyle(
@@ -355,16 +358,18 @@ public class CheckoutView extends BorderPane {
                         .parameter("idUtilisateur", idUtilisateur).build();
                 AppResponse resp = tcpClient.sendAndParse(req);
                 if (resp != null && resp.isSuccess()) {
-                    @SuppressWarnings("unchecked")
                     List<Map<String, Object>> adresses = resp.getDataAs(List.class);
                     Platform.runLater(() -> {
                         if (adresses != null) {
                             adresseComboBox.getItems().addAll(adresses);
-                            // Sélectionner automatiquement l'adresse principale
                             adresses.stream()
                                     .filter(a -> estPrincipale(a))
                                     .findFirst()
-                                    .ifPresent(adresseComboBox::setValue);
+                                    .ifPresent(a -> {
+                                        adresseComboBox.setValue(a); // ← ne déclenche plus le listener
+                                        int idAdr = ((Number) a.get("id")).intValue();
+                                        creerCommandeEnAttente(idAdr); // ← seul appel
+                                    });
                         }
                     });
                 }
@@ -388,7 +393,6 @@ public class CheckoutView extends BorderPane {
             showError("Veuillez sélectionner une adresse de livraison.");
             return;
         }
-        Map<String, Object> adresseSelectionnee = adresseComboBox.getValue();
 
         String numeroCarte = numeroCarteField.getText().replace(" ", "");
         String cvv = cvvField.getText();
@@ -400,55 +404,24 @@ public class CheckoutView extends BorderPane {
             return;
         }
 
+        // Vérifier que la commande EN_ATTENTE a bien été créée
+        if (idCommandeEnAttente == -1) {
+            showError("Commande non initialisée. Veuillez patienter ou recharger la page.");
+            return;
+        }
+
         btnConfirmer.setDisable(true);
         btnConfirmer.setText("Traitement en cours...");
         hideError();
 
+        final int idCommande = idCommandeEnAttente;
+        final String uuidCommande = uuidCommandeEnAttente;
+
         new Thread(() -> {
             try {
-                int idUser = ((Number) userData.get("id")).intValue();
-                Object idAdresseObj = adresseComboBox.getValue().get("id");
-                if (idAdresseObj == null) {
-                    Platform.runLater(() -> showError("Adresse invalide, veuillez en sélectionner une autre."));
-                    return;
-                }
-                int idAdresse;
-                if (idAdresseObj instanceof Number) {
-                    idAdresse = ((Number) idAdresseObj).intValue();
-                } else {
-                    idAdresse = Integer.parseInt(idAdresseObj.toString());
-                }
-
-                // Étape 1 : Créer la commande
-                Map<String, Object> commandeParams = new HashMap<>();
-                commandeParams.put("idUtilisateur", idUser);
-                commandeParams.put("idAdresse", idAdresse);
-                commandeParams.put("lignes", lignes);
-
-                AppRequest reqCommande = new AppRequest.Builder()
-                        .controller("Commande").action("valider")
-                        .payload(JsonUtils.toJson(commandeParams)).build();
-                AppResponse respCommande = tcpClient.sendAndParse(reqCommande);
-
-                if (respCommande == null || !respCommande.isSuccess()) {
-                    Platform.runLater(() -> {
-                        btnConfirmer.setDisable(false);
-                        btnConfirmer.setText("🔒   Payer maintenant");
-                        showError(respCommande != null
-                                ? respCommande.getMessage()
-                                : "Erreur lors de la création de la commande.");
-                    });
-                    return;
-                }
-
-                @SuppressWarnings("unchecked")
-                Map<String, Object> commandeData = respCommande.getDataAs(Map.class);
-                int idCommandeCreee = ((Double) commandeData.get("idCommande")).intValue();
-                String uuidCommande = (String) commandeData.get("uuidCommande");
-
-                // Étape 2 : Traiter le paiement
+                // ── Traiter le paiement directement (commande déjà créée) ──
                 Map<String, Object> paiementParams = new HashMap<>();
-                paiementParams.put("idCommande", idCommandeCreee);
+                paiementParams.put("idCommande", idCommande);
                 paiementParams.put("numeroCarte", numeroCarte);
                 paiementParams.put("cvv", cvv);
                 paiementParams.put("dateExpiration", mois + "/" + annee);
@@ -459,19 +432,8 @@ public class CheckoutView extends BorderPane {
                         .payload(JsonUtils.toJson(paiementParams)).build();
                 AppResponse respPaiement = tcpClient.sendAndParse(reqPaiement);
 
-                // ── Annuler la commande si le paiement échoue ─────────────
+                // ── Paiement échoué → commande reste EN_ATTENTE (pas d'annulation) ──
                 if (respPaiement == null || !respPaiement.isSuccess()) {
-                    // Rollback : annuler la commande côté serveur
-                    try {
-                        Map<String, Object> annulParams = new HashMap<>();
-                        annulParams.put("idCommande", idCommandeCreee);
-                        AppRequest reqAnnul = new AppRequest.Builder()
-                                .controller("Commande").action("annuler")
-                                .payload(com.chrionline.chrionline.core.utils.JsonUtils.toJson(annulParams))
-                                .build();
-                        tcpClient.sendAndParse(reqAnnul); // best-effort, on ignore l'erreur
-                    } catch (Exception ignored) {}
-
                     final String errMsg = respPaiement != null
                             ? respPaiement.getMessage()
                             : "Paiement échoué. Veuillez vérifier vos informations bancaires.";
@@ -479,13 +441,11 @@ public class CheckoutView extends BorderPane {
                     Platform.runLater(() -> {
                         btnConfirmer.setDisable(false);
                         btnConfirmer.setText("🔒   Payer maintenant");
-                        // Naviguer vers la page d'échec. onReessayer = retour au checkout.
                         viewManager.showConfirmationEchoueeView(
                                 userData,
                                 errMsg,
                                 () -> viewManager.showCheckoutView(
                                         userData,
-                                        // Reconstituer les PanierProduit depuis les lignes
                                         lignes.stream().map(l -> {
                                             com.chrionline.chrionline.server.data.models.PanierProduit pp =
                                                     new com.chrionline.chrionline.server.data.models.PanierProduit();
@@ -501,11 +461,10 @@ public class CheckoutView extends BorderPane {
                     return;
                 }
 
-                // ── Paiement réussi ───────────────────────────────────────
+                // ── Paiement réussi ──
                 Platform.runLater(() -> {
                     btnConfirmer.setDisable(false);
                     btnConfirmer.setText("🔒   Payer maintenant");
-                    @SuppressWarnings("unchecked")
                     Map<String, Object> data = respPaiement.getDataAs(Map.class);
                     if (data != null) {
                         data.put("uuidCommande", uuidCommande);
@@ -524,6 +483,31 @@ public class CheckoutView extends BorderPane {
         }).start();
     }
 
+    private void creerCommandeEnAttente(int idAdresse) {
+        new Thread(() -> {
+            try {
+                int idUser = ((Number) userData.get("id")).intValue();
+
+                Map<String, Object> commandeParams = new HashMap<>();
+                commandeParams.put("idUtilisateur", idUser);
+                commandeParams.put("idAdresse", idAdresse);
+                commandeParams.put("lignes", lignes);
+
+                AppRequest reqCommande = new AppRequest.Builder()
+                        .controller("Commande").action("valider")
+                        .payload(JsonUtils.toJson(commandeParams)).build();
+                AppResponse respCommande = tcpClient.sendAndParse(reqCommande);
+
+                if (respCommande != null && respCommande.isSuccess()) {
+                    Map<String, Object> data = respCommande.getDataAs(Map.class);
+                    idCommandeEnAttente = ((Number) data.get("idCommande")).intValue();
+                    uuidCommandeEnAttente = (String) data.get("uuidCommande");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
     // ─── Résumé produits ───────────────────────────────────────────────────
 
     private void chargerResume() {
