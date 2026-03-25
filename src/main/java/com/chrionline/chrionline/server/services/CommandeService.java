@@ -66,7 +66,7 @@ public class CommandeService {
         commande.setPrix_total(prixTotal);
 
         commandeRepository.add(commande);
-        
+
         if (commande.getId_commande() == 0 || commande.getUuid_commande() == null) {
             logger.error("Impossible de récupérer l'ID ou l'UUID de la commande générée");
             return null;
@@ -80,6 +80,10 @@ public class CommandeService {
         }
         ligneCommandeRepository.addAll(lignes);
         logger.info("Lignes de commande insérées (count={})", lignes.size());
+
+        // Vider le panier dès que la commande est en attente
+        panierService.viderPanier(idUtilisateur);
+        logger.info("Panier de l'utilisateur id={} vidé avec succès suite à la mise en attente", idUtilisateur);
 
         return commande;
     }
@@ -110,13 +114,6 @@ public class CommandeService {
         commandeRepository.updateStatut(idCommande, StatutCommande.VALIDEE);
         logger.info("Statut commande id={} → VALIDEE", idCommande);
 
-        // Vider le panier
-        Commande commande = commandeRepository.getCommandeById(idCommande);
-        if (commande != null) {
-            panierService.viderPanier(commande.getId_utilisateur());
-            logger.info("Panier de l'utilisateur id={} vidé avec succès", commande.getId_utilisateur());
-        }
-
         return true;
     }
 
@@ -136,9 +133,9 @@ public class CommandeService {
             logger.warn("Commande id={} ne peut pas être annulée (statut={})", idCommande, commande.getStatut());
             return false;
         }
-
+        // Annulation
         commandeRepository.updateStatut(idCommande, StatutCommande.ANNULEE);
-        logger.info("Commande id={} annulée avec succès", idCommande);
+        logger.info("Commande id={} annulée manuellement.", idCommande);
         return true;
     }
 
