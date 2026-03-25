@@ -51,12 +51,25 @@ public class CheckoutView extends BorderPane {
             ViewManager viewManager,
             Consumer<Map<String, Object>> onPaiementSuccess,
             Runnable onAnnuler) {
+        this(tcpClient, lignes, userData, viewManager, onPaiementSuccess, onAnnuler, -1, null);
+    }
+
+    public CheckoutView(TCPClient tcpClient,
+            List<Map<String, Object>> lignes,
+            Map<String, Object> userData,
+            ViewManager viewManager,
+            Consumer<Map<String, Object>> onPaiementSuccess,
+            Runnable onAnnuler,
+            int idCommandeExistante,
+            String uuidCommandeExistante) {
         this.tcpClient = tcpClient;
         this.lignes = lignes;
         this.userData = userData;
         this.viewManager = viewManager;
         this.onPaiementSuccess = onPaiementSuccess;
         this.onAnnuler = onAnnuler;
+        this.idCommandeEnAttente = idCommandeExistante;
+        this.uuidCommandeEnAttente = uuidCommandeExistante;
 
         this.setStyle("-fx-background-color: " + AppTheme.BG + ";");
 
@@ -367,8 +380,10 @@ public class CheckoutView extends BorderPane {
                                     .findFirst()
                                     .ifPresent(a -> {
                                         adresseComboBox.setValue(a); // ← ne déclenche plus le listener
-                                        int idAdr = ((Number) a.get("id")).intValue();
-                                        creerCommandeEnAttente(idAdr); // ← seul appel
+                                        if (idCommandeEnAttente == -1) {
+                                            int idAdr = ((Number) a.get("id")).intValue();
+                                            creerCommandeEnAttente(idAdr); // ← seul appel
+                                        }
                                     });
                         }
                     });
@@ -444,9 +459,8 @@ public class CheckoutView extends BorderPane {
                         viewManager.showConfirmationEchoueeView(
                                 userData,
                                 errMsg,
-                                () -> viewManager.showCheckoutView(
-                                        userData,
-                                        lignes.stream().map(l -> {
+                                () -> {
+                                    List<com.chrionline.chrionline.server.data.models.PanierProduit> mappedItems = lignes.stream().map(l -> {
                                             com.chrionline.chrionline.server.data.models.PanierProduit pp =
                                                     new com.chrionline.chrionline.server.data.models.PanierProduit();
                                             pp.setIdProduit(((Number) l.getOrDefault("id_produit", 0)).intValue());
@@ -454,8 +468,14 @@ public class CheckoutView extends BorderPane {
                                             pp.setQuantite(((Number) l.getOrDefault("quantite", 1)).intValue());
                                             pp.setPrix(((Number) l.getOrDefault("prix_unitaire", 0.0)).doubleValue());
                                             return pp;
-                                        }).collect(java.util.stream.Collectors.toList())
-                                )
+                                        }).collect(java.util.stream.Collectors.toList());
+
+                                    if (idCommande != -1) {
+                                        viewManager.showCheckoutViewForExisting(userData, mappedItems, idCommande, uuidCommande);
+                                    } else {
+                                        viewManager.showCheckoutView(userData, mappedItems);
+                                    }
+                                }
                         );
                     });
                     return;
