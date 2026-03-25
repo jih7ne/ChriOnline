@@ -19,6 +19,11 @@ module com.chrionline.chrionline {
 
     exports com.chrionline.chrionline.core.interfaces;
     exports com.chrionline.chrionline.core.enums;
+    exports com.chrionline.chrionline.core.theme;
+
+    exports com.chrionline.chrionline.network.protocol;
+    exports com.chrionline.chrionline.network.tcp;
+    exports com.chrionline.chrionline.network.enums;
 
     exports com.chrionline.chrionline.client;
     exports com.chrionline.chrionline.client.controllers;
@@ -36,12 +41,10 @@ module com.chrionline.chrionline {
     opens com.chrionline.chrionline.server.controllers to javafx.fxml;
 
     opens com.chrionline.chrionline.network.protocol to com.google.gson;
-    exports com.chrionline.chrionline.network.tcp;
-    exports com.chrionline.chrionline.network.enums;
     opens com.chrionline.chrionline.network.enums to com.google.gson;
     opens com.chrionline.chrionline.server.data.models to com.google.gson;
     opens com.chrionline.chrionline.server.data.dto to com.google.gson;
+
     exports com.chrionline.chrionline.shared.models;
     opens com.chrionline.chrionline.shared.models to com.google.gson;
-
 }

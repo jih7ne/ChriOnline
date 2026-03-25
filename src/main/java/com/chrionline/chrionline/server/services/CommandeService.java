@@ -121,9 +121,25 @@ public class CommandeService {
     }
 
     // ANNULER UNE COMMANDE
-    public void annulerCommande(int idCommande) {
+
+    public boolean annulerCommande(int idCommande) {
         logger.info("Annulation commande id={}", idCommande);
+
+        Commande commande = commandeRepository.getCommandeById(idCommande);
+        if (commande == null) {
+            logger.warn("Commande id={} introuvable", idCommande);
+            return false;
+        }
+
+        // Seules les commandes EN_ATTENTE peuvent être annulées par le client
+        if (commande.getStatut() != StatutCommande.EN_ATTENTE) {
+            logger.warn("Commande id={} ne peut pas être annulée (statut={})", idCommande, commande.getStatut());
+            return false;
+        }
+
         commandeRepository.updateStatut(idCommande, StatutCommande.ANNULEE);
+        logger.info("Commande id={} annulée avec succès", idCommande);
+        return true;
     }
 
     // HISTORIQUE DES COMMANDES D'UN UTILISATEUR

@@ -94,7 +94,7 @@ public class AdminProduitsView extends BorderPane {
         ajouterBtn.setGraphic(plusIcon);
         String styleBtn = "-fx-background-color:#7F5539;-fx-text-fill:#EDE0D4;-fx-font-size:15px;-fx-font-weight:bold;-fx-background-radius:10;-fx-padding:14 24 14 24;-fx-cursor:hand;";
         ajouterBtn.setStyle(styleBtn);
-        ajouterBtn.setOnMouseEntered(e -> ajouterBtn.setStyle(styleBtn.replace(AppTheme.PRIMARY,AppTheme.PRIMARY_LIGHT)));
+        ajouterBtn.setOnMouseEntered(e -> ajouterBtn.setStyle(styleBtn.replace(AppTheme.PRIMARY, AppTheme.PRIMARY_LIGHT)));
         ajouterBtn.setOnMouseExited(e  -> ajouterBtn.setStyle(styleBtn));
         ajouterBtn.setOnAction(e -> showDialogAjouter());
         header.getChildren().addAll(titreBox, ajouterBtn);
@@ -119,29 +119,34 @@ public class AdminProduitsView extends BorderPane {
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setMaxWidth(Double.MAX_VALUE);
 
+        // Style commun pour tous les contrôles — hauteur unifiée via setPrefHeight
         String fs =
                 "-fx-background-color:#F5EBE0;-fx-border-color:#DDB892;" +
                         "-fx-border-radius:9;-fx-background-radius:9;-fx-border-width:1.5;" +
-                        "-fx-padding:11 16 11 16;-fx-font-size:13px;-fx-text-fill:#3B1F0E;" +
+                        "-fx-padding:0 16 0 16;-fx-font-size:13px;-fx-text-fill:#3B1F0E;" +
                         "-fx-prompt-text-fill:#9C6644;";
 
+        // ── Champ de recherche ──────────────────────────────────────────────────
         TextField searchField = new TextField();
-        searchField.setPromptText("🔍  Rechercher un produit...");
+        // Placeholder précisant les deux champs de recherche
+        searchField.setPromptText("🔍  Rechercher par nom ou description...");
         searchField.setStyle(fs);
+        searchField.setPrefHeight(44);   // hauteur unifiée
         searchField.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(searchField, Priority.ALWAYS);
         searchField.setText(searchText);
-        searchField.textProperty().addListener((obs,o,n) -> {
+        searchField.textProperty().addListener((obs, o, n) -> {
             searchText = n.toLowerCase().trim();
             appliquerFiltres();
         });
 
+        // ── Filtre par catégorie ────────────────────────────────────────────────
         ComboBox<String> catFilter = new ComboBox<>();
         catFilter.setPromptText("Toutes les catégories");
-        // FIX : largeur fixe, ne change pas quand on ouvre la liste
         catFilter.setPrefWidth(220);
         catFilter.setMinWidth(220);
         catFilter.setMaxWidth(220);
+        catFilter.setPrefHeight(44);     // hauteur unifiée
         catFilter.setStyle(fs);
         catFilter.getItems().add("Toutes les catégories");
         for (Categorie c : categories) catFilter.getItems().add(c.getNom());
@@ -160,19 +165,19 @@ public class AdminProduitsView extends BorderPane {
         });
         catFilter.setOnAction(e -> {
             String sel = catFilter.getValue();
-            filterCategorieId = (sel==null||sel.equals("Toutes les catégories")) ? -1
-                    : categories.stream().filter(c->c.getNom().equals(sel))
+            filterCategorieId = (sel == null || sel.equals("Toutes les catégories")) ? -1
+                    : categories.stream().filter(c -> c.getNom().equals(sel))
                     .mapToInt(Categorie::getId).findFirst().orElse(-1);
             appliquerFiltres();
         });
 
-
+        // ── Tri ────────────────────────────────────────────────────────────────
         sortBox = new ComboBox<>();
         sortBox.setPromptText("Trier par...");
-        // FIX : largeur fixe
         sortBox.setPrefWidth(180);
         sortBox.setMinWidth(180);
         sortBox.setMaxWidth(180);
+        sortBox.setPrefHeight(44);       // hauteur unifiée
         sortBox.setStyle(fs);
         sortBox.getItems().addAll("Prix ↓", "Stock ↓");
         sortBox.setButtonCell(new ListCell<String>() {
@@ -190,18 +195,32 @@ public class AdminProduitsView extends BorderPane {
         sortBox.setOnAction(e -> {
             if (sortBox.getValue() == null) return;
             switch (sortBox.getValue()) {
-                case "Prix ↓"  -> { sortColumn="prix";  sortAsc=false; }
-                case "Stock ↓" -> { sortColumn="stock"; sortAsc=false; }
+                case "Prix ↓"  -> { sortColumn = "prix";  sortAsc = false; }
+                case "Stock ↓" -> { sortColumn = "stock"; sortAsc = false; }
             }
             appliquerFiltres();
         });
 
-        Button resetBtn = new Button("✕");
-        resetBtn.setStyle(
-                "-fx-background-color:transparent;-fx-text-fill:#9C6644;-fx-font-size:14px;" +
-                        "-fx-cursor:hand;-fx-padding:11 14 11 14;-fx-border-color:#DDB892;" +
-                        "-fx-border-radius:9;-fx-border-width:1.5;"
-        );
+        // ── Bouton Réinitialiser — style pill (inspiré de la maquette) ─────────
+        FontIcon xIcon = new FontIcon(Feather.X);
+        xIcon.setIconSize(13);
+        xIcon.setIconColor(Color.web(AppTheme.PRIMARY));
+
+        Button resetBtn = new Button("  Réinitialiser");
+        resetBtn.setGraphic(xIcon);
+        resetBtn.setPrefHeight(44);
+        String resetStyle =
+                "-fx-background-color:transparent;" +
+                        "-fx-text-fill:#9C6644;-fx-font-size:13px;" +
+                        "-fx-cursor:hand;-fx-padding:0 20 0 16;" +
+                        "-fx-border-color:#DDB892;" +
+                        "-fx-border-radius:9;" +
+                        "-fx-background-radius:9;" +
+                        "-fx-border-width:1.5;";
+        resetBtn.setStyle(resetStyle);
+        resetBtn.setOnMouseEntered(e -> resetBtn.setStyle(resetStyle
+                .replace("-fx-background-color:transparent;", "-fx-background-color:#F5EBE0;")));
+        resetBtn.setOnMouseExited(e  -> resetBtn.setStyle(resetStyle));
         resetBtn.setTooltip(new Tooltip("Réinitialiser les filtres"));
         resetBtn.setOnAction(e -> {
             searchField.clear();
@@ -222,7 +241,7 @@ public class AdminProduitsView extends BorderPane {
                     }
                 }
             });
-            searchText=""; filterCategorieId=-1; sortColumn="date"; sortAsc=false;
+            searchText = ""; filterCategorieId = -1; sortColumn = "date"; sortAsc = false;
             appliquerFiltres();
         });
 
@@ -234,10 +253,10 @@ public class AdminProduitsView extends BorderPane {
         produitsFiltres = produits.stream()
                 .filter(p -> searchText.isEmpty()
                         || p.getNom().toLowerCase().contains(searchText)
-                        || (p.getDescription()!=null && p.getDescription().toLowerCase().contains(searchText)))
-                .filter(p -> filterCategorieId==-1 || p.getIdCategorie()==filterCategorieId)
-                .sorted((a,b) -> {
-                    int cmp = switch(sortColumn) {
+                        || (p.getDescription() != null && p.getDescription().toLowerCase().contains(searchText)))
+                .filter(p -> filterCategorieId == -1 || p.getIdCategorie() == filterCategorieId)
+                .sorted((a, b) -> {
+                    int cmp = switch (sortColumn) {
                         case "prix"  -> Double.compare(a.getPrix(), b.getPrix());
                         case "stock" -> Integer.compare(a.getStock(), b.getStock());
                         default      -> 0;
@@ -250,7 +269,7 @@ public class AdminProduitsView extends BorderPane {
 
     private HBox buildTableHeader() {
         HBox h = new HBox();
-        h.setPadding(new Insets(14,24,14,24));
+        h.setPadding(new Insets(14, 24, 14, 24));
         h.setMaxWidth(Double.MAX_VALUE);
         h.setStyle("-fx-background-color:#D4B896;-fx-background-radius:13 13 0 0;-fx-border-radius:13 13 0 0;-fx-border-color:#C4A882;-fx-border-width:0 0 1 0;");
         h.setAlignment(Pos.CENTER_LEFT);
@@ -258,7 +277,7 @@ public class AdminProduitsView extends BorderPane {
         HBox.setHgrow(hProd, Priority.ALWAYS);
         hProd.setMaxWidth(Double.MAX_VALUE);
         Label hDesc = hCell("Description", 300);
-        h.getChildren().addAll(hProd, hCell("Catégorie",160), hCell("Prix",120), hCell("Stock",130), hDesc, hCell("Actions",80));
+        h.getChildren().addAll(hProd, hCell("Catégorie", 160), hCell("Prix", 120), hCell("Stock", 130), hDesc, hCell("Actions", 80));
         return h;
     }
 
@@ -267,6 +286,7 @@ public class AdminProduitsView extends BorderPane {
         l.setStyle("-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:#7B5B3A;-fx-font-family:'Segoe UI Semibold','Segoe UI',sans-serif;");
         return l;
     }
+
     private Label hCell(String t, double w) {
         Label l = hCell(t);
         l.setPrefWidth(w); l.setMinWidth(w);
@@ -275,10 +295,10 @@ public class AdminProduitsView extends BorderPane {
 
     private HBox buildProduitRow(Produit produit, boolean isEven) {
         HBox row = new HBox();
-        row.setPadding(new Insets(11,24,11,24));
+        row.setPadding(new Insets(11, 24, 11, 24));
         row.setAlignment(Pos.CENTER_LEFT);
         row.setMaxWidth(Double.MAX_VALUE);
-        boolean rupture = produit.getStock()==0;
+        boolean rupture = produit.getStock() == 0;
         String rowBg    = rupture ? "#FFF0F0" : (isEven ? AppTheme.CARD_BG : "#FBF6F2");
         String rowHover = rupture ? "#FFE0E0" : "#EDD9C8";
         row.setBackground(new Background(new BackgroundFill(Color.web(rowBg), CornerRadii.EMPTY, Insets.EMPTY)));
@@ -292,11 +312,11 @@ public class AdminProduitsView extends BorderPane {
         produitCell.setMaxWidth(Double.MAX_VALUE);
 
         StackPane imgC = new StackPane();
-        imgC.setPrefSize(46,46); imgC.setMinSize(46,46); imgC.setMaxSize(46,46);
+        imgC.setPrefSize(46, 46); imgC.setMinSize(46, 46); imgC.setMaxSize(46, 46);
         imgC.setStyle("-fx-background-color:#DDB892;-fx-background-radius:10;");
         FontIcon ph = new FontIcon(Feather.IMAGE); ph.setIconSize(17); ph.setIconColor(Color.web(AppTheme.BG));
         imgC.getChildren().add(ph);
-        if (produit.getUrlImage()!=null && !produit.getUrlImage().isEmpty()) {
+        if (produit.getUrlImage() != null && !produit.getUrlImage().isEmpty()) {
             new Thread(() -> {
                 try {
                     Image img = new Image(produit.getUrlImage(), true);
@@ -304,7 +324,7 @@ public class AdminProduitsView extends BorderPane {
                         if (!img.isError()) {
                             ImageView iv = new ImageView(img);
                             iv.setFitWidth(46); iv.setFitHeight(46); iv.setPreserveRatio(false);
-                            Rectangle clip = new Rectangle(46,46);
+                            Rectangle clip = new Rectangle(46, 46);
                             clip.setArcWidth(12); clip.setArcHeight(12);
                             iv.setClip(clip);
                             imgC.getChildren().setAll(iv);
@@ -320,7 +340,7 @@ public class AdminProduitsView extends BorderPane {
         HBox.setHgrow(nomLabel, Priority.ALWAYS);
         produitCell.getChildren().addAll(imgC, nomLabel);
 
-        Label catLabel = new Label(produit.getNomCategorie()!=null ? produit.getNomCategorie() : "—");
+        Label catLabel = new Label(produit.getNomCategorie() != null ? produit.getNomCategorie() : "—");
         catLabel.setPrefWidth(160); catLabel.setMinWidth(160);
         catLabel.setStyle("-fx-font-size:13px;-fx-text-fill:#5C3D20;");
 
@@ -332,13 +352,13 @@ public class AdminProduitsView extends BorderPane {
         stockBox.setPrefWidth(130); stockBox.setMinWidth(130);
         stockBox.setAlignment(Pos.CENTER_LEFT);
         String sc, sb, st;
-        if      (produit.getStock()==0)  { sc=AppTheme.ERROR_COLOR; sb="#FEE2E2"; st="✕  0"; }
-        else if (produit.getStock()<=5)  { sc="#D97706"; sb="#FEF3C7"; st="⚠  "+produit.getStock(); }
-        else                             { sc="#2D7A47"; sb="#D1FAE5"; st=String.valueOf(produit.getStock()); }
+        if      (produit.getStock() == 0) { sc = AppTheme.ERROR_COLOR; sb = "#FEE2E2"; st = "✕  0"; }
+        else if (produit.getStock() <= 5) { sc = "#D97706"; sb = "#FEF3C7"; st = "⚠  " + produit.getStock(); }
+        else                              { sc = "#2D7A47"; sb = "#D1FAE5"; st = String.valueOf(produit.getStock()); }
         Label stockLabel = new Label(st);
-        stockLabel.setStyle("-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:"+sc+";-fx-background-color:"+sb+";-fx-background-radius:20;-fx-padding:3 12 3 12;");
+        stockLabel.setStyle("-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:" + sc + ";-fx-background-color:" + sb + ";-fx-background-radius:20;-fx-padding:3 12 3 12;");
         stockBox.getChildren().add(stockLabel);
-        if (produit.getStock()==0) {
+        if (produit.getStock() == 0) {
             Label badge = new Label("Rupture");
             badge.setStyle("-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:#C0392B;-fx-background-color:#FEE2E2;-fx-background-radius:20;-fx-padding:2 7 2 7;");
             stockBox.getChildren().add(badge);
@@ -364,8 +384,8 @@ public class AdminProduitsView extends BorderPane {
         HBox actBox = new HBox(6);
         actBox.setPrefWidth(80); actBox.setMinWidth(80);
         actBox.setAlignment(Pos.CENTER_LEFT);
-        Button editBtn   = iconBtn(Feather.EDIT_2,   AppTheme.PRIMARY, "#E6CCB2");
-        Button deleteBtn = iconBtn(Feather.TRASH_2,  AppTheme.ERROR_COLOR, "#FEF2F2");
+        Button editBtn   = iconBtn(Feather.EDIT_2,  AppTheme.PRIMARY,      "#E6CCB2");
+        Button deleteBtn = iconBtn(Feather.TRASH_2, AppTheme.ERROR_COLOR,   "#FEF2F2");
         editBtn.setOnAction(e   -> showDialogModifier(produit));
         deleteBtn.setOnAction(e -> supprimerProduit(produit));
         actBox.getChildren().addAll(editBtn, deleteBtn);
@@ -379,7 +399,7 @@ public class AdminProduitsView extends BorderPane {
         FontIcon fi = new FontIcon(icon); fi.setIconSize(15); fi.setIconColor(Color.web(color));
         btn.setGraphic(fi);
         btn.setStyle("-fx-background-color:transparent;-fx-cursor:hand;-fx-padding:6;");
-        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color:"+hoverBg+";-fx-background-radius:7;-fx-cursor:hand;-fx-padding:6;"));
+        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color:" + hoverBg + ";-fx-background-radius:7;-fx-cursor:hand;-fx-padding:6;"));
         btn.setOnMouseExited(e  -> btn.setStyle("-fx-background-color:transparent;-fx-cursor:hand;-fx-padding:6;"));
         return btn;
     }
@@ -394,14 +414,15 @@ public class AdminProduitsView extends BorderPane {
             totalLabel.setText("0 produit");
             return;
         }
-        for (int i=0; i<produitsFiltres.size(); i++)
-            tableContainer.getChildren().add(buildProduitRow(produitsFiltres.get(i), i%2==0));
-        long ruptures = produitsFiltres.stream().filter(p -> p.getStock()==0).count();
-        String lbl = produitsFiltres.size()+" produit"+(produitsFiltres.size()>1?"s":"");
-        if (produitsFiltres.size()<produits.size()) lbl += " (filtrés sur "+produits.size()+")";
-        if (ruptures>0) lbl += " · "+ruptures+" en rupture";
+        for (int i = 0; i < produitsFiltres.size(); i++)
+            tableContainer.getChildren().add(buildProduitRow(produitsFiltres.get(i), i % 2 == 0));
+        long ruptures = produitsFiltres.stream().filter(p -> p.getStock() == 0).count();
+        String lbl = produitsFiltres.size() + " produit" + (produitsFiltres.size() > 1 ? "s" : "");
+        if (produitsFiltres.size() < produits.size()) lbl += " (filtrés sur " + produits.size() + ")";
+        if (ruptures > 0) lbl += " · " + ruptures + " en rupture";
         totalLabel.setText(lbl);
     }
+
     private void showDialogAjouter()           { chargerCategories(this::ouvrirDialogAjouter); }
     private void showDialogModifier(Produit p) { chargerCategories(() -> ouvrirDialogModifier(p)); }
 
@@ -448,7 +469,7 @@ public class AdminProduitsView extends BorderPane {
                         "-fx-font-size:14px;-fx-font-weight:bold;" +
                         "-fx-background-radius:9;-fx-padding:10 22 10 22;-fx-cursor:hand;";
         okBtn.setStyle(okBase);
-        okBtn.setOnMouseEntered(e -> okBtn.setStyle(okBase.replace(AppTheme.PRIMARY,AppTheme.PRIMARY_LIGHT)));
+        okBtn.setOnMouseEntered(e -> okBtn.setStyle(okBase.replace(AppTheme.PRIMARY, AppTheme.PRIMARY_LIGHT)));
         okBtn.setOnMouseExited(e  -> okBtn.setStyle(okBase));
         okBtn.setOnAction(e -> lireForms(form, existant, stage));
 
@@ -463,7 +484,6 @@ public class AdminProduitsView extends BorderPane {
         VBox root = new VBox(0, form, btnBar);
         root.setStyle("-fx-background-color:#EDE0D4;");
         stage.setScene(new Scene(root));
-        // FIX : éviter la sélection automatique du champ nom à l'ouverture
         stage.setOnShown(e -> {
             TextField nom = (TextField) root.lookup("#nomField");
             if (nom != null) {
@@ -484,24 +504,24 @@ public class AdminProduitsView extends BorderPane {
         @SuppressWarnings("unchecked")
         ComboBox<Categorie> combo = (ComboBox<Categorie>) form.lookup("#categorieCombo");
 
-        if (combo==null || combo.getValue()==null) {
+        if (combo == null || combo.getValue() == null) {
             showWarn("Veuillez sélectionner une catégorie."); return;
         }
-        if (nomField==null || nomField.getText().trim().isEmpty()) {
+        if (nomField == null || nomField.getText().trim().isEmpty()) {
             showWarn("Veuillez saisir le nom du produit."); return;
         }
         try {
-            Produit p = existant!=null ? existant : new Produit();
+            Produit p = existant != null ? existant : new Produit();
             p.setNom(nomField.getText().trim());
-            p.setDescription(descField!=null ? descField.getText() : "");
-            p.setPrix(prixField!=null && !prixField.getText().isEmpty()
-                    ? Double.parseDouble(prixField.getText().replace(",",".")) : 0);
-            p.setStock(stockField!=null && !stockField.getText().isEmpty()
+            p.setDescription(descField != null ? descField.getText() : "");
+            p.setPrix(prixField != null && !prixField.getText().isEmpty()
+                    ? Double.parseDouble(prixField.getText().replace(",", ".")) : 0);
+            p.setStock(stockField != null && !stockField.getText().isEmpty()
                     ? Integer.parseInt(stockField.getText().trim()) : 0);
-            p.setUrlImage(imageField!=null ? imageField.getText() : "");
+            p.setUrlImage(imageField != null ? imageField.getText() : "");
             p.setIdCategorie(combo.getValue().getId());
             stage.close();
-            if (existant!=null) modifierProduit(p); else sauvegarderProduit(p);
+            if (existant != null) modifierProduit(p); else sauvegarderProduit(p);
         } catch (NumberFormatException ex) {
             showError("Prix et Stock doivent être des nombres valides.");
         }
@@ -520,12 +540,12 @@ public class AdminProduitsView extends BorderPane {
         FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
         trashIcon.setIconSize(26); trashIcon.setIconColor(Color.web(AppTheme.ERROR_COLOR));
         StackPane iconCircle = new StackPane(trashIcon);
-        iconCircle.setPrefSize(56,56); iconCircle.setMinSize(56,56); iconCircle.setMaxSize(56,56);
+        iconCircle.setPrefSize(56, 56); iconCircle.setMinSize(56, 56); iconCircle.setMaxSize(56, 56);
         iconCircle.setStyle("-fx-background-color:#FEE2E2;-fx-background-radius:28;");
 
         Label titreL = new Label("Supprimer ce produit ?");
         titreL.setStyle("-fx-font-size:17px;-fx-font-weight:bold;-fx-text-fill:#3B1F0E;");
-        Label nomL = new Label("\""+produit.getNom()+"\"");
+        Label nomL = new Label("\"" + produit.getNom() + "\"");
         nomL.setStyle("-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:#7F5539;");
         Label warnL = new Label("Cette action est irréversible.");
         warnL.setStyle("-fx-font-size:12px;-fx-text-fill:#9C6644;");
@@ -548,7 +568,7 @@ public class AdminProduitsView extends BorderPane {
         deleteBtn.setPrefWidth(130);
         String ds = "-fx-background-color:#C0392B;-fx-text-fill:white;-fx-font-size:13px;-fx-font-weight:bold;-fx-background-radius:9;-fx-padding:9 20 9 20;-fx-cursor:hand;";
         deleteBtn.setStyle(ds);
-        deleteBtn.setOnMouseEntered(e -> deleteBtn.setStyle(ds.replace(AppTheme.ERROR_COLOR,"#A93226")));
+        deleteBtn.setOnMouseEntered(e -> deleteBtn.setStyle(ds.replace(AppTheme.ERROR_COLOR, "#A93226")));
         deleteBtn.setOnMouseExited(e  -> deleteBtn.setStyle(ds));
         deleteBtn.setOnAction(e -> {
             stage.close();
@@ -579,7 +599,7 @@ public class AdminProduitsView extends BorderPane {
         VBox form = new VBox(0);
         form.setPrefWidth(540);
         form.setStyle("-fx-background-color:#EDE0D4;");
-        Label formTitre = new Label(p == null ? "Nouveau produit" : "Modifier : "+p.getNom());
+        Label formTitre = new Label(p == null ? "Nouveau produit" : "Modifier : " + p.getNom());
         formTitre.setStyle(
                 "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:#7F5539;" +
                         "-fx-font-family:'Segoe UI Semibold','Segoe UI',sans-serif;"
@@ -593,12 +613,12 @@ public class AdminProduitsView extends BorderPane {
         body.setStyle("-fx-background-color:#EDE0D4;");
 
         VBox nomBox = fBox("Nom du produit *");
-        TextField nomField = fText(p!=null ? p.getNom() : "", "Ex: Café Artisan Premium");
+        TextField nomField = fText(p != null ? p.getNom() : "", "Ex: Café Artisan Premium");
         nomField.setId("nomField");
         nomBox.getChildren().add(nomField);
 
         VBox descBox = fBox("Description");
-        TextArea descField = new TextArea(p!=null ? p.getDescription() : "");
+        TextArea descField = new TextArea(p != null ? p.getDescription() : "");
         descField.setId("descField");
         descField.setPromptText("Décrivez le produit...");
         descField.setPrefRowCount(3);
@@ -611,19 +631,18 @@ public class AdminProduitsView extends BorderPane {
 
         HBox rowBox = new HBox(16);
         VBox prixBox = fBox("Prix (MAD) *");
-        TextField prixField = fText(p!=null ? String.valueOf(p.getPrix()) : "", "0.00");
+        TextField prixField = fText(p != null ? String.valueOf(p.getPrix()) : "", "0.00");
         prixField.setId("prixField");
         prixBox.getChildren().add(prixField);
         HBox.setHgrow(prixBox, Priority.ALWAYS);
 
         VBox stockBox2 = fBox("Stock *");
-        TextField stockField = fText(p!=null ? String.valueOf(p.getStock()) : "", "0");
+        TextField stockField = fText(p != null ? String.valueOf(p.getStock()) : "", "0");
         stockField.setId("stockField");
         stockBox2.getChildren().add(stockField);
         HBox.setHgrow(stockBox2, Priority.ALWAYS);
         rowBox.getChildren().addAll(prixBox, stockBox2);
 
-        // Catégorie
         VBox catBox = fBox("Catégorie *");
         ComboBox<Categorie> combo = new ComboBox<>();
         combo.setId("categorieCombo");
@@ -637,13 +656,13 @@ public class AdminProduitsView extends BorderPane {
         combo.setCellFactory(lv -> new ListCell<Categorie>() {
             @Override protected void updateItem(Categorie item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty||item==null ? null : item.getNom());
+                setText(empty || item == null ? null : item.getNom());
             }
         });
         combo.setButtonCell(new ListCell<Categorie>() {
             @Override protected void updateItem(Categorie item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty||item==null) {
+                if (empty || item == null) {
                     setText("Sélectionner une catégorie...");
                     setStyle("-fx-text-fill:#B08968;-fx-background-color:transparent;");
                 } else {
@@ -652,13 +671,13 @@ public class AdminProduitsView extends BorderPane {
                 }
             }
         });
-        if (p!=null && p.getIdCategorie()>0)
-            categories.stream().filter(c -> c.getId()==p.getIdCategorie()).findFirst().ifPresent(combo::setValue);
+        if (p != null && p.getIdCategorie() > 0)
+            categories.stream().filter(c -> c.getId() == p.getIdCategorie()).findFirst().ifPresent(combo::setValue);
         catBox.getChildren().add(combo);
 
         VBox imageBox = fBox("Image du produit");
         TextField imageField = fText(
-                p!=null && p.getUrlImage()!=null ? p.getUrlImage() : "",
+                p != null && p.getUrlImage() != null ? p.getUrlImage() : "",
                 "https://... ou choisir un fichier"
         );
         imageField.setId("imageField");
@@ -668,14 +687,14 @@ public class AdminProduitsView extends BorderPane {
         Button parcourirBtn = new Button("📁  Parcourir");
         String sp = "-fx-background-color:#7F5539;-fx-text-fill:#EDE0D4;-fx-font-size:13px;-fx-background-radius:9;-fx-padding:10 16 10 16;-fx-cursor:hand;";
         parcourirBtn.setStyle(sp);
-        parcourirBtn.setOnMouseEntered(e -> parcourirBtn.setStyle(sp.replace(AppTheme.PRIMARY,AppTheme.PRIMARY_LIGHT)));
+        parcourirBtn.setOnMouseEntered(e -> parcourirBtn.setStyle(sp.replace(AppTheme.PRIMARY, AppTheme.PRIMARY_LIGHT)));
         parcourirBtn.setOnMouseExited(e  -> parcourirBtn.setStyle(sp));
         parcourirBtn.setOnAction(e -> {
             FileChooser fc = new FileChooser();
             fc.setTitle("Choisir une image");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images","*.png","*.jpg","*.jpeg","*.gif","*.bmp","*.webp"));
-            File f2 = fc.showOpenDialog(parcourirBtn.getScene()!=null ? parcourirBtn.getScene().getWindow() : null);
-            if (f2!=null) imageField.setText(f2.toURI().toString());
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp"));
+            File f2 = fc.showOpenDialog(parcourirBtn.getScene() != null ? parcourirBtn.getScene().getWindow() : null);
+            if (f2 != null) imageField.setText(f2.toURI().toString());
         });
 
         HBox imageRow = new HBox(10, imageField, parcourirBtn);
@@ -727,22 +746,22 @@ public class AdminProduitsView extends BorderPane {
                     if (res.isSuccess()) {
                         Type type = new TypeToken<List<Categorie>>(){}.getType();
                         List<Categorie> result = new Gson().fromJson(new Gson().toJson(res.getData()), type);
-                        categories = result!=null ? result : new ArrayList<>();
-                        System.out.println("Catégories chargées: "+categories.size());
-                        if (toolbar!=null) {
+                        categories = result != null ? result : new ArrayList<>();
+                        System.out.println("Catégories chargées: " + categories.size());
+                        if (toolbar != null) {
                             VBox parent = (VBox) toolbar.getParent();
-                            if (parent!=null) {
+                            if (parent != null) {
                                 int idx = parent.getChildren().indexOf(toolbar);
                                 toolbar = buildToolbar();
                                 parent.getChildren().set(idx, toolbar);
                             }
                         }
-                    } else System.err.println("Erreur catégories: "+res.getMessage());
-                    if (onDone!=null) onDone.run();
+                    } else System.err.println("Erreur catégories: " + res.getMessage());
+                    if (onDone != null) onDone.run();
                 });
             } catch (Exception e) {
                 e.printStackTrace();
-                Platform.runLater(() -> { if (onDone!=null) onDone.run(); });
+                Platform.runLater(() -> { if (onDone != null) onDone.run(); });
             }
         }).start();
     }
@@ -758,7 +777,7 @@ public class AdminProduitsView extends BorderPane {
                     if (res.isSuccess()) {
                         Type type = new TypeToken<List<Produit>>(){}.getType();
                         produits = new Gson().fromJson(new Gson().toJson(res.getData()), type);
-                        if (produits==null) produits = new ArrayList<>();
+                        if (produits == null) produits = new ArrayList<>();
                         produitsFiltres = new ArrayList<>(produits);
                         appliquerFiltres();
                     }
