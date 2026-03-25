@@ -14,6 +14,7 @@ public interface ViewManager {
     void showDetailsProduit(Produit produit, Map<String, Object> userData);
     void showAdminView(Map<String, Object> userData);
     void showCheckoutView(Map<String, Object> userData, List<PanierProduit> panierItems);
+    void showCheckoutViewForExisting(Map<String, Object> userData, List<PanierProduit> panierItems, int idCommande, String uuidCommande);
     void showConfirmationView(Map<String, Object> paiementData);
     void showConfirmationEchoueeView(Map<String, Object> userData, String messageErreur, Runnable onReessayer);
     void showHistoriqueCommandesView(Map<String, Object> userData);
