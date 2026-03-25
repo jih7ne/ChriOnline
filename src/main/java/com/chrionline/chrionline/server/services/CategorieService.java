@@ -53,6 +53,12 @@ public class CategorieService {
             logger.warn("Catégorie id={} non trouvée pour suppression", id);
             return;
         }
+        int nb = categorieRepository.countProduits(id);
+        if (nb > 0) {
+            throw new IllegalStateException(
+                    "Cette catégorie contient " + nb + " produit" + (nb > 1 ? "s" : "") + "."
+            );
+        }
         categorieRepository.deleteCategorie(id);
     }
 }
