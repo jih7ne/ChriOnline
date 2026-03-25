@@ -89,6 +89,9 @@ public class CategorieController implements IController {
             logger.info("Action: supprimer catégorie id={}", id);
             categorieService.supprimerCategorie(id);
             return AppResponse.success(null, "Catégorie supprimée avec succès");
+        } catch (IllegalStateException e) {
+            logger.warn("Suppression bloquée: {}", e.getMessage());
+            return AppResponse.error(e.getMessage());
         } catch (Exception e) {
             logger.error("Erreur lors de la suppression de la catégorie", e);
             return AppResponse.error("Erreur lors de la suppression de la catégorie");

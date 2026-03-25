@@ -14,10 +14,7 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
         super(connection, "Categorie", new CategorieRowMapper());
     }
 
-
-
     public List<Categorie> findAll() {
-        // FIX : COUNT produits par catégorie via LEFT JOIN
         String sql =
                 "SELECT c.id, c.nom, c.description, COUNT(p.id) AS nb_produits " +
                         "FROM Categorie c " +
@@ -46,6 +43,18 @@ public class CategorieRepository extends JdbcRepository<Categorie> {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public int countProduits(int id) {
+        String sql = "SELECT COUNT(*) FROM Produit WHERE id_categorie = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     @Override
