@@ -7,16 +7,20 @@ import java.time.LocalDateTime;
 
 public class OrderSummary {
     private Long orderId;
+    private String uuid;
     private String username;
+    private String email;
     private BigDecimal total;
     private StatutCommande status;
     private LocalDateTime date;
 
     public OrderSummary() {}
 
-    public OrderSummary(Long orderId, String username, BigDecimal total, StatutCommande status, LocalDateTime date) {
+    public OrderSummary(Long orderId, String uuid, String username, String email, BigDecimal total, StatutCommande status, LocalDateTime date) {
         this.orderId = orderId;
+        this.uuid = uuid;
         this.username = username;
+        this.email = email;
         this.total = total;
         this.status = status;
         this.date = date;
@@ -60,5 +64,21 @@ public class OrderSummary {
 
     public void setDate(LocalDateTime date) {
         this.date = date;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 }

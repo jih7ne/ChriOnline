@@ -17,6 +17,8 @@ module com.chrionline.chrionline {
     requires org.kordamp.ikonli.feather;
     requires org.kordamp.ikonli.core;
 
+    opens com.chrionline.chrionline.core.enums to com.google.gson;
+
     exports com.chrionline.chrionline.core.interfaces;
     exports com.chrionline.chrionline.core.enums;
     exports com.chrionline.chrionline.core.theme;

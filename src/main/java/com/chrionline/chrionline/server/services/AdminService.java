@@ -60,6 +60,23 @@ public class AdminService {
         return dashboardStats;
     }
 
+    public java.util.List<com.chrionline.chrionline.shared.models.OrderSummary> getAllOrders() {
+        logger.info("Fetching All Orders for Admin");
+        return commandeRepository.getAllOrders();
+    }
+
+    public boolean updateOrderStatus(int idCommande, StatutCommande statut) {
+        logger.info("Updating order status for id={} to {}", idCommande, statut);
+        com.chrionline.chrionline.server.data.models.Commande commande = commandeRepository.getCommandeById(idCommande);
+        if (commande == null) {
+            logger.warn("Commande id={} introuvable", idCommande);
+            return false;
+        }
+
+        commandeRepository.updateStatut(idCommande, statut);
+        return true;
+    }
+
 
 
 

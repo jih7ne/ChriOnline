@@ -134,7 +134,7 @@ public class AdminView extends BorderPane {
     public void showCommandes() {
         currentPage = AdminSidebar.AdminPage.COMMANDES;
         rebuildSidebar();
-        rightPane.setCenter(buildComingSoon("Commandes"));
+        rightPane.setCenter(new AdminCommandesView(client, viewManager));
     }
 
     public void showUtilisateurs() {
@@ -143,20 +143,5 @@ public class AdminView extends BorderPane {
         rightPane.setCenter(new AdminUtilisateursView(client, userData, viewManager, this));
     }
 
-    // ─── Coming soon placeholder ──────────────────────────────────────────────
-
-    private Region buildComingSoon(String pageName) {
-        VBox box = new VBox(16);
-        box.setAlignment(Pos.CENTER);
-        box.setMaxWidth(Double.MAX_VALUE);
-        box.setMaxHeight(Double.MAX_VALUE);
-        VBox.setVgrow(box, Priority.ALWAYS);
-        HBox.setHgrow(box, Priority.ALWAYS);
-        box.setBackground(new Background(new BackgroundFill(
-                Color.web(AppTheme.BG), CornerRadii.EMPTY, Insets.EMPTY)));
-        Label label = new Label(pageName + " — Bientôt disponible");
-        label.setStyle("-fx-font-size:24px;-fx-font-weight:bold;-fx-text-fill:" + AppTheme.PRIMARY + ";");
-        box.getChildren().add(label);
-        return box;
-    }
+    // ─── Removed Coming soon placeholder ──────────────────────────────────────
 }

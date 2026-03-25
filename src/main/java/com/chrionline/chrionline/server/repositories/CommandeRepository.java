@@ -309,8 +309,10 @@ public class CommandeRepository extends JdbcRepository<Commande> {
         String query = """
             SELECT 
                 c.id_commande,
+                c.uuid_commande,
                 u.nom,
                 u.prenom,
+                u.email,
                 c.prix_total,
                 c.statut,
                 c.date
@@ -329,7 +331,9 @@ public class CommandeRepository extends JdbcRepository<Commande> {
                     OrderSummary order = new OrderSummary();
 
                     order.setOrderId(rs.getLong("id_commande"));
+                    order.setUuid(rs.getString("uuid_commande"));
                     order.setUsername(rs.getString("nom").toUpperCase() + " " + rs.getString("prenom"));
+                    order.setEmail(rs.getString("email"));
                     order.setTotal(rs.getBigDecimal("prix_total"));
 
 
@@ -342,6 +346,50 @@ public class CommandeRepository extends JdbcRepository<Commande> {
                 }
             }
 
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return orders;
+    }
+
+    public List<OrderSummary> getAllOrders() {
+        List<OrderSummary> orders = new ArrayList<>();
+
+        String query = """
+            SELECT 
+                c.id_commande,
+                c.uuid_commande,
+                u.nom,
+                u.prenom,
+                u.email,
+                c.prix_total,
+                c.statut,
+                c.date
+            FROM Commande c
+            JOIN Utilisateur u ON c.id_utilisateur = u.id
+            ORDER BY c.date DESC
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    OrderSummary order = new OrderSummary();
+
+                    order.setOrderId(rs.getLong("id_commande"));
+                    order.setUuid(rs.getString("uuid_commande"));
+                    order.setUsername(rs.getString("nom").toUpperCase() + " " + rs.getString("prenom"));
+                    order.setEmail(rs.getString("email"));
+                    order.setTotal(rs.getBigDecimal("prix_total"));
+
+                    String statusStr = rs.getString("statut");
+                    order.setStatus(StatutCommande.valueOf(statusStr.toUpperCase()));
+
+                    order.setDate(rs.getTimestamp("date").toLocalDateTime());
+
+                    orders.add(order);
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
