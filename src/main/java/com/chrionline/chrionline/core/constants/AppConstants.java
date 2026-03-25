@@ -14,7 +14,7 @@ public final class AppConstants {
     public static final String APP_VERSION = "1.0.0";
     public static final int LOW_STOCK_PRODUCTS_THRESHOLD = 10;
     public static final int HIGH_STOCK_PRODUCTS_THRESHOLD = 100;
-    public static final int HEAD_LIMIT = 5;
+    public static final int HEAD_LIMIT = 10;
 
 
     /* =========================
