@@ -26,7 +26,13 @@ public class PanierController implements IController {
             }
             logger.info("Action: getPanier utilisateur id={}", idUtilisateur);
             Panier panier = panierService.getPanier(idUtilisateur);
-            return AppResponse.success(panier.getProduits()); // ← liste au lieu de l'objet Panier
+            return AppResponse.success(panier.getProduits());
+        } catch (SecurityException e) {
+            logger.warn("Accès refusé getPanier : {}", e.getMessage());
+            return AppResponse.forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Utilisateur introuvable getPanier : {}", e.getMessage());
+            return AppResponse.badRequest(e.getMessage());
         } catch (Exception e) {
             logger.error("Erreur lors de la récupération du panier", e);
             return AppResponse.error("Erreur lors de la récupération du panier");
@@ -48,6 +54,12 @@ public class PanierController implements IController {
                 return AppResponse.error("Stock insuffisant ou produit non trouvé");
             }
             return AppResponse.success(null, "Produit ajouté au panier avec succès");
+        } catch (SecurityException e) {
+            logger.warn("Accès refusé ajouterProduit : {}", e.getMessage());
+            return AppResponse.forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Utilisateur introuvable ajouterProduit : {}", e.getMessage());
+            return AppResponse.badRequest(e.getMessage());
         } catch (Exception e) {
             logger.error("Erreur lors de l'ajout au panier", e);
             return AppResponse.error("Erreur lors de l'ajout au panier");
@@ -65,6 +77,12 @@ public class PanierController implements IController {
                     idProduit, idUtilisateur);
             panierService.supprimerProduit(idUtilisateur, idProduit);
             return AppResponse.success(null, "Produit supprimé du panier avec succès");
+        } catch (SecurityException e) {
+            logger.warn("Accès refusé supprimerProduit : {}", e.getMessage());
+            return AppResponse.forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Utilisateur introuvable supprimerProduit : {}", e.getMessage());
+            return AppResponse.badRequest(e.getMessage());
         } catch (Exception e) {
             logger.error("Erreur lors de la suppression du panier", e);
             return AppResponse.error("Erreur lors de la suppression du panier");
@@ -86,6 +104,12 @@ public class PanierController implements IController {
                 return AppResponse.error("Stock insuffisant");
             }
             return AppResponse.success(null, "Quantité modifiée avec succès");
+        } catch (SecurityException e) {
+            logger.warn("Accès refusé modifierQuantite : {}", e.getMessage());
+            return AppResponse.forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Utilisateur introuvable modifierQuantite : {}", e.getMessage());
+            return AppResponse.badRequest(e.getMessage());
         } catch (Exception e) {
             logger.error("Erreur lors de la modification de la quantité", e);
             return AppResponse.error("Erreur lors de la modification de la quantité");
@@ -101,6 +125,12 @@ public class PanierController implements IController {
             logger.info("Action: calculerTotal panier utilisateur id={}", idUtilisateur);
             double total = panierService.calculerTotal(idUtilisateur);
             return AppResponse.success(total, "Total calculé avec succès");
+        } catch (SecurityException e) {
+            logger.warn("Accès refusé calculerTotal : {}", e.getMessage());
+            return AppResponse.forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Utilisateur introuvable calculerTotal : {}", e.getMessage());
+            return AppResponse.badRequest(e.getMessage());
         } catch (Exception e) {
             logger.error("Erreur lors du calcul du total", e);
             return AppResponse.error("Erreur lors du calcul du total");
@@ -116,6 +146,12 @@ public class PanierController implements IController {
             logger.info("Action: viderPanier utilisateur id={}", idUtilisateur);
             panierService.viderPanier(idUtilisateur);
             return AppResponse.success(null, "Panier vidé avec succès");
+        } catch (SecurityException e) {
+            logger.warn("Accès refusé viderPanier : {}", e.getMessage());
+            return AppResponse.forbidden(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Utilisateur introuvable viderPanier : {}", e.getMessage());
+            return AppResponse.badRequest(e.getMessage());
         } catch (Exception e) {
             logger.error("Erreur lors du vidage du panier", e);
             return AppResponse.error("Erreur lors du vidage du panier");
