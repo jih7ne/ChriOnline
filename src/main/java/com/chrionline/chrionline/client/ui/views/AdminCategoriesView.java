@@ -178,7 +178,6 @@ public class AdminCategoriesView extends BorderPane {
         grid.setHgap(20);
         grid.setVgap(20);
         grid.setMaxWidth(Double.MAX_VALUE);
-        // Colonnes initiales (seront recalculées au premier resize)
         updateColumnConstraints();
 
         content.getChildren().addAll(header, searchBar, grid);
@@ -239,12 +238,11 @@ public class AdminCategoriesView extends BorderPane {
 
         VBox card = new VBox(0);
         card.setMaxWidth(Double.MAX_VALUE);
-        card.setPrefWidth(USE_COMPUTED_SIZE); // laisse la grille décider
+        card.setPrefWidth(USE_COMPUTED_SIZE);
         card.setStyle(cardStyle);
         card.setOnMouseEntered(e -> card.setStyle(cardHover));
         card.setOnMouseExited(e  -> card.setStyle(cardStyle));
 
-        // ── Header : nom à gauche, icônes à droite via BorderPane ─────
         BorderPane cardHeader = new BorderPane();
         cardHeader.setPadding(new Insets(20, 16, 14, 20));
 
@@ -509,7 +507,7 @@ public class AdminCategoriesView extends BorderPane {
             nomW.setStyle("-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:" + AppTheme.PRIMARY + ";");
             int nb = cat.getNbProduits();
             Label msgW = new Label("Cette catégorie contient " + nb + " produit" + (nb > 1 ? "s" : "") + ".\n"
-                    + "Veuillez d'abord déplacer ou supprimer ces produits.");
+                    + "Veuillez d'abord supprimer ses produits.");
             msgW.setStyle("-fx-font-size:13px;-fx-text-fill:" + AppTheme.TEXT_MUTED + ";");
             msgW.setWrapText(true);
 
@@ -603,7 +601,17 @@ public class AdminCategoriesView extends BorderPane {
                             .parameter("id", cat.getId())
                             .authToken(client.getAuthToken()).build();
                     AppResponse res = client.sendAndParse(req);
-                    Platform.runLater(() -> { if (res.isSuccess()) chargerCategories(); });
+                    Platform.runLater(() -> {
+                        if (res.isSuccess()) {
+                            chargerCategories();
+                        } else {
+                            // Données périmées côté client : on rafraîchit puis on informe
+                            chargerCategories();
+                            Alert a = new Alert(Alert.AlertType.ERROR, res.getMessage(), ButtonType.OK);
+                            a.setHeaderText("Suppression impossible");
+                            a.showAndWait();
+                        }
+                    });
                 } catch (Exception ex) { ex.printStackTrace(); }
             }).start();
         });
