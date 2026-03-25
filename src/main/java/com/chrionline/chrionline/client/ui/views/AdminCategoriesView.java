@@ -488,6 +488,65 @@ public class AdminCategoriesView extends BorderPane {
     }
 
     private void supprimerCategorie(Categorie cat) {
+        // ── Blocage si la catégorie contient des produits ─────────────
+        if (cat.getNbProduits() > 0) {
+            Stage warnStage = new Stage();
+            warnStage.setTitle("Suppression impossible");
+            warnStage.initModality(Modality.APPLICATION_MODAL);
+            warnStage.initStyle(StageStyle.DECORATED);
+            warnStage.setResizable(false);
+
+            FontIcon warnIcon = new FontIcon(Feather.ALERT_TRIANGLE);
+            warnIcon.setIconSize(26);
+            warnIcon.setIconColor(Color.web("#D97706"));
+            StackPane warnCircle = new StackPane(warnIcon);
+            warnCircle.setPrefSize(56, 56); warnCircle.setMinSize(56, 56); warnCircle.setMaxSize(56, 56);
+            warnCircle.setStyle("-fx-background-color:#FEF3C7;-fx-background-radius:28;");
+
+            Label titreW = new Label("Suppression impossible");
+            titreW.setStyle("-fx-font-size:17px;-fx-font-weight:bold;-fx-text-fill:" + AppTheme.TEXT_MAIN + ";");
+            Label nomW = new Label("\"" + cat.getNom() + "\"");
+            nomW.setStyle("-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:" + AppTheme.PRIMARY + ";");
+            int nb = cat.getNbProduits();
+            Label msgW = new Label("Cette catégorie contient " + nb + " produit" + (nb > 1 ? "s" : "") + ".\n"
+                    + "Veuillez d'abord déplacer ou supprimer ces produits.");
+            msgW.setStyle("-fx-font-size:13px;-fx-text-fill:" + AppTheme.TEXT_MUTED + ";");
+            msgW.setWrapText(true);
+
+            VBox textBoxW = new VBox(6, titreW, nomW, msgW);
+            textBoxW.setAlignment(Pos.CENTER_LEFT);
+            HBox contentBoxW = new HBox(18, warnCircle, textBoxW);
+            contentBoxW.setAlignment(Pos.CENTER_LEFT);
+            contentBoxW.setPadding(new Insets(24, 28, 16, 28));
+            contentBoxW.setStyle("-fx-background-color:" + AppTheme.BG + ";");
+
+            Button okW = new Button("Compris");
+            okW.setPrefWidth(130);
+            String okWStyle =
+                    "-fx-background-color:#D97706;-fx-text-fill:white;" +
+                            "-fx-font-size:13px;-fx-font-weight:bold;-fx-background-radius:9;" +
+                            "-fx-padding:9 20 9 20;-fx-cursor:hand;";
+            okW.setStyle(okWStyle);
+            okW.setOnMouseEntered(e -> okW.setStyle(okWStyle.replace("#D97706", "#B45309")));
+            okW.setOnMouseExited(e  -> okW.setStyle(okWStyle));
+            okW.setOnAction(e -> warnStage.close());
+
+            HBox btnBarW = new HBox(okW);
+            btnBarW.setAlignment(Pos.CENTER_RIGHT);
+            btnBarW.setPadding(new Insets(14, 28, 20, 28));
+            btnBarW.setStyle(
+                    "-fx-background-color:" + AppTheme.CARD_BG + ";" +
+                            "-fx-border-color:" + AppTheme.FIELD_BORDER + ";-fx-border-width:1 0 0 0;"
+            );
+
+            VBox rootW = new VBox(0, contentBoxW, btnBarW);
+            rootW.setStyle("-fx-background-color:" + AppTheme.BG + ";");
+            warnStage.setScene(new Scene(rootW));
+            warnStage.showAndWait();
+            return; // bloquer la suppression
+        }
+
+        // ── Confirmation normale (catégorie sans produits) ────────────
         Stage stage = new Stage();
         stage.setTitle("Confirmation");
         stage.initModality(Modality.APPLICATION_MODAL);

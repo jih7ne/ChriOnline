@@ -25,7 +25,7 @@ public class LoginView extends StackPane {
     private final Consumer<Map<String, Object>> onLoginSuccess;
     private final Runnable                     onGoToRegister;
     private final Runnable                     onGoToForgotPassword;
-
+//on passe le tcp client, un consumer appele en cas de succes, runnables vers l inscription ou mot de passe oublié
     public LoginView(TCPClient tcpClient,
                      Consumer<Map<String, Object>> onLoginSuccess,
                      Runnable onGoToRegister,
@@ -122,7 +122,7 @@ public class LoginView extends StackPane {
         // Login button
         loginButton = new Button("Se connecter");
         AppTheme.stylePrimaryButton(loginButton);
-        loginButton.setOnAction(e -> handleLogin());
+        loginButton.setOnAction(e -> handleLogin()); //what happens when we click on the log in button
 
         card.getChildren().addAll(
                 iconBox, titleBox, toggle,
@@ -134,30 +134,30 @@ public class LoginView extends StackPane {
         StackPane.setAlignment(card, Pos.CENTER);
         this.getChildren().add(card);
     }
-
+//methode appéle le moemnt on clique sur le button de connexion
     private void handleLogin() {
         String email    = emailField.getText().trim();
         String password = passwordField.getText();
-
+//verification des champs coté client tout d'abord
         if (email.isEmpty() || password.isEmpty()) { showError("Veuillez remplir tous les champs."); return; }
         if (!email.contains("@"))                  { showError("Adresse e-mail invalide."); return; }
-
+//on désactive le button de login pour ne pas cliquer plusieurs fois
         loginButton.setDisable(true);
         loginButton.setText("Connexion...");
         hideError();
-
+//on tourne sur un thread background pour ne pas bloquer l ui,
         new Thread(() -> {
             try {
-                Map<String, String> payload = new HashMap<>();
+                Map<String, String> payload = new HashMap<>(); //on constuit un payload  contenant email/mdp
                 payload.put("email",    email);
                 payload.put("password", password);
 
-                AppRequest request = new AppRequest.Builder()
+                AppRequest request = new AppRequest.Builder() //on construit l app request
                         .controller("Auth").action("login")
-                        .payload(JsonUtils.toJson(payload))
-                        .build();
+                        .payload(JsonUtils.toJson(payload)) //on serialise le payload en json
+                        .build(); //on ajoute un timestamp et un uuid a l app request
 
-                AppResponse response = tcpClient.sendAndParse(request);
+                AppResponse response = tcpClient.sendAndParse(request); //on envoie la requete et on écoute la réponse
 
                 Platform.runLater(() -> {
                     loginButton.setDisable(false);
@@ -165,8 +165,8 @@ public class LoginView extends StackPane {
 
                     if (response != null && response.isSuccess()) {
                         @SuppressWarnings("unchecked")
-                        Map<String, Object> data = response.getDataAs(Map.class);
-                        if (data != null) onLoginSuccess.accept(data);
+                        Map<String, Object> data = response.getDataAs(Map.class); //on recupere the data  from the response
+                        if (data != null) onLoginSuccess.accept(data); //ce callback remonte vers clientapplication qui redirege soit vers vue client ou vue admin
                     } else {
                         showError(response != null && response.getMessage() != null
                                 ? response.getMessage()
@@ -182,7 +182,7 @@ public class LoginView extends StackPane {
             }
         }).start();
     }
-
+//creation des labels
     private Label createFieldLabel(String text) {
         Label lbl = new Label(text);
         lbl.setStyle(
@@ -194,7 +194,7 @@ public class LoginView extends StackPane {
         VBox.setMargin(lbl, new Insets(4, 0, 4, 0));
         return lbl;
     }
-
+//tilisation des emojis
     private StackPane wrapWithIcon(String emoji, Control field) {
         Label iconLabel = new Label(emoji);
         iconLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");

@@ -27,37 +27,27 @@ import java.util.Map;
  * Step 3 — Delivery address (with "Passer pour l'instant" button)
  */
 public class RegisterView extends StackPane {
-
-    // ── Step 1 ─────────────────────────────────────────────────────────────
     private final TextField     prenomField;
     private final TextField     nomField;
     private final TextField     emailField;
     private final PasswordField passwordField;
-
-    // ── Step 2 ─────────────────────────────────────────────────────────────
     private final ComboBox<String> questionCombo;
     private final TextField        reponseField;
-
-    // ── Step 3 ─────────────────────────────────────────────────────────────
     private final TextField rueField;
     private final TextField codePostalField;
     private final TextField villeField;
-
-    // ── Shared ─────────────────────────────────────────────────────────────
     private final Label     errorLabel;
     private final Button    nextButton;
     private final Button    registerButton;
     private final TCPClient tcpClient;
     private final Runnable  onRegisterSuccess;
     private final Runnable  onGoToLogin;
-
     private final VBox step1Container;
     private final VBox step2Container;
     private final VBox step3Container;
     private final HBox stepIndicator;
-
     private int currentStep = 1;
-
+//les questions
     private static final String[] QUESTIONS = {
             "Quel est le prénom de votre mère ?",
             "Quel est le nom de votre premier animal de compagnie ?",
@@ -72,8 +62,7 @@ public class RegisterView extends StackPane {
         this.onGoToLogin       = onGoToLogin;
 
         this.setStyle("-fx-background-color: " + AppTheme.BG + ";");
-
-        // ── Init fields ────────────────────────────────────────────────────
+//on initialise les champs
         prenomField    = textField("Prénom");
         nomField       = textField("Nom");
         emailField     = textField("votre@email.com");
@@ -94,8 +83,7 @@ public class RegisterView extends StackPane {
         errorLabel.setStyle("-fx-text-fill: " + AppTheme.ERROR_COLOR + "; -fx-font-size: 13px;");
         errorLabel.setVisible(false);
         errorLabel.setWrapText(true);
-
-        // ── Step containers ────────────────────────────────────────────────
+ //on sépare les etapes de l inscription dans des conteneurs
 
         // Step 1: personal info
         step1Container = new VBox(0,
@@ -105,7 +93,7 @@ public class RegisterView extends StackPane {
                 fieldBox("Mot de passe",   wrapIcon("🔒", passwordField))
         );
 
-        // Step 2: security question (mandatory)
+        // Step 2: security question )
         Label securityHint = new Label(
                 "Cette question vous permettra de récupérer votre mot de passe si vous l'oubliez. " +
                         "Elle est obligatoire."
@@ -246,8 +234,6 @@ public class RegisterView extends StackPane {
                 registerButton
         );
 
-        // ── Wire navigation callbacks ──────────────────────────────────────
-        // We keep refs to backRow and stepTitle so handleNext/handleBack can update them
         nextButton.setUserData(new Object[]{ backRow, stepTitle });
         backButton.setUserData(new Object[]{ backRow, stepTitle });
 
@@ -265,8 +251,8 @@ public class RegisterView extends StackPane {
         this.getChildren().add(scroll);
     }
 
-    // ─── Navigation ────────────────────────────────────────────────────────
 
+//navigation (on avance)
     private void handleNext() {
         hideError();
         Object[] refs = (Object[]) nextButton.getUserData();
@@ -286,7 +272,7 @@ public class RegisterView extends StackPane {
             registerButton.setManaged(true);
         }
     }
-
+//navigation (on recule)
     private void handleBack() {
         hideError();
         Object[] refs = (Object[]) nextButton.getUserData();
@@ -307,13 +293,10 @@ public class RegisterView extends StackPane {
     }
 
     private void goToStep(int step, HBox backRow, Label stepTitle, String title) {
-        // Hide current
         getStepContainer(currentStep).setVisible(false);
         getStepContainer(currentStep).setManaged(false);
-
         currentStep = step;
 
-        // Show target
         VBox target = getStepContainer(step);
         target.setVisible(true);
         target.setManaged(true);
@@ -334,8 +317,9 @@ public class RegisterView extends StackPane {
         };
     }
 
-    // ─── Validation ────────────────────────────────────────────────────────
-
+/*
+* Les méthodes de la validation de chaque étape cote client
+* */
     private boolean validateStep1() {
         if (prenomField.getText().trim().isEmpty())      { showError("Veuillez saisir votre prénom."); return false; }
         if (nomField.getText().trim().isEmpty())          { showError("Veuillez saisir votre nom."); return false; }
@@ -350,7 +334,7 @@ public class RegisterView extends StackPane {
         return true;
     }
 
-    // ─── Submit ────────────────────────────────────────────────────────────
+//envoie du formulaire
 
     private void submitRegister() {
         String prenom    = prenomField.getText().trim();
@@ -359,15 +343,15 @@ public class RegisterView extends StackPane {
         String password  = passwordField.getText();
         String question  = questionCombo.getValue();
         String reponse   = reponseField.getText().trim();
-
+//parite adresse (opt)
         String rue        = rueField.getText().trim();
         String codePostal = codePostalField.getText().trim();
         String ville      = villeField.getText().trim();
-
+//on désactive le button
         registerButton.setDisable(true);
         registerButton.setText("Inscription…");
         hideError();
-
+//thread en background
         new Thread(() -> {
             try {
                 Map<String, Object> payload = new HashMap<>();
@@ -377,7 +361,7 @@ public class RegisterView extends StackPane {
                 payload.put("password",        password);
                 payload.put("questionSecrete", question);
                 payload.put("reponseSecrete",  reponse.toLowerCase());
-
+//si la parite adresse n est pas vide
                 if (!rue.isEmpty() && !codePostal.isEmpty() && !ville.isEmpty()) {
                     Map<String, String> adresse = new HashMap<>();
                     adresse.put("rue",           rue);
@@ -387,12 +371,12 @@ public class RegisterView extends StackPane {
                     adresse.put("est_principale","true");
                     payload.put("adresse", adresse);
                 }
-
+//on construit l app request de la meme maniere
                 AppRequest request = new AppRequest.Builder()
                         .controller("Auth").action("register")
                         .payload(JsonUtils.toJson(payload))
                         .build();
-
+//on recupere la reponse
                 AppResponse response = tcpClient.sendAndParse(request);
 
                 Platform.runLater(() -> {
@@ -416,7 +400,8 @@ public class RegisterView extends StackPane {
         }).start();
     }
 
-    // ─── Step indicator ────────────────────────────────────────────────────
+    //les indicateurs des pas
+
 
     private HBox buildStepIndicator() {
         HBox bar = new HBox(0);
@@ -460,7 +445,7 @@ public class RegisterView extends StackPane {
     }
 
     private void updateStepIndicator(int activeStep) {
-        // 3 steps → children indices: 0 (step), 1 (line), 2 (step), 3 (line), 4 (step)
+
         for (int i = 0; i < 3; i++) {
             VBox  stepBox = (VBox)  stepIndicator.getChildren().get(i * 2);
             StackPane dot = (StackPane) stepBox.getChildren().get(0);
