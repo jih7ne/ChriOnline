@@ -4,18 +4,21 @@ import com.chrionline.chrionline.core.theme.AppTheme;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.network.tcp.TCPClient;
+import com.chrionline.chrionline.core.interfaces.ViewManager;
+import com.chrionline.chrionline.client.ui.components.ClientNavbar;
+
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Separator;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
-import com.chrionline.chrionline.core.interfaces.ViewManager;
-import com.chrionline.chrionline.client.ui.components.ClientNavbar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +74,7 @@ public class HistoriqueCommandesView extends BorderPane {
         // FILTERS
         HBox filtersBox = new HBox(12);
         filtersBox.setAlignment(Pos.CENTER_LEFT);
-        String[] filters = {"Toutes", "En attente", "Validée", "Expédiée", "Livrée"};
+        String[] filters = {"Toutes", "En attente", "Validée", "Annulée"};
         for (String filter : filters) {
             filtersBox.getChildren().add(createFilterChip(filter, filtersBox));
         }
@@ -349,6 +352,32 @@ public class HistoriqueCommandesView extends BorderPane {
                         totalRow.setPadding(new Insets(10, 0, 4, 0));
 
                         detailsPane.getChildren().addAll(sepTotal, totalRow);
+                        String statut = String.valueOf(cmd.get("statut")).toLowerCase();
+                        if (statut.equals("en_attente")) {
+                            javafx.scene.control.Button annulerBtn = new javafx.scene.control.Button("Annuler la commande");
+                            annulerBtn.setStyle(
+                                    "-fx-background-color: #E74C3C; -fx-text-fill: white; " +
+                                            "-fx-font-size: 13px; -fx-font-weight: bold; " +
+                                            "-fx-background-radius: 8px; -fx-cursor: hand; -fx-padding: 8 20 8 20;"
+                            );
+                            annulerBtn.setOnMouseEntered(e -> annulerBtn.setStyle(
+                                    "-fx-background-color: #C0392B; -fx-text-fill: white; " +
+                                            "-fx-font-size: 13px; -fx-font-weight: bold; " +
+                                            "-fx-background-radius: 8px; -fx-cursor: hand; -fx-padding: 8 20 8 20;"
+                            ));
+                            annulerBtn.setOnMouseExited(e -> annulerBtn.setStyle(
+                                    "-fx-background-color: #E74C3C; -fx-text-fill: white; " +
+                                            "-fx-font-size: 13px; -fx-font-weight: bold; " +
+                                            "-fx-background-radius: 8px; -fx-cursor: hand; -fx-padding: 8 20 8 20;"
+                            ));
+
+                            annulerBtn.setOnAction(e -> confirmerEtAnnuler(idCommande, cmd));
+
+                            HBox btnRow = new HBox(annulerBtn);
+                            btnRow.setAlignment(Pos.CENTER_RIGHT);
+                            btnRow.setPadding(new Insets(12, 0, 4, 0));
+                            detailsPane.getChildren().add(btnRow);
+                        }
                     }
                 });
             } catch (Exception ignored) {}
@@ -386,8 +415,6 @@ public class HistoriqueCommandesView extends BorderPane {
         switch (statutCode) {
             case "en_attente" -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "En attente"; }
             case "validee"    -> { bg = "#7F5539"; textCol = "white";   labelText = "Validée"; }
-            case "expediee"   -> { bg = "#5C3D2E"; textCol = "white";   labelText = "Expédiée"; }
-            case "livree"     -> { bg = "#00C853"; textCol = "white";   labelText = "Livrée"; }
             case "annulee"    -> { bg = "#E74C3C"; textCol = "white";   labelText = "Annulée"; }
             default           -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "Inconnu"; }
         }
@@ -397,5 +424,170 @@ public class HistoriqueCommandesView extends BorderPane {
         lbl.setStyle("-fx-text-fill: " + textCol + "; -fx-font-size: 12px; -fx-font-weight: bold;");
         badge.getChildren().add(lbl);
         return badge;
+    }
+    private void confirmerEtAnnuler(int idCommande, Map<String, Object> cmd) {
+
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("");
+        dialog.setResizable(false);
+
+        VBox root = new VBox(24);
+        root.setPadding(new Insets(32, 36, 28, 36));
+        root.setAlignment(Pos.CENTER);
+        root.setStyle("-fx-background-color: #FDF6EE; -fx-background-radius: 16px;");
+
+        // Icône
+        StackPane iconCircle = new StackPane();
+        iconCircle.setPrefSize(64, 64);
+        iconCircle.setMaxSize(64, 64);
+        iconCircle.setStyle("-fx-background-color: #F5EAE0; -fx-background-radius: 32px;");
+        FontIcon warnIcon = new FontIcon(Feather.ALERT_TRIANGLE);
+        warnIcon.setIconSize(28);
+        warnIcon.setIconColor(Color.web("#E74C3C"));
+        iconCircle.getChildren().add(warnIcon);
+
+        // Titre
+        Label titre = new Label("Annuler la commande ?");
+        titre.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #5C3D2E;");
+
+        // Message
+        Label msg = new Label("Cette action est irréversible.\nVoulez-vous vraiment annuler cette commande ?");
+        msg.setStyle("-fx-font-size: 13px; -fx-text-fill: #7F5539; -fx-text-alignment: center;");
+        msg.setAlignment(Pos.CENTER);
+        msg.setWrapText(true);
+
+        // Bouton Oui
+        Button btnOui = new Button("Oui, annuler");
+        btnOui.setMaxWidth(Double.MAX_VALUE);
+        btnOui.setStyle(
+                "-fx-background-color: #E74C3C; -fx-text-fill: white;" +
+                        "-fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-background-radius: 10px; -fx-cursor: hand; -fx-padding: 11 24 11 24;"
+        );
+        btnOui.setOnMouseEntered(e -> btnOui.setStyle(
+                "-fx-background-color: #C0392B; -fx-text-fill: white;" +
+                        "-fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-background-radius: 10px; -fx-cursor: hand; -fx-padding: 11 24 11 24;"
+        ));
+        btnOui.setOnMouseExited(e -> btnOui.setStyle(
+                "-fx-background-color: #E74C3C; -fx-text-fill: white;" +
+                        "-fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-background-radius: 10px; -fx-cursor: hand; -fx-padding: 11 24 11 24;"
+        ));
+
+        // Bouton Non
+        Button btnNon = new Button("Non, garder");
+        btnNon.setMaxWidth(Double.MAX_VALUE);
+        btnNon.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: #7F5539; -fx-border-width: 1.5px;" +
+                        "-fx-border-radius: 10px; -fx-background-radius: 10px;" +
+                        "-fx-text-fill: #7F5539; -fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-cursor: hand; -fx-padding: 11 24 11 24;"
+        );
+        btnNon.setOnMouseEntered(e -> btnNon.setStyle(
+                "-fx-background-color: #E6CCB2;" +
+                        "-fx-border-color: #7F5539; -fx-border-width: 1.5px;" +
+                        "-fx-border-radius: 10px; -fx-background-radius: 10px;" +
+                        "-fx-text-fill: #7F5539; -fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-cursor: hand; -fx-padding: 11 24 11 24;"
+        ));
+        btnNon.setOnMouseExited(e -> btnNon.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: #7F5539; -fx-border-width: 1.5px;" +
+                        "-fx-border-radius: 10px; -fx-background-radius: 10px;" +
+                        "-fx-text-fill: #7F5539; -fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-cursor: hand; -fx-padding: 11 24 11 24;"
+        ));
+
+        HBox boutons = new HBox(12, btnNon, btnOui);
+        HBox.setHgrow(btnNon, Priority.ALWAYS);
+        HBox.setHgrow(btnOui, Priority.ALWAYS);
+        boutons.setAlignment(Pos.CENTER);
+
+        root.getChildren().addAll(iconCircle, titre, msg, boutons);
+
+        Scene scene = new Scene(root, 380, 260);
+        scene.setFill(Color.web("#FDF6EE"));
+        dialog.setScene(scene);
+
+        // Actions
+        btnNon.setOnAction(e -> dialog.close());
+
+        btnOui.setOnAction(e -> {
+            dialog.close();
+            new Thread(() -> {
+                try {
+                    Map<String, Object> payload = new java.util.HashMap<>();
+                    payload.put("idCommande", idCommande);
+                    AppRequest req = new AppRequest.Builder()
+                            .controller("Commande").action("annuler")
+                            .payload(payload).build();
+                    AppResponse res = AppResponse.fromJson(client.sendRequest(req));
+
+                    Platform.runLater(() -> {
+                        if (res.isSuccess()) {
+                            cmd.put("statut", "annulee");
+                            chargerHistorique();
+                        } else {
+                            afficherErreurDialog(res.getMessage() != null
+                                    ? res.getMessage()
+                                    : "Impossible d'annuler la commande.");
+                        }
+                    });
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> afficherErreurDialog("Une erreur réseau s'est produite."));
+                }
+            }).start();
+        });
+
+        dialog.showAndWait();
+    }
+
+    private void afficherErreurDialog(String message) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setResizable(false);
+
+        VBox root = new VBox(20);
+        root.setPadding(new Insets(32, 36, 28, 36));
+        root.setAlignment(Pos.CENTER);
+        root.setStyle("-fx-background-color: #FDF6EE;");
+
+        FontIcon icon = new FontIcon(Feather.X_CIRCLE);
+        icon.setIconSize(40);
+        icon.setIconColor(Color.web("#E74C3C"));
+
+        Label msg = new Label(message);
+        msg.setStyle("-fx-font-size: 13px; -fx-text-fill: #5C3D2E;");
+        msg.setWrapText(true);
+        msg.setAlignment(Pos.CENTER);
+
+        Button btnFermer = new Button("Fermer");
+        btnFermer.setStyle(
+                "-fx-background-color: #7F5539; -fx-text-fill: white;" +
+                        "-fx-font-weight: bold; -fx-background-radius: 10px;" +
+                        "-fx-padding: 10 28 10 28; -fx-cursor: hand;"
+        );
+        btnFermer.setOnMouseEntered(e -> btnFermer.setStyle(
+                "-fx-background-color: #5C3D2E; -fx-text-fill: white;" +
+                        "-fx-font-weight: bold; -fx-background-radius: 10px;" +
+                        "-fx-padding: 10 28 10 28; -fx-cursor: hand;"
+        ));
+        btnFermer.setOnMouseExited(e -> btnFermer.setStyle(
+                "-fx-background-color: #7F5539; -fx-text-fill: white;" +
+                        "-fx-font-weight: bold; -fx-background-radius: 10px;" +
+                        "-fx-padding: 10 28 10 28; -fx-cursor: hand;"
+        ));
+        btnFermer.setOnAction(e -> dialog.close());
+
+        root.getChildren().addAll(icon, msg, btnFermer);
+
+        Scene scene = new Scene(root, 340, 200);
+        scene.setFill(Color.web("#FDF6EE"));
+        dialog.setScene(scene);
+        dialog.showAndWait();
     }
 }

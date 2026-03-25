@@ -139,15 +139,29 @@ public class CommandeController implements IController {
     // ANNULER UNE COMMANDE
     // INPUT  : { idCommande }
     // OUTPUT : { message }
+    // REMPLACER l'ancienne méthode annuler par :
     public String annuler(AppRequest request) {
         try {
-            Integer idCommande = request.getInt("idCommande");
+            java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
+            Integer idCommande = null;
+            if (payloadMap != null && payloadMap.get("idCommande") != null) {
+                idCommande = ((Number) payloadMap.get("idCommande")).intValue();
+            } else {
+                idCommande = request.getInt("idCommande");
+            }
+
             if (idCommande == null) {
                 return AppResponse.badRequest("idCommande est requis");
             }
 
             logger.info("Action: annuler commande id={}", idCommande);
-            commandeService.annulerCommande(idCommande);
+
+            boolean succes = commandeService.annulerCommande(idCommande);
+
+            if (!succes) {
+                return AppResponse.error("Impossible d'annuler cette commande. Elle est peut-être déjà validée ou n'existe pas.");
+            }
+
             return AppResponse.success(null, "Commande annulée avec succès");
 
         } catch (Exception e) {

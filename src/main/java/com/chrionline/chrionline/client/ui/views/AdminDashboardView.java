@@ -1,5 +1,6 @@
 package com.chrionline.chrionline.client.ui.views;
 
+
 import com.chrionline.chrionline.core.interfaces.ViewManager;
 import com.chrionline.chrionline.core.theme.AppTheme;
 import com.chrionline.chrionline.network.protocol.AppRequest;
@@ -36,7 +37,7 @@ public class AdminDashboardView extends BorderPane {
 
     private static final String CHART_CSS =
             ".chart-title { -fx-text-fill: " + AppTheme.TEXT_MAIN + "; -fx-font-size: 13px; }" +
-                    ".axis-label { -fx-text-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 12px; }" +
+                    ".axis-label { -fx-label-fill: " + AppTheme.TEXT_MUTED + "; -fx-font-size: 12px; }" + // ✅ FIXED
                     ".axis { -fx-tick-label-fill: " + AppTheme.TEXT_MAIN + "; }" +
                     ".chart-plot-background { -fx-background-color: transparent; }" +
                     ".chart-content { -fx-background-color: transparent; }" +
@@ -44,7 +45,7 @@ public class AdminDashboardView extends BorderPane {
                     ".chart-legend-item { -fx-text-fill: " + AppTheme.TEXT_MAIN + "; }" +
                     ".chart-legend { -fx-background-color: transparent; }" +
                     ".pie-label { -fx-fill: " + AppTheme.TEXT_MAIN + "; }" +
-                    ".default-color0.chart-line-symbol { -fx-background-color: " + AppTheme.PRIMARY + ", white; }" +
+                    ".default-color0.chart-line-symbol { -fx-background-color: " + AppTheme.TEXT_MAIN + ", black; }" +
                     ".default-color0.chart-series-line { -fx-stroke: " + AppTheme.PRIMARY + "; }";
 
     public AdminDashboardView(TCPClient client, ViewManager viewManager) {
@@ -185,7 +186,7 @@ public class AdminDashboardView extends BorderPane {
                 String.valueOf(currentStats.getTotalOrders()), "All time orders"));
 
         // Row 2: financial
-        flow.getChildren().add(createStatCard("💰  Total Revenue",
+        flow.getChildren().add(createStatCard("💰  Total Revenue (MAD)",
                 formatCurrency(currentStats.getTotalRevenue()), "From completed payments"));
 
         // Row 3: status & stock
@@ -238,13 +239,13 @@ public class AdminDashboardView extends BorderPane {
                         "-fx-background-radius: 8px;"
         );
 
-        Tab ordersTab = new Tab("📈  Monthly Orders");
+        Tab ordersTab = new Tab("Monthly Orders");
         ordersTab.setContent(createChartTabContent(createOrdersChart()));
 
-        Tab revenueTab = new Tab("💶  Monthly Revenue");
+        Tab revenueTab = new Tab("Monthly Revenue");
         revenueTab.setContent(createChartTabContent(createRevenueChart()));
 
-        Tab categoryTab = new Tab("🥧  By Category");
+        Tab categoryTab = new Tab("By Category");
         categoryTab.setContent(createChartTabContent(createCategoryChart()));
 
         tabPane.getTabs().addAll(ordersTab, revenueTab, categoryTab);
@@ -338,9 +339,31 @@ public class AdminDashboardView extends BorderPane {
 
 
     private void applyChartCSS(Chart chart) {
-
         chart.getStylesheets().clear();
-        chart.setStyle(CHART_CSS);
+
+        String css = """
+        .chart-title { -fx-text-fill: %s; -fx-font-size: 13px; }
+        .axis-label { -fx-label-fill: %s; -fx-font-size: 12px; }
+        .axis { -fx-tick-label-fill: %s; }
+        .chart-plot-background { -fx-background-color: transparent; }
+        .chart-content { -fx-background-color: transparent; }
+        .chart-series-line { -fx-stroke-width: 2.5; }
+        .chart-legend-item { -fx-text-fill: %s; }
+        .chart-legend { -fx-background-color: transparent; }
+        .pie-label { -fx-fill: %s; }
+        .default-color0.chart-line-symbol { -fx-background-color: %s, white; }
+        .default-color0.chart-series-line { -fx-stroke: %s; }
+    """.formatted(
+                AppTheme.TEXT_MAIN,
+                AppTheme.TEXT_MUTED,
+                AppTheme.TEXT_MAIN,
+                AppTheme.TEXT_MAIN,
+                AppTheme.TEXT_MAIN,
+                AppTheme.TEXT_MAIN,
+                AppTheme.PRIMARY
+        );
+
+        chart.getStylesheets().add("data:text/css," + css.replace("\n", ""));
     }
 
 
@@ -349,7 +372,8 @@ public class AdminDashboardView extends BorderPane {
         // Force label color to be readable regardless of theme
         axis.setStyle(
                 "-fx-tick-label-fill: " + AppTheme.TEXT_MAIN + ";" +
-                        "-fx-text-fill: " + AppTheme.TEXT_MAIN + ";"
+                        "-fx-text-fill: " + AppTheme.TEXT_MAIN + ";" +
+                        "-fx-label-fill: " + AppTheme.TEXT_MAIN + ";"
         );
         axis.lookup(".axis-label");
     }
@@ -540,15 +564,17 @@ public class AdminDashboardView extends BorderPane {
     }
 
 
+
+
     private String getStatusStyle(String status) {
         return switch (status.toUpperCase()) {
-            case "COMPLETED", "DELIVERED" ->
+            case "COMPLETED", "DELIVERED", "VALIDEE" ->
                     "-fx-background-color: #d1fae5; -fx-text-fill: #065f46;";
-            case "PENDING" ->
+            case "PENDING","EN_ATTENTE" ->
                     "-fx-background-color: #fef3c7; -fx-text-fill: #92400e;";
-            case "CANCELLED", "CANCELED" ->
+            case "CANCELLED", "CANCELED", "ANNULEE" ->
                     "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b;";
-            case "PROCESSING", "SHIPPED" ->
+            case "PROCESSING", "SHIPPED", "EXPEDIEE" ->
                     "-fx-background-color: #dbeafe; -fx-text-fill: #1e40af;";
             default ->
                     "-fx-background-color: " + AppTheme.FIELD_BG + "; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";";
