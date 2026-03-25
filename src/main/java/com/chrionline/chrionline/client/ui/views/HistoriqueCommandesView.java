@@ -373,7 +373,26 @@ public class HistoriqueCommandesView extends BorderPane {
 
                             annulerBtn.setOnAction(e -> confirmerEtAnnuler(idCommande, cmd));
 
-                            HBox btnRow = new HBox(annulerBtn);
+                            javafx.scene.control.Button reprendreBtn = new javafx.scene.control.Button("Reprendre / Modifier");
+                            reprendreBtn.setStyle(
+                                    "-fx-background-color: #7F5539; -fx-text-fill: white; " +
+                                            "-fx-font-size: 13px; -fx-font-weight: bold; " +
+                                            "-fx-background-radius: 8px; -fx-cursor: hand; -fx-padding: 8 20 8 20;"
+                            );
+                            reprendreBtn.setOnMouseEntered(e -> reprendreBtn.setStyle(
+                                    "-fx-background-color: #5C3D2E; -fx-text-fill: white; " +
+                                            "-fx-font-size: 13px; -fx-font-weight: bold; " +
+                                            "-fx-background-radius: 8px; -fx-cursor: hand; -fx-padding: 8 20 8 20;"
+                            ));
+                            reprendreBtn.setOnMouseExited(e -> reprendreBtn.setStyle(
+                                    "-fx-background-color: #7F5539; -fx-text-fill: white; " +
+                                            "-fx-font-size: 13px; -fx-font-weight: bold; " +
+                                            "-fx-background-radius: 8px; -fx-cursor: hand; -fx-padding: 8 20 8 20;"
+                            ));
+
+                            reprendreBtn.setOnAction(e -> reprendreCommande(idCommande, cmd, lignes));
+
+                            HBox btnRow = new HBox(12, annulerBtn, reprendreBtn);
                             btnRow.setAlignment(Pos.CENTER_RIGHT);
                             btnRow.setPadding(new Insets(12, 0, 4, 0));
                             detailsPane.getChildren().add(btnRow);
@@ -404,7 +423,7 @@ public class HistoriqueCommandesView extends BorderPane {
 
     private String cardStyle(boolean expanded) {
         return "-fx-background-color: " + (expanded ? "#EFE2D5" : "#F5EAE0") + ";" +
-               "-fx-background-radius: 16px;";
+                "-fx-background-radius: 16px;";
     }
 
     private StackPane createStatusBadge(String statutCode) {
@@ -589,5 +608,22 @@ public class HistoriqueCommandesView extends BorderPane {
         scene.setFill(Color.web("#FDF6EE"));
         dialog.setScene(scene);
         dialog.showAndWait();
+    }
+
+    private void reprendreCommande(int idCommande, Map<String, Object> cmd, List<Map<String, Object>> lignesOriginales) {
+        String uuidCommande = String.valueOf(cmd.get("uuid_commande"));
+        
+        Platform.runLater(() -> {
+            List<com.chrionline.chrionline.server.data.models.PanierProduit> panierItems = new ArrayList<>();
+            for (Map<String, Object> ligne : lignesOriginales) {
+                com.chrionline.chrionline.server.data.models.PanierProduit pp = new com.chrionline.chrionline.server.data.models.PanierProduit();
+                pp.setIdProduit(((Number) ligne.getOrDefault("id_produit", 0)).intValue());
+                pp.setNomProduit(String.valueOf(ligne.getOrDefault("nom_produit", ligne.getOrDefault("nom", "Produit"))));
+                pp.setQuantite(((Number) ligne.get("quantite")).intValue());
+                pp.setPrix(((Number) ligne.get("prix_unitaire")).doubleValue());
+                panierItems.add(pp);
+            }
+            viewManager.showCheckoutViewForExisting(userData, panierItems, idCommande, uuidCommande);
+        });
     }
 }
