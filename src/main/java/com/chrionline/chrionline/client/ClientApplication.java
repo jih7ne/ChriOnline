@@ -171,9 +171,29 @@ public class ClientApplication extends Application implements ViewManager {
 
         primaryStage.setTitle("ChriOnline — Paiement");
         setView(new CheckoutView(
-                client, lignes, userData, this,
+                client, lignes, userData, (ViewManager) this,
                 paiementData -> showConfirmationView(paiementData),
                 () -> showPanierView(userData)
+        ));
+    }
+
+    @Override
+    public void showCheckoutViewForExisting(Map<String, Object> userData, List<PanierProduit> panierItems, int idCommande, String uuidCommande) {
+        List<Map<String, Object>> lignes = panierItems.stream().map(item -> {
+            Map<String, Object> ligne = new HashMap<>();
+            ligne.put("id_produit",    item.getIdProduit());
+            ligne.put("nom",           item.getNomProduit());
+            ligne.put("quantite",      item.getQuantite());
+            ligne.put("prix_unitaire", item.getPrix());
+            return ligne;
+        }).collect(Collectors.toList());
+
+        primaryStage.setTitle("ChriOnline — Paiement");
+        setView(new CheckoutView(
+                client, lignes, userData, (ViewManager) this,
+                paiementData -> showConfirmationView(paiementData),
+                () -> showHistoriqueCommandesView(userData),
+                idCommande, uuidCommande
         ));
     }
 
