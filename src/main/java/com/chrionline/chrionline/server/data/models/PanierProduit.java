@@ -5,7 +5,6 @@ public class PanierProduit {
     private int idProduit;
     private int quantite;
 
-    // infos du produit pour affichage
     private String nomProduit;
     private double prix;
     private String urlImage;
@@ -18,7 +17,6 @@ public class PanierProduit {
         this.quantite = quantite;
     }
 
-    // sous-total de cette ligne
     public double getSousTotal() {
         return prix * quantite;
     }
