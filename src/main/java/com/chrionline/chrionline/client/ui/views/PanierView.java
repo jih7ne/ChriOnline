@@ -244,7 +244,6 @@ public class PanierView extends BorderPane {
         supprimerBtn.setOnMouseEntered(e -> supprimerBtn.setStyle("-fx-background-color: #fef2f2; -fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 4;"));
         supprimerBtn.setOnMouseExited(e  -> supprimerBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;"));
 
-        // ── Confirmation avant suppression d'un produit ───────────────
         supprimerBtn.setOnAction(e -> confirmerSupprimerProduit(item));
 
         prixSupprRow.getChildren().addAll(sousTotalLabel, supprimerBtn);
@@ -253,7 +252,6 @@ public class PanierView extends BorderPane {
         return card;
     }
 
-    // ── Dialog confirmation suppression d'un produit ──────────────────
     private void confirmerSupprimerProduit(PanierProduit item) {
         Stage stage = new Stage();
         stage.setTitle("Retirer le produit");
@@ -321,7 +319,6 @@ public class PanierView extends BorderPane {
         stage.showAndWait();
     }
 
-    // ── Dialog confirmation vider le panier ───────────────────────────
     private void confirmerViderPanier() {
         if (panierItems.isEmpty()) return;
 
