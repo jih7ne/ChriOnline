@@ -15,7 +15,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         super(connection, "Produit", new ProductRowMapper());
     }
 
-    //  AJOUTER UN PRODUIT
     @Override
     public void add(Produit item) {
         String sql = "INSERT INTO Produit (nom, description, prix, stock, url_image, id_categorie) " +
@@ -52,7 +51,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         return 0;
     }
 
-    //  AJOUTER PLUSIEURS PRODUITS
     @Override
     public void addAll(List<Produit> items) {
         for (Produit p : items) {
@@ -60,7 +58,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         }
     }
 
-    //  MODIFIER UN PRODUIT
     @Override
     public void update(String id, Produit item) {
         String sql = "UPDATE Produit SET nom=?, description=?, prix=?, stock=?, " +
@@ -114,7 +111,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         return statsList;
     }
 
-    //  LISTER TOUS LES PRODUITS AVEC CATEGORIE
     public List<Produit> findAll() {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +
@@ -132,7 +128,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         return produits;
     }
 
-    // TROUVER UN PRODUIT PAR ID
     public Produit findById(int id) {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +
@@ -150,7 +145,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         return null;
     }
 
-    //  RECHERCHE PAR CATEGORIE
     public List<Produit> findByCategorie(int idCategorie) {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +
@@ -170,7 +164,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         return produits;
     }
 
-    //  MISE A JOUR DU STOCK
     public void updateStock(int id, int nouveauStock) {
         String sql = "UPDATE Produit SET stock=? WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -182,7 +175,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         }
     }
 
-    //  SUPPRIMER UN PRODUIT
     public void deleteProduit(int id) {
         String sql = "DELETE FROM Produit WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -193,7 +185,6 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         }
     }
 
-    //  RECHERCHE PAR NOM
     public List<Produit> findByNom(String nom) {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +
