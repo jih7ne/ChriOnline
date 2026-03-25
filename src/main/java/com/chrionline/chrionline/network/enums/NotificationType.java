@@ -10,6 +10,10 @@ public enum NotificationType {
     NETWORK,
     APPLICATION,
     ERROR,
+    ORDER_CONFIRMED,
+    ORDER_CANCELLED,
+    STOCK_UPDATE,
+    PAYMENT_FAILED,
     UNKNOWN;
 
 
