@@ -200,6 +200,14 @@ public class AppResponse {
         return AppResponse.error("Unauthorized: " + message);
     }
 
+
+    /**
+     * Create a forbidden response (403) — accès refusé (ex: rôle insuffisant)
+     */
+    public static String forbidden(String message) {
+        return AppResponse.error("Forbidden: " + message);
+    }
+
     /**
      * Create a simple string response (for backward compatibility)
      */
