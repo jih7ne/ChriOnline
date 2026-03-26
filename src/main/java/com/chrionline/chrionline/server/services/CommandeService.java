@@ -1,5 +1,6 @@
 package com.chrionline.chrionline.server.services;
 
+import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.enums.StatutCommande;
 import com.chrionline.chrionline.server.data.models.Commande;
 import com.chrionline.chrionline.server.data.models.LigneCommande;
@@ -27,8 +28,12 @@ public class CommandeService {
         this.commandeRepository = commandeRepository;
         this.ligneCommandeRepository = ligneCommandeRepository;
         this.produitRepository = produitRepository;
-        this.panierService = com.chrionline.chrionline.core.config.AppConfig.getService(PanierService.class);
+        this.panierService = AppConfig.getService(PanierService.class);
         logger.info("CommandeService initialized");
+    }
+
+    private NotificationService getNotificationService() {
+        return AppConfig.getService(NotificationService.class);
     }
 
     // VALIDER UNE COMMANDE
@@ -90,13 +95,20 @@ public class CommandeService {
 
     // CONFIRMER UNE COMMANDE APRÈS PAIEMENT ACCEPTÉ
     // 1. Décrémente le stock de chaque produit
-    // 2. Passe le statut de la commande à CONFIRMEE
+    // 2. Passe le statut de la commande à VALIDEE
+    // 3. Envoie UDP : confirmation de commande (scénario 1) + mise à jour stock (scénario 3)
     public boolean confirmerPaiement(int idCommande) {
         logger.info("Confirmation paiement pour commande id={}", idCommande);
 
+        Commande commande = commandeRepository.getCommandeById(idCommande);
         List<LigneCommande> lignes = ligneCommandeRepository.getLignesCommande(idCommande);
         if (lignes.isEmpty()) {
             logger.warn("Aucune ligne trouvée pour commande id={}", idCommande);
+            // ── UDP : Scénario 2 (paiement refusé / commande introuvable)
+            if (commande != null) {
+                NotificationService ns = getNotificationService();
+                if (ns != null) ns.notifyPaymentFailed(commande.getId_utilisateur());
+            }
             return false;
         }
 
@@ -108,17 +120,33 @@ public class CommandeService {
             int nouveauStock = produit.getStock() - ligne.getQuantite();
             produitRepository.updateStock(ligne.getId_produit(), nouveauStock);
             logger.info("Stock produit id={} mis à jour → {}", ligne.getId_produit(), nouveauStock);
+
+            // ── UDP : Scénario 3 — broadcast mise à jour stock
+            NotificationService ns = getNotificationService();
+            if (ns != null) ns.notifyStockUpdated(produit.getNom(), nouveauStock);
         }
 
         // Changement de statut
         commandeRepository.updateStatut(idCommande, StatutCommande.VALIDEE);
         logger.info("Statut commande id={} → VALIDEE", idCommande);
 
+        // ── UDP : Scénario 1 — confirmation au client
+        if (commande != null) {
+            NotificationService ns = getNotificationService();
+            if (ns != null) {
+                ns.notifyOrderConfirmed(
+                        commande.getId_utilisateur(),
+                        commande.getUuid_commande(),
+                        commande.getPrix_total()
+                );
+            }
+        }
+
         return true;
     }
 
     // ANNULER UNE COMMANDE
-
+    // + UDP Scénario 5 : confirme l'annulation au client
     public boolean annulerCommande(int idCommande) {
         logger.info("Annulation commande id={}", idCommande);
 
@@ -133,9 +161,41 @@ public class CommandeService {
             logger.warn("Commande id={} ne peut pas être annulée (statut={})", idCommande, commande.getStatut());
             return false;
         }
-        // Annulation
+
         commandeRepository.updateStatut(idCommande, StatutCommande.ANNULEE);
         logger.info("Commande id={} annulée manuellement.", idCommande);
+
+        // ── UDP : Scénario 5 — confirmation annulation au client
+        NotificationService ns = getNotificationService();
+        if (ns != null) ns.notifyOrderCancelledByClient(commande.getId_utilisateur(), commande.getUuid_commande());
+
+        return true;
+    }
+
+    // CHANGER LE STATUT D'UNE COMMANDE (admin)
+    // + UDP Scénario 4 : notifie le client concerné
+    public boolean changerStatutCommande(int idCommande, StatutCommande newStatut) {
+        logger.info("Changement statut commande id={} → {}", idCommande, newStatut);
+
+        Commande commande = commandeRepository.getCommandeById(idCommande);
+        if (commande == null) {
+            logger.warn("Commande id={} introuvable", idCommande);
+            return false;
+        }
+
+        commandeRepository.updateStatut(idCommande, newStatut);
+        logger.info("Statut commande id={} → {} (admin)", idCommande, newStatut);
+
+        // ── UDP : Scénario 4 — notification au client concerné
+        NotificationService ns = getNotificationService();
+        if (ns != null) {
+            ns.notifyOrderStatusChanged(
+                    commande.getId_utilisateur(),
+                    commande.getUuid_commande(),
+                    newStatut.name()
+            );
+        }
+
         return true;
     }
 
