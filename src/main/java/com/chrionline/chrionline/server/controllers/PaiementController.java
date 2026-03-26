@@ -6,6 +6,8 @@ import com.chrionline.chrionline.core.enums.MethodePaiement;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.protocol.AppResponse;
 import com.chrionline.chrionline.server.data.models.Paiement;
+import com.chrionline.chrionline.server.repositories.CommandeRepository;
+import com.chrionline.chrionline.server.services.NotificationService;
 import com.chrionline.chrionline.server.services.PaiementService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +58,19 @@ public class PaiementController implements IController {
             String erreurValidation = paiementService.validerPaiement(numeroCarte, cvv, dateExpiration);
             if (erreurValidation != null) {
                 logger.warn("Paiement refusé commande id={} : {}", idCommande, erreurValidation);
+
+                // ── UDP : Scénario 2 — notif de refus au client même en cas d'échec de validation
+                try {
+                    com.chrionline.chrionline.server.data.models.Commande cmd =
+                            AppConfig.getRepo(CommandeRepository.class).getCommandeById(idCommande);
+                    if (cmd != null) {
+                        NotificationService ns = AppConfig.getService(NotificationService.class);
+                        if (ns != null) ns.notifyPaymentFailed(cmd.getId_utilisateur());
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Impossible d'envoyer la notif de refus : {}", ex.getMessage());
+                }
+
                 return AppResponse.error(erreurValidation);
             }
 
