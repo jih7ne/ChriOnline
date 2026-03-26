@@ -1,6 +1,7 @@
 package com.chrionline.chrionline.server.controllers;
 
 import com.chrionline.chrionline.core.config.AppConfig;
+import com.chrionline.chrionline.core.enums.StatutCommande;
 import com.chrionline.chrionline.core.interfaces.IController;
 import com.chrionline.chrionline.network.protocol.AppRequest;
 import com.chrionline.chrionline.network.protocol.AppResponse;
@@ -167,6 +168,45 @@ public class CommandeController implements IController {
         } catch (Exception e) {
             logger.error("Erreur lors de l'annulation de la commande", e);
             return AppResponse.error("Erreur lors de l'annulation de la commande");
+        }
+    }
+
+    // CHANGER LE STATUT D'UNE COMMANDE (admin)
+    // INPUT  : { idCommande, statut }
+    // OUTPUT : { message }
+    // UDP    : Scénario 4 — notifie le client concerné
+    public String changerStatut(AppRequest request) {
+        try {
+            java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
+            if (payloadMap == null
+                    || !payloadMap.containsKey("idCommande")
+                    || !payloadMap.containsKey("statut")) {
+                return AppResponse.badRequest("idCommande et statut sont requis");
+            }
+
+            int idCommande = ((Number) payloadMap.get("idCommande")).intValue();
+            String statutStr = String.valueOf(payloadMap.get("statut")).toUpperCase();
+
+            StatutCommande newStatut;
+            try {
+                newStatut = StatutCommande.valueOf(statutStr);
+            } catch (IllegalArgumentException ex) {
+                return AppResponse.badRequest("Statut invalide : " + statutStr);
+            }
+
+            logger.info("Action: changerStatut commande id={} → {}", idCommande, newStatut);
+
+            boolean succes = commandeService.changerStatutCommande(idCommande, newStatut);
+
+            if (!succes) {
+                return AppResponse.error("Impossible de changer le statut.");
+            }
+
+            return AppResponse.success(null, "Statut mis à jour avec succès");
+
+        } catch (Exception e) {
+            logger.error("Erreur lors du changement de statut", e);
+            return AppResponse.error("Erreur lors du changement de statut");
         }
     }
 }
