@@ -53,7 +53,6 @@ public class PanierRepository {
         return null;
     }
 
-    //  PRODUITS DU PANIER
     public List<PanierProduit> getProduitsDuPanier(int idPanier) {
         String sql = "SELECT pp.*, p.nom AS nom_produit, p.prix, p.url_image " +
                 "FROM Produit_Panier pp " +
@@ -81,18 +80,15 @@ public class PanierRepository {
     }
 
     public void ajouterProduit(int idPanier, int idProduit, int quantite) {
-        // si le produit existe déjà on met à jour la quantité
         String sqlCheck = "SELECT quantite FROM Produit_Panier WHERE id_panier=? AND id_produit=?";
         try (PreparedStatement stmt = connection.prepareStatement(sqlCheck)) {
             stmt.setInt(1, idPanier);
             stmt.setInt(2, idProduit);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                // produit déjà dans le panier → on augmente la quantité
                 int nouvelleQuantite = rs.getInt("quantite") + quantite;
                 modifierQuantite(idPanier, idProduit, nouvelleQuantite);
             } else {
-                // nouveau produit → on l'ajoute
                 String sql = "INSERT INTO Produit_Panier (id_panier, id_produit, quantite) VALUES (?, ?, ?)";
                 try (PreparedStatement stmtInsert = connection.prepareStatement(sql)) {
                     stmtInsert.setInt(1, idPanier);

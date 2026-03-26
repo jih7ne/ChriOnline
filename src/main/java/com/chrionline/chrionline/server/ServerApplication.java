@@ -88,7 +88,8 @@ public class ServerApplication {
         AppConfig.registerService(PanierService.class,
                 new PanierService(
                         AppConfig.getRepo(PanierRepository.class),
-                        AppConfig.getRepo(ProduitRepository.class)
+                        AppConfig.getRepo(ProduitRepository.class),
+                        AppConfig.getRepo(UtilisateurRepository.class)
                 ));
         AppConfig.registerService(CommandeService.class,
                 new CommandeService(

@@ -20,7 +20,6 @@ public class ProduitController implements IController {
         this.produitService = AppConfig.getService(ProduitService.class);
     }
 
-    //  LISTER TOUS LES PRODUITS
     public String lister(AppRequest request) {
         try {
             logger.info("Action: lister tous les produits");
@@ -32,7 +31,6 @@ public class ProduitController implements IController {
         }
     }
 
-    //  DETAILS D'UN PRODUIT
     public String details(AppRequest request) {
         try {
             Integer id = request.getInt("id");
@@ -51,7 +49,6 @@ public class ProduitController implements IController {
         }
     }
 
-    //  RECHERCHE PAR CATEGORIE
     public String parCategorie(AppRequest request) {
         try {
             Integer idCategorie = request.getInt("idCategorie");
@@ -67,7 +64,6 @@ public class ProduitController implements IController {
         }
     }
 
-    //  RECHERCHE PAR NOM
     public String rechercher(AppRequest request) {
         try {
             String nom = request.getString("nom");
@@ -83,7 +79,6 @@ public class ProduitController implements IController {
         }
     }
 
-    //  AJOUTER UN PRODUIT (ADMIN)
     public String ajouter(AppRequest request) {
         try {
             Produit produit = request.getPayloadAs(Produit.class);
@@ -99,7 +94,6 @@ public class ProduitController implements IController {
         }
     }
 
-    //  MODIFIER UN PRODUIT (ADMIN)
     public String modifier(AppRequest request) {
         try {
             Integer id = request.getInt("id");
@@ -116,7 +110,6 @@ public class ProduitController implements IController {
         }
     }
 
-    //  SUPPRIMER UN PRODUIT (ADMIN)
     public String supprimer(AppRequest request) {
         try {
             Integer id = request.getInt("id");
@@ -132,7 +125,6 @@ public class ProduitController implements IController {
         }
     }
 
-    //  MISE A JOUR DU STOCK (ADMIN)
     public String updateStock(AppRequest request) {
         try {
             Integer id = request.getInt("id");

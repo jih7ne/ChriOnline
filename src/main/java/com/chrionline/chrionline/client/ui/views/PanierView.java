@@ -12,12 +12,16 @@ import com.google.gson.reflect.TypeToken;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -38,17 +42,17 @@ public class PanierView extends BorderPane {
     private Label totalLabel;
     private ClientNavbar navbar;
 
-    private static final String BG_MAIN     = "#EDE0D4";
-    private static final String BG_CARD     = "#EDE0D4";
-    private static final String ACCENT_DARK = "#7F5539";
-    private static final String ACCENT_MID  = "#B08968";
-    private static final String ACCENT_LIGHT= "#DDB892";
-    private static final String TEXT_DARK   = "#3B1F0E";
-    private static final String SEPARATOR   = "#DDB892";
+    private static final String BG_MAIN      = "#EDE0D4";
+    private static final String BG_CARD      = "#EDE0D4";
+    private static final String ACCENT_DARK  = "#7F5539";
+    private static final String ACCENT_MID   = "#B08968";
+    private static final String ACCENT_LIGHT = "#DDB892";
+    private static final String TEXT_DARK    = "#3B1F0E";
+    private static final String SEPARATOR    = "#DDB892";
 
     public PanierView(TCPClient client, Map<String, Object> userData, ViewManager viewManager) {
-        this.client = client;
-        this.userData = userData;
+        this.client      = client;
+        this.userData    = userData;
         this.viewManager = viewManager;
         setStyle("-fx-background-color: " + BG_MAIN + ";");
         buildUI();
@@ -58,7 +62,7 @@ public class PanierView extends BorderPane {
     private void buildUI() {
         navbar = new ClientNavbar(0, userData, viewManager, null);
         setTop(navbar);
-        PanierUtils.chargerCartCount(client, userData, navbar); // charge le vrai count depuis serveur
+        PanierUtils.chargerCartCount(client, userData, navbar);
 
         ScrollPane scrollPane = new ScrollPane(buildContent());
         scrollPane.setFitToWidth(true);
@@ -74,12 +78,11 @@ public class PanierView extends BorderPane {
         Button retourBtn = new Button("← Retour au catalogue");
         retourBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT_DARK + "; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0;");
         retourBtn.setOnMouseEntered(e -> retourBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + TEXT_DARK + "; -fx-font-size: 13px; -fx-cursor: hand; -fx-underline: true; -fx-padding: 0;"));
-        retourBtn.setOnMouseExited(e -> retourBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT_DARK + "; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0;"));
+        retourBtn.setOnMouseExited(e  -> retourBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT_DARK + "; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0;"));
         retourBtn.setOnAction(e -> viewManager.showCatalogueView(userData));
 
         Label titre = new Label("Panier");
         titre.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: " + ACCENT_DARK + ";");
-        
 
         HBox mainRow = new HBox(32);
         mainRow.setAlignment(Pos.TOP_LEFT);
@@ -132,6 +135,7 @@ public class PanierView extends BorderPane {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         totalRow.getChildren().addAll(totalTitre, spacer, totalLabel);
 
+        // ── Bouton Passer la commande ──────────────────────────────────
         String styleBtn = "-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: " + BG_MAIN + "; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 12 20 12 20; -fx-cursor: hand;";
         String styleBtnHover = "-fx-background-color: #6A4730; -fx-text-fill: " + BG_MAIN + "; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 12 20 12 20; -fx-cursor: hand;";
 
@@ -139,10 +143,21 @@ public class PanierView extends BorderPane {
         commandeBtn.setMaxWidth(Double.MAX_VALUE);
         commandeBtn.setStyle(styleBtn);
         commandeBtn.setOnMouseEntered(e -> commandeBtn.setStyle(styleBtnHover));
-        commandeBtn.setOnMouseExited(e -> commandeBtn.setStyle(styleBtn));
+        commandeBtn.setOnMouseExited(e  -> commandeBtn.setStyle(styleBtn));
         commandeBtn.setOnAction(e -> passerCommande());
 
-        recap.getChildren().addAll(recapTitre, recapItemsBox, sep, totalRow, commandeBtn);
+        // ── Bouton Vider le panier ─────────────────────────────────────
+        String styleVider = "-fx-background-color: transparent; -fx-text-fill: #dc2626; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 20 10 20; -fx-cursor: hand; -fx-border-color: #dc2626; -fx-border-radius: 10; -fx-border-width: 1.5;";
+        String styleViderHover = "-fx-background-color: #fef2f2; -fx-text-fill: #dc2626; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 20 10 20; -fx-cursor: hand; -fx-border-color: #dc2626; -fx-border-radius: 10; -fx-border-width: 1.5;";
+
+        Button viderBtn = new Button("Vider le panier");
+        viderBtn.setMaxWidth(Double.MAX_VALUE);
+        viderBtn.setStyle(styleVider);
+        viderBtn.setOnMouseEntered(e -> viderBtn.setStyle(styleViderHover));
+        viderBtn.setOnMouseExited(e  -> viderBtn.setStyle(styleVider));
+        viderBtn.setOnAction(e -> confirmerViderPanier());
+
+        recap.getChildren().addAll(recapTitre, recapItemsBox, sep, totalRow, commandeBtn, viderBtn);
         return recap;
     }
 
@@ -206,9 +221,9 @@ public class PanierView extends BorderPane {
         qtyLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: " + TEXT_DARK + "; -fx-padding: 4 12 4 12;");
 
         Button moinsBtn = createQtyBtn("−");
-        Button plusBtn = createQtyBtn("+");
+        Button plusBtn  = createQtyBtn("+");
         moinsBtn.setOnAction(e -> modifierQuantite(item, item.getQuantite() - 1, qtyLabel));
-        plusBtn.setOnAction(e -> modifierQuantite(item, item.getQuantite() + 1, qtyLabel));
+        plusBtn.setOnAction(e  -> modifierQuantite(item, item.getQuantite() + 1, qtyLabel));
         quantiteControl.getChildren().addAll(moinsBtn, qtyLabel, plusBtn);
         info.getChildren().addAll(nomLabel, prixUnitLabel, quantiteControl);
 
@@ -227,8 +242,9 @@ public class PanierView extends BorderPane {
         supprimerBtn.setGraphic(trashIcon);
         supprimerBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;");
         supprimerBtn.setOnMouseEntered(e -> supprimerBtn.setStyle("-fx-background-color: #fef2f2; -fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 4;"));
-        supprimerBtn.setOnMouseExited(e -> supprimerBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;"));
-        supprimerBtn.setOnAction(e -> supprimerProduit(item));
+        supprimerBtn.setOnMouseExited(e  -> supprimerBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4;"));
+
+        supprimerBtn.setOnAction(e -> confirmerSupprimerProduit(item));
 
         prixSupprRow.getChildren().addAll(sousTotalLabel, supprimerBtn);
         rightBox.getChildren().add(prixSupprRow);
@@ -236,14 +252,149 @@ public class PanierView extends BorderPane {
         return card;
     }
 
+    private void confirmerSupprimerProduit(PanierProduit item) {
+        Stage stage = new Stage();
+        stage.setTitle("Retirer le produit");
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.initStyle(StageStyle.DECORATED);
+        stage.setResizable(false);
+
+        FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
+        trashIcon.setIconSize(26);
+        trashIcon.setIconColor(Color.web("#dc2626"));
+        StackPane iconCircle = new StackPane(trashIcon);
+        iconCircle.setPrefSize(56, 56); iconCircle.setMinSize(56, 56); iconCircle.setMaxSize(56, 56);
+        iconCircle.setStyle("-fx-background-color:#fef2f2;-fx-background-radius:28;");
+
+        Label titreL = new Label("Retirer ce produit ?");
+        titreL.setStyle("-fx-font-size:17px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_DARK + ";");
+        Label nomL = new Label("\"" + item.getNomProduit() + "\"");
+        nomL.setStyle("-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:" + ACCENT_DARK + ";");
+        Label warnL = new Label("Ce produit sera retiré de votre panier.");
+        warnL.setStyle("-fx-font-size:12px;-fx-text-fill:" + ACCENT_MID + ";");
+
+        VBox textBox = new VBox(6, titreL, nomL, warnL);
+        textBox.setAlignment(Pos.CENTER_LEFT);
+        HBox contentBox = new HBox(18, iconCircle, textBox);
+        contentBox.setAlignment(Pos.CENTER_LEFT);
+        contentBox.setPadding(new Insets(24, 28, 16, 28));
+        contentBox.setStyle("-fx-background-color:" + BG_MAIN + ";");
+
+        Button cancelBtn = new Button("Annuler");
+        cancelBtn.setPrefWidth(110);
+        String cancelStyle =
+                "-fx-background-color:transparent;-fx-text-fill:" + ACCENT_DARK + ";" +
+                        "-fx-border-color:" + ACCENT_LIGHT + ";-fx-border-radius:9;" +
+                        "-fx-font-size:13px;-fx-padding:9 20 9 20;-fx-cursor:hand;-fx-border-width:1.5;";
+        cancelBtn.setStyle(cancelStyle);
+        cancelBtn.setOnMouseEntered(e -> cancelBtn.setStyle(cancelStyle.replace("transparent", BG_CARD)));
+        cancelBtn.setOnMouseExited(e  -> cancelBtn.setStyle(cancelStyle));
+        cancelBtn.setOnAction(e -> stage.close());
+
+        Button confirmerBtn = new Button("Retirer");
+        confirmerBtn.setPrefWidth(120);
+        String ds =
+                "-fx-background-color:#dc2626;-fx-text-fill:white;" +
+                        "-fx-font-size:13px;-fx-font-weight:bold;-fx-background-radius:9;" +
+                        "-fx-padding:9 20 9 20;-fx-cursor:hand;";
+        confirmerBtn.setStyle(ds);
+        confirmerBtn.setOnMouseEntered(e -> confirmerBtn.setStyle(ds.replace("#dc2626", "#b91c1c")));
+        confirmerBtn.setOnMouseExited(e  -> confirmerBtn.setStyle(ds));
+        confirmerBtn.setOnAction(e -> {
+            stage.close();
+            supprimerProduit(item);
+        });
+
+        HBox btnBar = new HBox(12, cancelBtn, confirmerBtn);
+        btnBar.setAlignment(Pos.CENTER_RIGHT);
+        btnBar.setPadding(new Insets(14, 28, 20, 28));
+        btnBar.setStyle(
+                "-fx-background-color:" + BG_CARD + ";" +
+                        "-fx-border-color:" + ACCENT_LIGHT + ";-fx-border-width:1 0 0 0;"
+        );
+
+        VBox root = new VBox(0, contentBox, btnBar);
+        root.setStyle("-fx-background-color:" + BG_MAIN + ";");
+        stage.setScene(new Scene(root));
+        stage.showAndWait();
+    }
+
+    private void confirmerViderPanier() {
+        if (panierItems.isEmpty()) return;
+
+        Stage stage = new Stage();
+        stage.setTitle("Vider le panier");
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.initStyle(StageStyle.DECORATED);
+        stage.setResizable(false);
+
+        FontIcon bagIcon = new FontIcon(Feather.SHOPPING_BAG);
+        bagIcon.setIconSize(26);
+        bagIcon.setIconColor(Color.web("#dc2626"));
+        StackPane iconCircle = new StackPane(bagIcon);
+        iconCircle.setPrefSize(56, 56); iconCircle.setMinSize(56, 56); iconCircle.setMaxSize(56, 56);
+        iconCircle.setStyle("-fx-background-color:#fef2f2;-fx-background-radius:28;");
+
+        Label titreL = new Label("Vider le panier ?");
+        titreL.setStyle("-fx-font-size:17px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_DARK + ";");
+        Label warnL = new Label("Tous les produits seront retirés de votre panier.");
+        warnL.setStyle("-fx-font-size:13px;-fx-text-fill:" + ACCENT_MID + ";");
+        warnL.setWrapText(true);
+
+        VBox textBox = new VBox(6, titreL, warnL);
+        textBox.setAlignment(Pos.CENTER_LEFT);
+        HBox contentBox = new HBox(18, iconCircle, textBox);
+        contentBox.setAlignment(Pos.CENTER_LEFT);
+        contentBox.setPadding(new Insets(24, 28, 16, 28));
+        contentBox.setStyle("-fx-background-color:" + BG_MAIN + ";");
+
+        Button cancelBtn = new Button("Annuler");
+        cancelBtn.setPrefWidth(110);
+        String cancelStyle =
+                "-fx-background-color:transparent;-fx-text-fill:" + ACCENT_DARK + ";" +
+                        "-fx-border-color:" + ACCENT_LIGHT + ";-fx-border-radius:9;" +
+                        "-fx-font-size:13px;-fx-padding:9 20 9 20;-fx-cursor:hand;-fx-border-width:1.5;";
+        cancelBtn.setStyle(cancelStyle);
+        cancelBtn.setOnMouseEntered(e -> cancelBtn.setStyle(cancelStyle.replace("transparent", BG_CARD)));
+        cancelBtn.setOnMouseExited(e  -> cancelBtn.setStyle(cancelStyle));
+        cancelBtn.setOnAction(e -> stage.close());
+
+        Button confirmerBtn = new Button("Vider");
+        confirmerBtn.setPrefWidth(120);
+        String ds =
+                "-fx-background-color:#dc2626;-fx-text-fill:white;" +
+                        "-fx-font-size:13px;-fx-font-weight:bold;-fx-background-radius:9;" +
+                        "-fx-padding:9 20 9 20;-fx-cursor:hand;";
+        confirmerBtn.setStyle(ds);
+        confirmerBtn.setOnMouseEntered(e -> confirmerBtn.setStyle(ds.replace("#dc2626", "#b91c1c")));
+        confirmerBtn.setOnMouseExited(e  -> confirmerBtn.setStyle(ds));
+        confirmerBtn.setOnAction(e -> {
+            stage.close();
+            viderPanier();
+        });
+
+        HBox btnBar = new HBox(12, cancelBtn, confirmerBtn);
+        btnBar.setAlignment(Pos.CENTER_RIGHT);
+        btnBar.setPadding(new Insets(14, 28, 20, 28));
+        btnBar.setStyle(
+                "-fx-background-color:" + BG_CARD + ";" +
+                        "-fx-border-color:" + ACCENT_LIGHT + ";-fx-border-width:1 0 0 0;"
+        );
+
+        VBox root = new VBox(0, contentBox, btnBar);
+        root.setStyle("-fx-background-color:" + BG_MAIN + ";");
+        stage.setScene(new Scene(root));
+        stage.showAndWait();
+    }
+
     private Button createQtyBtn(String text) {
         Button btn = new Button(text);
         btn.setPrefSize(30, 30);
-        String base = "-fx-background-color: transparent; -fx-text-fill: " + ACCENT_DARK + "; -fx-font-size: 15px; -fx-font-weight: bold; -fx-cursor: hand;";
+        String base  = "-fx-background-color: transparent; -fx-text-fill: " + ACCENT_DARK + "; -fx-font-size: 15px; -fx-font-weight: bold; -fx-cursor: hand;";
         String hover = "-fx-background-color: " + ACCENT_LIGHT + "; -fx-text-fill: " + ACCENT_DARK + "; -fx-font-size: 15px; -fx-font-weight: bold; -fx-cursor: hand;";
         btn.setStyle(base);
         btn.setOnMouseEntered(e -> btn.setStyle(hover));
-        btn.setOnMouseExited(e -> btn.setStyle(base));
+        btn.setOnMouseExited(e  -> btn.setStyle(base));
         return btn;
     }
 
@@ -326,7 +477,7 @@ public class PanierView extends BorderPane {
 
     private void modifierQuantite(PanierProduit item, int nouvelleQte, Label qtyLabel) {
         if (nouvelleQte <= 0) {
-            supprimerProduit(item);
+            confirmerSupprimerProduit(item);
             return;
         }
         new Thread(() -> {
@@ -370,6 +521,30 @@ public class PanierView extends BorderPane {
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
                         panierItems.remove(item);
+                        afficherItems();
+                        PanierUtils.chargerCartCount(client, userData, navbar);
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void viderPanier() {
+        new Thread(() -> {
+            try {
+                int idUtilisateur = ((Double) userData.get("id")).intValue();
+                AppRequest request = new AppRequest.Builder()
+                        .controller("Panier")
+                        .action("viderPanier")
+                        .parameter("idUtilisateur", idUtilisateur)
+                        .authToken(client.getAuthToken())
+                        .build();
+                AppResponse response = client.sendAndParse(request);
+                Platform.runLater(() -> {
+                    if (response.isSuccess()) {
+                        panierItems.clear();
                         afficherItems();
                         PanierUtils.chargerCartCount(client, userData, navbar);
                     }

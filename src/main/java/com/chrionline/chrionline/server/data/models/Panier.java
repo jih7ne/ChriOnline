@@ -19,7 +19,6 @@ public class Panier {
         this.produits = new ArrayList<>();
     }
 
-    // calcul automatique du total
     public double getTotal() {
         return produits.stream()
                 .mapToDouble(pp -> pp.getPrix() * pp.getQuantite())

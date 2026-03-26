@@ -42,6 +42,12 @@ public class CatalogueView extends BorderPane {
         setStyle("-fx-background-color: #EDE0D4;");
         buildUI();
         chargerProduits();
+
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                chargerProduits();
+            }
+        });
     }
 
     private void buildUI() {
