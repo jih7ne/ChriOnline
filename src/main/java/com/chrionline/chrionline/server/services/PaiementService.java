@@ -1,5 +1,6 @@
 package com.chrionline.chrionline.server.services;
 
+import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.enums.MethodePaiement;
 import com.chrionline.chrionline.core.enums.StatutPaiement;
 import com.chrionline.chrionline.server.data.models.Paiement;
@@ -7,10 +8,8 @@ import com.chrionline.chrionline.server.repositories.PaiementRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.format.DateTimeParseException;
 
 public class PaiementService {
     private static final Logger logger = LoggerFactory.getLogger(PaiementService.class);
@@ -115,6 +114,21 @@ public class PaiementService {
         }
 
         logger.warn("Paiement refusé pour commande id={} : {}", idCommande, erreur);
+
+        // ── UDP : Scénario 2 — notifier l'utilisateur du refus de paiement
+        // On récupère l'id_utilisateur via commandeService si possible
+        try {
+            com.chrionline.chrionline.server.data.models.Commande cmd =
+                    AppConfig.getRepo(com.chrionline.chrionline.server.repositories.CommandeRepository.class)
+                             .getCommandeById(idCommande);
+            if (cmd != null) {
+                NotificationService ns = AppConfig.getService(NotificationService.class);
+                if (ns != null) ns.notifyPaymentFailed(cmd.getId_utilisateur());
+            }
+        } catch (Exception ex) {
+            logger.warn("Impossible d'envoyer la notif de refus : {}", ex.getMessage());
+        }
+
         return false;
     }
 
