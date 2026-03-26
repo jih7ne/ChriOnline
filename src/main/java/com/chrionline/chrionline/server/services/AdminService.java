@@ -1,5 +1,6 @@
 package com.chrionline.chrionline.server.services;
 
+import com.chrionline.chrionline.core.config.AppConfig;
 import com.chrionline.chrionline.core.constants.AppConstants;
 import com.chrionline.chrionline.core.enums.StatutCommande;
 import com.chrionline.chrionline.server.data.models.DashboardStats;
@@ -74,6 +75,21 @@ public class AdminService {
         }
 
         commandeRepository.updateStatut(idCommande, statut);
+
+        // ── UDP : Scénario 4 — notifier le client concerné
+        try {
+            NotificationService ns = AppConfig.getService(NotificationService.class);
+            if (ns != null) {
+                ns.notifyOrderStatusChanged(
+                        commande.getId_utilisateur(),
+                        commande.getUuid_commande(),
+                        statut.name()
+                );
+            }
+        } catch (Exception ex) {
+            logger.warn("Impossible d'envoyer la notif de changement de statut : {}", ex.getMessage());
+        }
+
         return true;
     }
 
