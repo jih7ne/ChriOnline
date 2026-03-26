@@ -1,4 +1,4 @@
-# ChriOnline — Java E-Commerce Desktop Application
+x# ChriOnline — Java E-Commerce Desktop Application
 
 > A client-server e-commerce desktop application built with **Java 21**, **JavaFX 17**, and **MySQL**, using a custom TCP/IP communication protocol.
 
