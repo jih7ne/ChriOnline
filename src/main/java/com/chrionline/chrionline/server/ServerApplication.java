@@ -47,6 +47,10 @@ public class ServerApplication {
         });
         udpNotificationDispatcher.start();
 
+        // Register NotificationService AFTER dispatcher is started
+        AppConfig.registerService(NotificationService.class,
+                new NotificationService(udpNotificationDispatcher));
+
         Thread.sleep(500);
         logger.info("Setup complete — UDP Services Initialized");
     }
