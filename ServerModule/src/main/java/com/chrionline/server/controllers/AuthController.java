@@ -9,6 +9,7 @@ import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.server.data.dto.AuthPayloads.*;
 import com.chrionline.server.security.LoginAttemptGuard;
 import com.chrionline.server.security.PasswordValidator;
+import com.chrionline.server.services.RecaptchaService;
 import com.chrionline.shared.models.Adresse;
 import com.chrionline.shared.models.Utilisateur;
 import com.chrionline.server.repositories.UtilisateurRepository;
@@ -33,6 +34,7 @@ public class AuthController implements IController {
      * de la classe. Plus aucune dépendance à la base de données.
      */
     private static final LoginAttemptGuard attemptGuard = new LoginAttemptGuard();
+    private final RecaptchaService recaptchaService = new RecaptchaService();
 
     // ── Extraction de l'IP depuis les headers de la requête ───────────────
 
@@ -56,7 +58,18 @@ public class AuthController implements IController {
     // ─── LOGIN ───────────────────────────────────────────────────────────────
     public String login(AppRequest request) {
         String ip = extractIp(request);
-
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> rawCheck = JsonUtils.fromJson(request.getPayload(), Map.class);
+            String captchaToken = rawCheck != null ? (String) rawCheck.get("captchaToken") : null;
+            if (!recaptchaService.verify(captchaToken)) {
+                logger.warn("reCAPTCHA invalide depuis IP : {}", ip);
+                return AppResponse.error("Validation reCAPTCHA échouée. Veuillez réessayer.");
+            }
+        } catch (Exception e) {
+            logger.error("Erreur vérification captcha", e);
+            return AppResponse.error("Erreur lors de la vérification reCAPTCHA.");
+        }
         // 1 — Vérification blocage IP
         if (attemptGuard.isBlocked(ip)) {
             long remaining = attemptGuard.minutesRemaining(ip);
@@ -117,7 +130,11 @@ public class AuthController implements IController {
             @SuppressWarnings("unchecked")
             Map<String, Object> raw = JsonUtils.fromJson(request.getPayload(), Map.class);
             if (raw == null) return AppResponse.badRequest("Payload invalide.");
-
+            String captchaToken = (String) raw.get("captchaToken");
+            if (!recaptchaService.verify(captchaToken)) {
+                logger.warn("reCAPTCHA invalide à l'inscription.");
+                return AppResponse.error("Validation reCAPTCHA échouée. Veuillez réessayer.");
+            }
             String nom             = (String) raw.get("nom");
             String prenom          = (String) raw.get("prenom");
             String email           = (String) raw.get("email");

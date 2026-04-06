@@ -1,5 +1,7 @@
 package com.chrionline.clientmodule.client.ui.views;
 
+import com.chrionline.clientmodule.utils.CaptchaBridge;
+import com.chrionline.clientmodule.utils.CaptchaServer;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.network.protocol.AppResponse;
@@ -14,6 +16,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.web.WebView;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
@@ -21,6 +24,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
+import javafx.scene.web.WebEngine;
+import javafx.concurrent.Worker;
+import netscape.javascript.JSObject;
+
 
 /**
  * Vue d'inscription en 3 étapes.
@@ -72,6 +79,7 @@ public class RegisterView extends StackPane {
     private final HBox stepIndicator;
     private int currentStep = 1;
 
+
     // ── Indicateur de force ───────────────────────────────────────────────
     private final HBox         strengthBar;
     private final Label        strengthLabel;
@@ -84,6 +92,9 @@ public class RegisterView extends StackPane {
             "Quel était le nom de votre école primaire ?",
             "Quel est le modèle de votre première voiture ?"
     };
+    private WebView captchaWebView;
+    private CaptchaBridge captchaBridge;
+    private String        captchaToken = null;
 
     public RegisterView(TCPClient tcpClient, Runnable onRegisterSuccess, Runnable onGoToLogin) {
         this.tcpClient         = tcpClient;
@@ -152,7 +163,8 @@ public class RegisterView extends StackPane {
         // ── Champ mot de passe avec bouton œil ───────────────────────────
         StackPane passwordStack   = buildPasswordToggle(passwordField,   passwordVisible);
         StackPane confirmStack    = buildPasswordToggle(confirmField,     confirmVisible);
-
+        // ── WebView reCAPTCHA dans step1 ──────────────────────
+        captchaWebView = buildCaptchaWebView();
         // ── Étape 1 ───────────────────────────────────────────────────────
         step1Container = new VBox(0,
                 fieldBox("Prénom",                  wrapIcon("👤", prenomField)),
@@ -162,7 +174,8 @@ public class RegisterView extends StackPane {
                 strengthBar,
                 strengthLabel,
                 rulesBox,
-                fieldBox("Confirmer le mot de passe", confirmStack)
+                fieldBox("Confirmer le mot de passe", confirmStack),
+                captchaWebView
         );
 
         // ── Étape 2 ───────────────────────────────────────────────────────
@@ -409,7 +422,7 @@ public class RegisterView extends StackPane {
         if (prenomField.getText().trim().isEmpty()) { showError("Veuillez saisir votre prénom."); return false; }
         if (nomField.getText().trim().isEmpty())     { showError("Veuillez saisir votre nom."); return false; }
         if (!emailField.getText().trim().contains("@")) { showError("Adresse e-mail invalide."); return false; }
-
+        if (captchaToken == null) { showError("Veuillez valider le reCAPTCHA."); return false; }
         String password = passwordField.getText();
         List<String> errors = validatePasswordLocally(
                 password,
@@ -567,6 +580,7 @@ public class RegisterView extends StackPane {
                     adresse.put("est_principale", "true");
                     payload.put("adresse", adresse);
                 }
+                payload.put("captchaToken", captchaToken);
 
                 AppRequest request = new AppRequest.Builder()
                         .controller("Auth").action("register")
@@ -584,6 +598,7 @@ public class RegisterView extends StackPane {
                         showError(response != null && response.getMessage() != null
                                 ? response.getMessage()
                                 : "Inscription échouée. Email déjà utilisé ?");
+                        resetCaptcha();
                     }
                 });
             } catch (Exception e) {
@@ -725,4 +740,38 @@ public class RegisterView extends StackPane {
 
     private void showError(String msg) { errorLabel.setText(msg); errorLabel.setVisible(true); }
     private void hideError()           { errorLabel.setVisible(false); }
+    private WebView buildCaptchaWebView() {
+        WebView wv = new WebView();
+        wv.setPrefSize(310, 90);
+        wv.setMaxSize(310, 90);
+        VBox.setMargin(wv, new Insets(8, 0, 4, 0));
+
+        WebEngine engine = wv.getEngine();
+
+        try {
+            int port = CaptchaServer.start();
+            engine.load("http://localhost:" + port + "/recaptcha");
+        } catch (Exception e) {
+            System.err.println("Erreur démarrage serveur captcha : " + e.getMessage());
+        }
+
+        engine.getLoadWorker().stateProperty().addListener((obs, old, newState) -> {
+            if (newState == Worker.State.SUCCEEDED) {
+                captchaBridge = new CaptchaBridge(
+                        () -> { captchaToken = captchaBridge.getToken(); },
+                        () -> { captchaToken = null; }
+                );
+                JSObject win = (JSObject) engine.executeScript("window");
+                win.setMember("javabridge", captchaBridge);
+            }
+        });
+
+        return wv;
+    }
+
+    private void resetCaptcha() {
+        captchaToken = null;
+        captchaWebView.getEngine().executeScript("grecaptcha.reset()");
+        if (captchaBridge != null) captchaBridge.reset();
+    }
 }
