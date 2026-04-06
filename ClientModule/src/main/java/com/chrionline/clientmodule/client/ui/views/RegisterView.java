@@ -1,13 +1,15 @@
 package com.chrionline.clientmodule.client.ui.views;
 
-import com.chrionline.clientmodule.utils.CaptchaBridge;
 import com.chrionline.clientmodule.utils.CaptchaServer;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.network.protocol.AppResponse;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.network.tcp.TCPClient;
+import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -26,7 +28,7 @@ import java.util.HashMap;
 import java.util.Set;
 import javafx.scene.web.WebEngine;
 import javafx.concurrent.Worker;
-import netscape.javascript.JSObject;
+
 
 
 /**
@@ -93,8 +95,7 @@ public class RegisterView extends StackPane {
             "Quel est le modèle de votre première voiture ?"
     };
     private WebView captchaWebView;
-    private CaptchaBridge captchaBridge;
-    private String        captchaToken = null;
+    private String  captchaToken = null;
 
     public RegisterView(TCPClient tcpClient, Runnable onRegisterSuccess, Runnable onGoToLogin) {
         this.tcpClient         = tcpClient;
@@ -742,9 +743,10 @@ public class RegisterView extends StackPane {
     private void hideError()           { errorLabel.setVisible(false); }
     private WebView buildCaptchaWebView() {
         WebView wv = new WebView();
-        wv.setPrefSize(310, 90);
-        wv.setMaxSize(310, 90);
-        VBox.setMargin(wv, new Insets(8, 0, 4, 0));
+        wv.setPrefSize(400, 560);
+        wv.setMinSize(400, 560);
+        wv.setMaxSize(400, 560);
+        VBox.setMargin(wv, new Insets(10, 0, 12, 0));
 
         WebEngine engine = wv.getEngine();
 
@@ -755,14 +757,26 @@ public class RegisterView extends StackPane {
             System.err.println("Erreur démarrage serveur captcha : " + e.getMessage());
         }
 
+        // Polling toutes les 500 ms — plus fiable que le bridge JS
+        Timeline poller = new Timeline(new KeyFrame(Duration.millis(500), ev -> {
+            try {
+                Object result = engine.executeScript(
+                    "(typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse === 'function')"
+                    + " ? grecaptcha.getResponse() : ''"
+                );
+                String token = (result instanceof String) ? (String) result : "";
+                if (!token.isEmpty()) {
+                    captchaToken = token;
+                } else {
+                    captchaToken = null;
+                }
+            } catch (Exception ignored) {}
+        }));
+        poller.setCycleCount(Animation.INDEFINITE);
+
         engine.getLoadWorker().stateProperty().addListener((obs, old, newState) -> {
             if (newState == Worker.State.SUCCEEDED) {
-                captchaBridge = new CaptchaBridge(
-                        () -> { captchaToken = captchaBridge.getToken(); },
-                        () -> { captchaToken = null; }
-                );
-                JSObject win = (JSObject) engine.executeScript("window");
-                win.setMember("javabridge", captchaBridge);
+                poller.play();
             }
         });
 
@@ -771,7 +785,8 @@ public class RegisterView extends StackPane {
 
     private void resetCaptcha() {
         captchaToken = null;
-        captchaWebView.getEngine().executeScript("grecaptcha.reset()");
-        if (captchaBridge != null) captchaBridge.reset();
+        try {
+            captchaWebView.getEngine().executeScript("grecaptcha.reset()");
+        } catch (Exception ignored) {}
     }
 }

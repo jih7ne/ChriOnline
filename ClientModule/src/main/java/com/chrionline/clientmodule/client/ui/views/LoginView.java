@@ -1,25 +1,28 @@
 package com.chrionline.clientmodule.client.ui.views;
 
-import com.chrionline.clientmodule.utils.CaptchaBridge;
 import com.chrionline.clientmodule.utils.CaptchaServer;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.network.protocol.AppResponse;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.network.tcp.TCPClient;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.web.WebView;
+import javafx.util.Duration;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import javafx.scene.web.WebEngine;
 import javafx.concurrent.Worker;
-import netscape.javascript.JSObject;
+
 
 public class LoginView extends StackPane {
 
@@ -33,8 +36,7 @@ public class LoginView extends StackPane {
     private final Runnable                     onGoToForgotPassword;
     // ── Captcha ───────────────────────────────────────────
     private WebView captchaWebView;
-    private CaptchaBridge captchaBridge;
-    private String        captchaToken = null;
+    private String  captchaToken = null;
 //on passe le tcp client, un consumer appele en cas de succes, runnables vers l inscription ou mot de passe oublié
     public LoginView(TCPClient tcpClient,
                      Consumer<Map<String, Object>> onLoginSuccess,
@@ -139,11 +141,21 @@ public class LoginView extends StackPane {
                 iconBox, titleBox, toggle,
                 createFieldLabel("Email"),        emailPane,
                 createFieldLabel("Mot de passe"), passPane,
-                forgotRow, errorLabel, captchaWebView,loginButton
+                forgotRow, errorLabel, captchaWebView, loginButton
         );
 
-        StackPane.setAlignment(card, Pos.CENTER);
-        this.getChildren().add(card);
+        ScrollPane scroll = new ScrollPane();
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: " + AppTheme.BG + "; -fx-background-color: " + AppTheme.BG + ";");
+
+        VBox wrapper = new VBox(card);
+        wrapper.setAlignment(Pos.CENTER);
+        wrapper.setPadding(new Insets(24));
+        wrapper.setStyle("-fx-background-color: " + AppTheme.BG + ";");
+
+        scroll.setContent(wrapper);
+        StackPane.setAlignment(scroll, Pos.CENTER);
+        this.getChildren().add(scroll);
     }
 //methode appéle le moemnt on clique sur le button de connexion
 private void handleLogin() {
@@ -226,34 +238,46 @@ private void handleLogin() {
     private void hideError()           { errorLabel.setVisible(false); }
     private WebView buildCaptchaWebView() {
         WebView wv = new WebView();
-        wv.setPrefSize(310, 90);
-        wv.setMaxSize(310, 90);
-        VBox.setMargin(wv, new Insets(0, 0, 12, 0));
+        wv.setPrefSize(400, 560);
+        wv.setMinSize(400, 560);
+        wv.setMaxSize(400, 560);
+        VBox.setMargin(wv, new Insets(10, 0, 16, 0));
 
         WebEngine engine = wv.getEngine();
 
         try {
-            // ✅ Démarrer le serveur HTTP local et charger depuis http://localhost
             int port = CaptchaServer.start();
             engine.load("http://localhost:" + port + "/recaptcha");
         } catch (Exception e) {
             System.err.println("Erreur démarrage serveur captcha : " + e.getMessage());
         }
 
+        // Polling toutes les 500 ms — contourne la perte de référence window.javabridge
+        Timeline poller = new Timeline(new KeyFrame(Duration.millis(500), ev -> {
+            try {
+                Object result = engine.executeScript(
+                    "(typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse === 'function')"
+                    + " ? grecaptcha.getResponse() : ''"
+                );
+                String token = (result instanceof String) ? (String) result : "";
+                if (!token.isEmpty()) {
+                    if (captchaToken == null || !captchaToken.equals(token)) {
+                        captchaToken = token;
+                        loginButton.setDisable(false);
+                    }
+                } else {
+                    if (captchaToken != null) {
+                        captchaToken = null;
+                        loginButton.setDisable(true);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }));
+        poller.setCycleCount(Animation.INDEFINITE);
+
         engine.getLoadWorker().stateProperty().addListener((obs, old, newState) -> {
             if (newState == Worker.State.SUCCEEDED) {
-                captchaBridge = new CaptchaBridge(
-                        () -> {
-                            captchaToken = captchaBridge.getToken();
-                            loginButton.setDisable(false);
-                        },
-                        () -> {
-                            captchaToken = null;
-                            loginButton.setDisable(true);
-                        }
-                );
-                JSObject win = (JSObject) engine.executeScript("window");
-                win.setMember("javabridge", captchaBridge);
+                poller.play();
             }
         });
 
@@ -264,7 +288,8 @@ private void handleLogin() {
     private void resetCaptcha() {
         captchaToken = null;
         loginButton.setDisable(true);
-        captchaWebView.getEngine().executeScript("grecaptcha.reset()");
-        if (captchaBridge != null) captchaBridge.reset();
+        try {
+            captchaWebView.getEngine().executeScript("grecaptcha.reset()");
+        } catch (Exception ignored) {}
     }
 }
