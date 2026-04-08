@@ -20,24 +20,16 @@ public class UtilisateurRepository {
         this.connection = connection;
     }
 
-
     public int count() {
-        String query = "SELECT COUNT(*) FROM Utilisateur ";
-
+        String query = "SELECT COUNT(*) FROM Utilisateur";
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(query)) {
-
-            if (resultSet.next()) {
-                return resultSet.getInt(1);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
+            if (resultSet.next()) return resultSet.getInt(1);
+        } catch (SQLException e) { e.printStackTrace(); }
         return 0;
     }
 
+    // ── Mapper ────────────────────────────────────────────────────────────
     private Utilisateur mapRow(ResultSet rs) throws SQLException {
         Utilisateur u = new Utilisateur();
         u.setId(rs.getInt("id"));
@@ -49,8 +41,15 @@ public class UtilisateurRepository {
         u.setStatut(rs.getString("statut"));
         u.setQuestionSecrete(rs.getString("question_secrete"));
         u.setReponseSecrete(rs.getString("reponse_secrete"));
+
+        // ── Champs 2FA (NULL-safe) ────────────────────────────────────────
+        u.setTwoFactorEnabled(rs.getBoolean("two_factor_enabled"));
+        u.setTwoFactorSecret(rs.getString("two_factor_secret"));
+        u.setTwoFactorVerified(rs.getBoolean("two_factor_verified"));
         return u;
     }
+
+    // ── CRUD de base ──────────────────────────────────────────────────────
 
     public boolean add(Utilisateur u) {
         String sql = "INSERT INTO Utilisateur (nom, prenom, email, mot_de_passe, role, statut, question_secrete, reponse_secrete) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -59,7 +58,7 @@ public class UtilisateurRepository {
             stmt.setString(2, u.getPrenom());
             stmt.setString(3, u.getEmail());
             stmt.setString(4, u.getMotDePasse());
-            stmt.setString(5, u.getRole() != null ? u.getRole() : "client");
+            stmt.setString(5, u.getRole()   != null ? u.getRole()   : "client");
             stmt.setString(6, u.getStatut() != null ? u.getStatut() : "actif");
             stmt.setString(7, u.getQuestionSecrete());
             stmt.setString(8, u.getReponseSecrete());
@@ -101,97 +100,6 @@ public class UtilisateurRepository {
             while (rs.next()) list.add(mapRow(rs));
         } catch (SQLException e) { logger.error("Erreur getAll : {}", e.getMessage()); }
         return list;
-    }
-
-    public List<MonthlyUserStats> getMonthlyNewUsers() {
-        List<MonthlyUserStats> statsList = new ArrayList<>();
-        LocalDate now = LocalDate.now();
-
-        String query = """
-            SELECT 
-                YEAR(u.created_at) AS year,
-                MONTH(u.created_at) AS month,
-                COUNT(*) AS new_users
-            FROM Utilisateur u
-            WHERE YEAR(u.created_at) = ?
-            GROUP BY YEAR(u.created_at), MONTH(u.created_at)
-            ORDER BY month
-        """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-
-            stmt.setInt(1, now.getYear());
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int year = rs.getInt("year");
-                    int month = rs.getInt("month");
-                    long newUsers = rs.getLong("new_users");
-
-                    MonthlyUserStats stats = new MonthlyUserStats();
-                    stats.setYear(year);
-                    stats.setMonth(month);
-                    stats.setMonthName(
-                            java.time.Month.of(month)
-                                    .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH)
-                    );
-                    stats.setNewUsers(newUsers);
-
-                    statsList.add(stats);
-                }
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return statsList;
-    }
-
-    public List<UserSummary> getRecentUsers(int limit) {
-        List<UserSummary> users = new ArrayList<>();
-
-        String query = """
-            SELECT 
-                u.id,
-                CONCAT(u.nom, ' ', u.prenom) AS username,
-                u.email,
-                u.created_at,
-                COUNT(c.id_commande) AS order_count
-            FROM Utilisateur u
-            LEFT JOIN Commande c ON u.id = c.id_utilisateur
-            GROUP BY u.id, u.nom, u.prenom, u.email, u.created_at
-            ORDER BY u.created_at DESC
-            LIMIT ?
-        """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-
-            stmt.setInt(1, limit);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    UserSummary user = new UserSummary();
-
-                    user.setUserId(rs.getLong("id"));
-                    user.setUsername(rs.getString("username"));
-                    user.setEmail(rs.getString("email"));
-
-                    user.setRegistrationDate(
-                            rs.getTimestamp("created_at").toLocalDateTime()
-                    );
-
-                    user.setOrderCount(rs.getLong("order_count"));
-
-                    users.add(user);
-                }
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return users;
     }
 
     public boolean update(Utilisateur u) {
@@ -237,7 +145,92 @@ public class UtilisateurRepository {
         return false;
     }
 
+    // ── 2FA ───────────────────────────────────────────────────────────────
 
+    public boolean saveTwoFactorSecret(int userId, String secret) {
+        String sql = "UPDATE Utilisateur SET two_factor_secret = ?, two_factor_verified = FALSE WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, secret);
+            stmt.setInt(2, userId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) { logger.error("Erreur saveTwoFactorSecret : {}", e.getMessage()); }
+        return false;
+    }
+
+    public boolean enableTwoFactor(int userId) {
+        String sql = "UPDATE Utilisateur SET two_factor_enabled = TRUE, two_factor_verified = TRUE WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) { logger.error("Erreur enableTwoFactor : {}", e.getMessage()); }
+        return false;
+    }
+
+    public boolean disableTwoFactor(int userId) {
+        String sql = "UPDATE Utilisateur SET two_factor_enabled = FALSE, two_factor_secret = NULL, two_factor_verified = FALSE WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) { logger.error("Erreur disableTwoFactor : {}", e.getMessage()); }
+        return false;
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────────
+
+    public List<MonthlyUserStats> getMonthlyNewUsers() {
+        List<MonthlyUserStats> statsList = new ArrayList<>();
+        String query = """
+            SELECT YEAR(u.created_at) AS year, MONTH(u.created_at) AS month, COUNT(*) AS new_users
+            FROM Utilisateur u
+            WHERE YEAR(u.created_at) = ?
+            GROUP BY YEAR(u.created_at), MONTH(u.created_at)
+            ORDER BY month
+        """;
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, LocalDate.now().getYear());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    MonthlyUserStats stats = new MonthlyUserStats();
+                    stats.setYear(rs.getInt("year"));
+                    stats.setMonth(rs.getInt("month"));
+                    stats.setMonthName(
+                            java.time.Month.of(rs.getInt("month"))
+                                    .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH)
+                    );
+                    stats.setNewUsers(rs.getLong("new_users"));
+                    statsList.add(stats);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return statsList;
+    }
+
+    public List<UserSummary> getRecentUsers(int limit) {
+        List<UserSummary> users = new ArrayList<>();
+        String query = """
+            SELECT u.id, CONCAT(u.nom, ' ', u.prenom) AS username, u.email,
+                   u.created_at, COUNT(c.id_commande) AS order_count
+            FROM Utilisateur u
+            LEFT JOIN Commande c ON u.id = c.id_utilisateur
+            GROUP BY u.id, u.nom, u.prenom, u.email, u.created_at
+            ORDER BY u.created_at DESC LIMIT ?
+        """;
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    UserSummary user = new UserSummary();
+                    user.setUserId(rs.getLong("id"));
+                    user.setUsername(rs.getString("username"));
+                    user.setEmail(rs.getString("email"));
+                    user.setRegistrationDate(rs.getTimestamp("created_at").toLocalDateTime());
+                    user.setOrderCount(rs.getLong("order_count"));
+                    users.add(user);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return users;
+    }
 
     public boolean emailExiste(String email) { return getByEmail(email) != null; }
 }
