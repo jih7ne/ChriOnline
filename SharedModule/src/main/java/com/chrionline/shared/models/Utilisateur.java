@@ -12,6 +12,10 @@ public class Utilisateur {
     private String questionSecrete;
     private String reponseSecrete;
 
+    private boolean twoFactorEnabled  = false;
+    private String  twoFactorSecret   = null;
+    private boolean twoFactorVerified = false;
+
     public Utilisateur() {}
 
     public int getId() { return id; }
@@ -40,4 +44,13 @@ public class Utilisateur {
 
     public String getReponseSecrete() { return reponseSecrete; }
     public void setReponseSecrete(String reponseSecrete) { this.reponseSecrete = reponseSecrete; }
+
+    public boolean isTwoFactorEnabled()           { return twoFactorEnabled; }
+    public void setTwoFactorEnabled(boolean v)    { this.twoFactorEnabled = v; }
+
+    public String getTwoFactorSecret()            { return twoFactorSecret; }
+    public void setTwoFactorSecret(String s)      { this.twoFactorSecret = s; }
+
+    public boolean isTwoFactorVerified()          { return twoFactorVerified; }
+    public void setTwoFactorVerified(boolean v)   { this.twoFactorVerified = v; }
 }
