@@ -10,6 +10,8 @@ import com.chrionline.server.data.dto.AuthPayloads.*;
 import com.chrionline.server.security.LoginAttemptGuard;
 import com.chrionline.server.security.PasswordValidator;
 import com.chrionline.server.services.RecaptchaService;
+import com.chrionline.server.services.TwoFactorService;
+import com.chrionline.server.services.TwoFactorVerifier;
 import com.chrionline.shared.models.Adresse;
 import com.chrionline.shared.models.Utilisateur;
 import com.chrionline.server.repositories.UtilisateurRepository;
@@ -28,6 +30,9 @@ public class AuthController implements IController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private static final Map<String, Utilisateur> sessions = new ConcurrentHashMap<>();
+
+    private final TwoFactorService   twoFactorService   = new TwoFactorService();
+    private final TwoFactorVerifier twoFactorVerifier  = new TwoFactorVerifier();
 
     /**
      * Guard de rate-limiting en mémoire — initialisé une seule fois au chargement
@@ -110,8 +115,18 @@ public class AuthController implements IController {
                 return AppResponse.error("Compte bloqué. Contactez un administrateur.");
             }
 
+
             // 4 — Succès : on réinitialise le compteur
             attemptGuard.recordSuccess(ip);
+
+            if (u.isTwoFactorEnabled()) {
+                String tempToken = twoFactorService.createPendingToken(u.getId());
+                Map<String, Object> data = new HashMap<>();
+                data.put("requires2FA", true);
+                data.put("tempToken",   tempToken);
+                logger.info("2FA requis pour : {}", u.getEmail());
+                return AppResponse.success(data);
+            }
 
             String token = UUID.randomUUID().toString();
             sessions.put(token, u);
@@ -372,6 +387,66 @@ public class AuthController implements IController {
         return repo().delete(p.id) ? AppResponse.ok() : AppResponse.error("Échec.");
     }
 
+    // ─── TWO FACTOR AUTH ─────────────────────────────────────────────────────
+
+    public String twofactorenable(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+
+        String qrCodeBase64 = twoFactorService.initEnable(u.getId());
+        if (qrCodeBase64 == null) return AppResponse.error("Impossible d'activer le 2FA.");
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("qrCode", qrCodeBase64);
+        return AppResponse.success(data);
+    }
+
+    public String twofactorenableconfirm(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> payload = JsonUtils.fromJson(request.getPayload(), Map.class);
+        if (payload == null || payload.get("code") == null)
+            return AppResponse.badRequest("Code requis.");
+
+        return twoFactorService.confirmEnable(u.getId(), payload.get("code"))
+                ? AppResponse.ok()
+                : AppResponse.error("Code invalide. Réessayez.");
+    }
+
+    public String twofactorverify(AppRequest request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, String> payload = JsonUtils.fromJson(request.getPayload(), Map.class);
+            if (payload == null) return AppResponse.badRequest("Payload invalide.");
+
+            Utilisateur u = twoFactorVerifier.verify(payload.get("tempToken"), payload.get("code"));
+            if (u == null) return AppResponse.error("Code invalide ou expiré.");
+
+            String token = UUID.randomUUID().toString();
+            sessions.put(token, u);
+            return AppResponse.success(userData(u, token));
+
+        } catch (Exception e) {
+            return AppResponse.error("Erreur 2FA : " + e.getMessage());
+        }
+    }
+
+    public String twofactordisable(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> payload = JsonUtils.fromJson(request.getPayload(), Map.class);
+        if (payload == null || payload.get("code") == null)
+            return AppResponse.badRequest("Code requis.");
+
+        return twoFactorService.disable(u.getId(), payload.get("code"))
+                ? AppResponse.ok()
+                : AppResponse.error("Code invalide.");
+    }
+
     // ─── HELPERS ─────────────────────────────────────────────────────────────
 
     private Utilisateur session(AppRequest request) {
@@ -408,6 +483,15 @@ public class AuthController implements IController {
             for (byte b : bytes) sb.append(String.format("%02x", b));
             return sb.toString();
         } catch (Exception e) { throw new RuntimeException("Hash error", e); }
+    }
+
+
+    public String twofactorstatus(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+        Map<String, Object> data = new HashMap<>();
+        data.put("enabled", u.isTwoFactorEnabled());
+        return AppResponse.success(data);
     }
 
     public static Map<String, Utilisateur> getSessions() { return sessions; }
