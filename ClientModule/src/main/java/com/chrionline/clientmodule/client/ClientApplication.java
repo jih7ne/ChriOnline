@@ -48,12 +48,11 @@ public class ClientApplication extends Application implements ViewManager {
     public void start(Stage stage) throws Exception {
         this.primaryStage = stage;
         Platform.setImplicitExit(true);
-
         rootStack = new StackPane();
 
         LoginView loginView = new LoginView(
                 client,
-                userData -> onLoginSuccess(userData),
+                this::onLoginSuccess,
                 this::showRegisterView,
                 this::showForgotPasswordView
         );
@@ -62,7 +61,6 @@ public class ClientApplication extends Application implements ViewManager {
         primaryStage.setTitle("ChriOnline — Connexion");
         primaryStage.setScene(new Scene(rootStack, 900, 700));
         primaryStage.show();
-
         logger.info("JavaFX Application started successfully");
     }
 
@@ -73,13 +71,23 @@ public class ClientApplication extends Application implements ViewManager {
      * Sets the auth token, re-registers UDP with the real userId so the server
      * can route targeted notifications to this client only.
      */
+    // APRÈS
     private void onLoginSuccess(Map<String, Object> userData) {
+        // 2FA requis → rediriger vers TwoFactorView
+        if (Boolean.TRUE.equals(userData.get("requires2FA"))) {
+            String tempToken = (String) userData.get("tempToken");
+            Platform.runLater(() -> showTwoFactorView(tempToken));
+            return;
+        }
+        // Login direct → suite normale
+        handleAuthSuccess(userData);
+    }
+
+    private void handleAuthSuccess(Map<String, Object> userData) {
         String token = (String) userData.get("token");
         String role  = (String) userData.get("role");
         client.setAuthToken(token);
 
-        // Re-register UDP with the actual userId so the server knows
-        // which UDP port belongs to this user
         if (udpListener != null && userData.get("id") != null) {
             int userId = ((Number) userData.get("id")).intValue();
             new Thread(() -> udpListener.registerWithServer(userId)).start();
@@ -107,7 +115,7 @@ public class ClientApplication extends Application implements ViewManager {
         primaryStage.setTitle("ChriOnline — Connexion");
         setView(new LoginView(
                 client,
-                userData -> onLoginSuccess(userData),
+                this::onLoginSuccess,
                 this::showRegisterView,
                 this::showForgotPasswordView
         ));
@@ -285,5 +293,15 @@ public class ClientApplication extends Application implements ViewManager {
             logger.error("Failed to initialize client", e);
             throw new RuntimeException(e);
         }
+    }
+
+    private void showTwoFactorView(String tempToken) {
+        primaryStage.setTitle("ChriOnline — Vérification 2FA");
+        setView(new TwoFactorView(
+                client,
+                tempToken,
+                data -> Platform.runLater(() -> handleAuthSuccess(data)),
+                ()   -> Platform.runLater(() -> showLoginView())
+        ));
     }
 }
