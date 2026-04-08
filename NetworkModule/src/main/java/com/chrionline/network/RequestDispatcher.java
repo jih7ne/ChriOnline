@@ -26,6 +26,7 @@ public class RequestDispatcher {
 
             IController controller = ServerConfig.getController(controllerName);
 
+
             if(controller == null) {
                 return AppResponse.error("Controller '" + controllerName + "' not found");
             }
