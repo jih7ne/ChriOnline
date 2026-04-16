@@ -1,7 +1,7 @@
-package com.chrionline.core;
+package com.chrionline.security.core;
 
-import com.chrionline.config.EncryptionConfig;
-import com.chrionline.utils.CryptoUtil;
+import com.chrionline.security.config.EncryptionConfig;
+import com.chrionline.security.utils.CryptoUtil;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;

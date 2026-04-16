@@ -1,6 +1,6 @@
-package com.chrionline.handshake;
+package com.chrionline.security.handshake;
 
-import com.chrionline.config.EncryptionConfig;
+import com.chrionline.security.config.EncryptionConfig;
 
 /**
  * Wire format for the 3-step handshake.

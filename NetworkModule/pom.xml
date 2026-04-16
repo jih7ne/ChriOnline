@@ -17,6 +17,11 @@
             <artifactId>SharedModule</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.chrionline</groupId>
+            <artifactId>SecurityModule</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
     </dependencies>
 

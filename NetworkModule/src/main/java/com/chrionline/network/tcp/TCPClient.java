@@ -3,6 +3,9 @@ package com.chrionline.network.tcp;
 import com.chrionline.core.constants.AppConstants;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.security.core.SecureStreamWrapper;
+import com.chrionline.security.core.SessionCipher;
+import com.chrionline.security.handshake.ClientHandshake;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +21,7 @@ public class TCPClient {
     private PrintWriter output;
     private volatile boolean connected = false;
     private String authToken = null;
+    private SecureStreamWrapper secureStream;
 
     public TCPClient() throws IOException {
         connect();
@@ -32,11 +36,17 @@ public class TCPClient {
         if (!connected || client.isClosed()) {
             throw new IOException("Client not connected");
         }
-        output.println(request);
-        logger.debug("Sent request: {}", request);
-        String response = input.readLine();
-        logger.debug("Received response: {}", response);
-        return response;
+        try {
+            secureStream.writeLine(request);
+            logger.debug("Sent request: {}", request);
+            String response = secureStream.readLine();
+            logger.debug("Received response: {}", response);
+            return response;
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public String sendRequest(AppRequest request) throws IOException {
@@ -74,9 +84,14 @@ public class TCPClient {
             connected = true;
             logger.info("Client connected to {}:{}",
                     AppConstants.SERVER_HOST, AppConstants.SERVER_PORT);
+
+            SessionCipher cipher = ClientHandshake.perform(input, output);
+            this.secureStream    = new SecureStreamWrapper(input, output, cipher);
         } catch (IOException e) {
             logger.error("Unable to connect to server! {}", e.getMessage());
             throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

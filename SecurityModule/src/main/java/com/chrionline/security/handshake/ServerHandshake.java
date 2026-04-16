@@ -1,9 +1,9 @@
-package com.chrionline.handshake;
+package com.chrionline.security.handshake;
 
-import com.chrionline.config.EncryptionConfig;
-import com.chrionline.core.KeyManager;
-import com.chrionline.core.SessionCipher;
-import com.chrionline.utils.CryptoUtil;
+import com.chrionline.security.config.EncryptionConfig;
+import com.chrionline.security.core.KeyManager;
+import com.chrionline.security.core.SessionCipher;
+import com.chrionline.security.utils.CryptoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

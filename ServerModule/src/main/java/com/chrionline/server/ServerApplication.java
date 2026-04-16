@@ -4,6 +4,7 @@ import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.constants.AppConstants;
 import com.chrionline.network.tcp.TCPServer;
 import com.chrionline.network.udp.UDPNotificationDispatcher;
+import com.chrionline.security.core.KeyManager;
 import com.chrionline.server.controllers.*;
 import com.chrionline.server.data.mappers.AdresseRowMapper;
 import com.chrionline.server.data.mappers.CommandeRowMapper;
@@ -28,6 +29,7 @@ public class ServerApplication {
             registerServices();
             registerControllers();
             logger.info("Démarrage TCP sur le port {}", AppConstants.SERVER_PORT);
+            KeyManager.getInstance().init();
             new TCPServer();
 
         } catch (Exception e) {

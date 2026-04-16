@@ -7,6 +7,7 @@ module com.chrionline.servermodule {
 
     requires com.google.zxing;
     requires com.google.zxing.javase;
+    requires SecurityModule;
 
     exports com.chrionline.server.controllers to com.chrionline.network;
     opens com.chrionline.server.data.dto to com.google.gson;

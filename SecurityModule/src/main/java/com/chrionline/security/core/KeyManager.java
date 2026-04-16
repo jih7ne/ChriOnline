@@ -1,11 +1,10 @@
-package com.chrionline.core;
+package com.chrionline.security.core;
 
-import com.chrionline.config.EncryptionConfig;
-import com.chrionline.utils.CryptoUtil;
+import com.chrionline.security.config.EncryptionConfig;
+import com.chrionline.security.utils.CryptoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
 import java.nio.file.*;
 import java.security.*;
 import java.security.spec.*;

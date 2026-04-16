@@ -1,4 +1,4 @@
-package com.chrionline.core;
+package com.chrionline.security.core;
 
 import java.io.*;
 

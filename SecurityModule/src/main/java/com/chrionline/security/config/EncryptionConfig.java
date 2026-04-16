@@ -1,4 +1,4 @@
-package com.chrionline.config;
+package com.chrionline.security.config;
 
 public final class EncryptionConfig {
     private EncryptionConfig() {}

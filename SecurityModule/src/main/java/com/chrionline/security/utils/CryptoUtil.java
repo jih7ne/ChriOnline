@@ -1,6 +1,6 @@
-package com.chrionline.utils;
+package com.chrionline.security.utils;
 
-import com.chrionline.config.EncryptionConfig;
+import com.chrionline.security.config.EncryptionConfig;
 
 import javax.crypto.*;
 import javax.crypto.spec.*;
