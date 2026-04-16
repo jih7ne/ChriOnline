@@ -9,21 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>NetworkModule</artifactId>
-
-    <dependencies>
-        <dependency>
-            <groupId>com.chrionline</groupId>
-            <artifactId>SharedModule</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.chrionline</groupId>
-            <artifactId>SecurityModule</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-    </dependencies>
+    <artifactId>SecurityModule</artifactId>
 
     <properties>
         <maven.compiler.source>23</maven.compiler.source>

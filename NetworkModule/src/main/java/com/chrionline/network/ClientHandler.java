@@ -1,7 +1,10 @@
 package com.chrionline.network;
 
+import com.chrionline.security.core.SecureStreamWrapper;
+import com.chrionline.security.core.SessionCipher;
 import com.chrionline.core.constants.AppConstants;
 import com.chrionline.network.protocol.AppRequest;
+import com.chrionline.security.handshake.ServerHandshake;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +22,8 @@ public class ClientHandler extends Thread {
     private PrintWriter output;
     private final String clientId;
     private final String clientIp;   // IP extraite une seule fois à la construction
+    private SessionCipher sessionCipher;
+    private SecureStreamWrapper secureStream;
 
     public ClientHandler(Socket client) {
         this.client   = client;
@@ -30,9 +35,15 @@ public class ClientHandler extends Thread {
             client.setSoTimeout(AppConstants.SOCKET_TIMEOUT_MS);
             input  = new BufferedReader(new InputStreamReader(client.getInputStream(),  AppConstants.BUFFER_CHARSET));
             output = new PrintWriter(new OutputStreamWriter(client.getOutputStream(), AppConstants.BUFFER_CHARSET), true);
+
+            this.sessionCipher = ServerHandshake.perform(input, output, clientId);
+            this.secureStream  = new SecureStreamWrapper(input, output, sessionCipher);
             logger.info("Client connecté : {}", clientId);
         } catch (IOException ioEx) {
             logger.error("Impossible d'initialiser le handler pour {}", clientId, ioEx);
+            cleanup();
+        } catch (Exception e) {
+            logger.error("Handshake failed for {}", clientId, e);
             cleanup();
         }
     }
@@ -42,7 +53,7 @@ public class ClientHandler extends Thread {
         try {
             while (!isInterrupted() && !client.isClosed()) {
                 try {
-                    String message = input.readLine();
+                    String message = secureStream.readLine();
                     if (message == null) {
                         logger.info("Client {} déconnecté normalement", clientId);
                         break;
@@ -89,7 +100,7 @@ public class ClientHandler extends Thread {
                     .build();
 
             String response = RequestDispatcher.dispatch(request);
-            output.println(response);
+            secureStream.writeLine(response);
             logger.info("Réponse envoyée à {}", clientId);
 
         } catch (Exception e) {
