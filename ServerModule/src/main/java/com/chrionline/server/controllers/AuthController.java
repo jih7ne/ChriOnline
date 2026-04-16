@@ -7,6 +7,11 @@ import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.network.protocol.AppResponse;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.server.data.dto.AuthPayloads.*;
+import com.chrionline.server.security.LoginAttemptGuard;
+import com.chrionline.server.security.PasswordValidator;
+import com.chrionline.server.services.RecaptchaService;
+import com.chrionline.server.services.TwoFactorService;
+import com.chrionline.server.services.TwoFactorVerifier;
 import com.chrionline.shared.models.Adresse;
 import com.chrionline.shared.models.Utilisateur;
 import com.chrionline.server.repositories.UtilisateurRepository;
@@ -26,25 +31,108 @@ public class AuthController implements IController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private static final Map<String, Utilisateur> sessions = new ConcurrentHashMap<>();
 
+    private final TwoFactorService   twoFactorService   = new TwoFactorService();
+    private final TwoFactorVerifier twoFactorVerifier  = new TwoFactorVerifier();
+
+    /**
+     * Guard de rate-limiting en mémoire — initialisé une seule fois au chargement
+     * de la classe. Plus aucune dépendance à la base de données.
+     */
+    private static final LoginAttemptGuard attemptGuard = new LoginAttemptGuard();
+    private final RecaptchaService recaptchaService = new RecaptchaService();
+
+    // ── Extraction de l'IP depuis les headers de la requête ───────────────
+
+    /**
+     * Récupère l'adresse IP du client depuis les headers de la requête.
+     * L'IP est injectée par ClientHandler via le header "client-address".
+     * Si absent (tests unitaires, etc.), retourne "unknown".
+     */
+    private static String extractIp(AppRequest request) {
+        if (request == null) return "unknown";
+        String ip = request.getHeader("client-address");
+        if (ip != null && !ip.isBlank()) return ip.trim();
+        // Fallback sur le clientId (format "ip:port")
+        String clientId = request.getClientId();
+        if (clientId != null && clientId.contains(":")) {
+            return clientId.substring(0, clientId.lastIndexOf(':'));
+        }
+        return "unknown";
+    }
+
     // ─── LOGIN ───────────────────────────────────────────────────────────────
     public String login(AppRequest request) {
+        String ip = extractIp(request);
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> rawCheck = JsonUtils.fromJson(request.getPayload(), Map.class);
+            String captchaToken = rawCheck != null ? (String) rawCheck.get("captchaToken") : null;
+            if (!recaptchaService.verify(captchaToken)) {
+                logger.warn("reCAPTCHA invalide depuis IP : {}", ip);
+                return AppResponse.error("Validation reCAPTCHA échouée. Veuillez réessayer.");
+            }
+        } catch (Exception e) {
+            logger.error("Erreur vérification captcha", e);
+            return AppResponse.error("Erreur lors de la vérification reCAPTCHA.");
+        }
+        // 1 — Vérification blocage IP
+        if (attemptGuard.isBlocked(ip)) {
+            long remaining = attemptGuard.minutesRemaining(ip);
+            logger.warn("Tentative de connexion depuis IP bloquée : {}", ip);
+            return AppResponse.error(
+                    "Trop de tentatives échouées. Réessayez dans " + remaining + " minute(s)."
+            );
+        }
+
         try {
             LoginPayload p = JsonUtils.fromJson(request.getPayload(), LoginPayload.class);
             if (p == null || p.email == null || p.password == null)
                 return AppResponse.badRequest("email et password requis.");
 
             Utilisateur u = repo().getByEmail(p.email);
-            if (u == null)
-                return AppResponse.error("Email ou mot de passe incorrect.");
-            if ("inactif".equals(u.getStatut()))
+
+            // 2 — Identifiants incorrects → enregistrer l'échec
+            if (u == null || !hash(p.password).equals(u.getMotDePasse())) {
+                boolean justBlocked = attemptGuard.recordFailure(ip);
+                if (justBlocked) {
+                    return AppResponse.error(
+                            "Compte temporairement bloqué après " + LoginAttemptGuard.MAX_ATTEMPTS +
+                                    " tentatives échouées. Réessayez dans " +
+                                    LoginAttemptGuard.LOCK_MINUTES + " minutes."
+                    );
+                }
+                int attemptsLeft = LoginAttemptGuard.MAX_ATTEMPTS - attemptGuard.getAttempts(ip);
+                String hint = attemptsLeft > 0
+                        ? " (" + attemptsLeft + " tentative(s) restante(s))"
+                        : "";
+                return AppResponse.error("Email ou mot de passe incorrect." + hint);
+            }
+
+            // 3 — Compte inactif
+            if ("inactif".equals(u.getStatut())) {
+                // On enregistre aussi l'échec pour compter cette tentative
+                attemptGuard.recordFailure(ip);
                 return AppResponse.error("Compte bloqué. Contactez un administrateur.");
-            if (!hash(p.password).equals(u.getMotDePasse()))
-                return AppResponse.error("Email ou mot de passe incorrect.");
+            }
+
+
+            // 4 — Succès : on réinitialise le compteur
+            attemptGuard.recordSuccess(ip);
+
+            if (u.isTwoFactorEnabled()) {
+                String tempToken = twoFactorService.createPendingToken(u.getId());
+                Map<String, Object> data = new HashMap<>();
+                data.put("requires2FA", true);
+                data.put("tempToken",   tempToken);
+                logger.info("2FA requis pour : {}", u.getEmail());
+                return AppResponse.success(data);
+            }
 
             String token = UUID.randomUUID().toString();
             sessions.put(token, u);
-            logger.info("Login réussi : {}", u.getEmail());
+            logger.info("Login réussi : {} depuis {}", u.getEmail(), ip);
             return AppResponse.success(userData(u, token));
+
         } catch (Exception e) {
             logger.error("Erreur login", e);
             return AppResponse.error("Erreur serveur : " + e.getMessage());
@@ -57,7 +145,11 @@ public class AuthController implements IController {
             @SuppressWarnings("unchecked")
             Map<String, Object> raw = JsonUtils.fromJson(request.getPayload(), Map.class);
             if (raw == null) return AppResponse.badRequest("Payload invalide.");
-
+            String captchaToken = (String) raw.get("captchaToken");
+            if (!recaptchaService.verify(captchaToken)) {
+                logger.warn("reCAPTCHA invalide à l'inscription.");
+                return AppResponse.error("Validation reCAPTCHA échouée. Veuillez réessayer.");
+            }
             String nom             = (String) raw.get("nom");
             String prenom          = (String) raw.get("prenom");
             String email           = (String) raw.get("email");
@@ -69,8 +161,13 @@ public class AuthController implements IController {
                 return AppResponse.badRequest("Tous les champs sont requis.");
             if (!email.contains("@"))
                 return AppResponse.badRequest("Email invalide.");
-            if (password.length() < 6)
-                return AppResponse.badRequest("Mot de passe trop court (min. 6 caractères).");
+
+            // Validation de la complexité du mot de passe
+            PasswordValidator.ValidationResult pwdResult = PasswordValidator.validate(password);
+            if (!pwdResult.valid()) {
+                return AppResponse.badRequest(pwdResult.firstError());
+            }
+
             if (repo().emailExiste(email))
                 return AppResponse.error("Cet email est déjà utilisé.");
 
@@ -110,8 +207,6 @@ public class AuthController implements IController {
                     if (adresseService != null) {
                         adresseService.ajouterAdresse(adresse);
                         logger.info("Adresse principale créée pour utilisateur id={}", u.getId());
-                    } else {
-                        logger.warn("AdresseService non disponible, adresse non sauvegardée");
                     }
                 }
             }
@@ -157,7 +252,7 @@ public class AuthController implements IController {
                 : AppResponse.error("Mise à jour échouée.");
     }
 
-    // ─── UPDATE PASSWORD (authenticated — requires old password) ─────────────
+    // ─── UPDATE PASSWORD (authentifié — nécessite l'ancien mot de passe) ─────
     public String updatepassword(AppRequest request) {
         Utilisateur u = session(request);
         if (u == null) return AppResponse.unauthorized("Session expirée.");
@@ -166,19 +261,19 @@ public class AuthController implements IController {
             return AppResponse.badRequest("ancien et nouveau requis.");
         if (!hash(p.ancien).equals(u.getMotDePasse()))
             return AppResponse.error("Ancien mot de passe incorrect.");
-        if (p.nouveau.length() < 6)
-            return AppResponse.badRequest("Nouveau mot de passe trop court.");
+
+        // Validation de la complexité du nouveau mot de passe
+        PasswordValidator.ValidationResult result = PasswordValidator.validate(p.nouveau);
+        if (!result.valid()) {
+            return AppResponse.badRequest(result.firstError());
+        }
+
         u.setMotDePasse(hash(p.nouveau));
         repo().updatePassword(u.getId(), u.getMotDePasse());
         return AppResponse.ok();
     }
 
-    // ─── GET QUESTION — step 1 of forgot-password flow ───────────────────────
-    // IMPORTANT: method name is all lowercase because RequestDispatcher calls
-    // action names via reflection using action.toLowerCase()
-    // Client must send action: "getquestion"
-    // INPUT  : { email }
-    // OUTPUT : { question }
+    // ─── GET QUESTION ─────────────────────────────────────────────────────────
     public String getquestion(AppRequest request) {
         try {
             @SuppressWarnings("unchecked")
@@ -204,10 +299,7 @@ public class AuthController implements IController {
         }
     }
 
-    // ─── VERIFY ANSWER — step 2 of forgot-password flow ─────────────────────
-    // Client must send action: "verifyanswer"
-    // INPUT  : { email, reponse }
-    // OUTPUT : success / error
+    // ─── VERIFY ANSWER ────────────────────────────────────────────────────────
     public String verifyanswer(AppRequest request) {
         try {
             @SuppressWarnings("unchecked")
@@ -216,8 +308,7 @@ public class AuthController implements IController {
                 return AppResponse.badRequest("email et reponse requis.");
 
             Utilisateur u = repo().getByEmail(payload.get("email"));
-            if (u == null)
-                return AppResponse.error("Compte introuvable.");
+            if (u == null) return AppResponse.error("Compte introuvable.");
 
             String expected = u.getReponseSecrete();
             String provided = payload.get("reponse").toLowerCase().trim();
@@ -234,10 +325,7 @@ public class AuthController implements IController {
         }
     }
 
-    // ─── RESET PASSWORD — step 3 of forgot-password flow ────────────────────
-    // Client must send action: "resetpassword"
-    // INPUT  : { email, nouveau }
-    // OUTPUT : success / error
+    // ─── RESET PASSWORD ───────────────────────────────────────────────────────
     public String resetpassword(AppRequest request) {
         try {
             @SuppressWarnings("unchecked")
@@ -246,16 +334,17 @@ public class AuthController implements IController {
                 return AppResponse.badRequest("email et nouveau requis.");
 
             Utilisateur u = repo().getByEmail(payload.get("email"));
-            if (u == null)
-                return AppResponse.error("Compte introuvable.");
+            if (u == null) return AppResponse.error("Compte introuvable.");
 
             String nouveau = payload.get("nouveau");
-            if (nouveau.length() < 6)
-                return AppResponse.badRequest("Mot de passe trop court (min. 6 caractères).");
+
+            // Validation de la complexité du nouveau mot de passe
+            PasswordValidator.ValidationResult result = PasswordValidator.validate(nouveau);
+            if (!result.valid()) {
+                return AppResponse.badRequest(result.firstError());
+            }
 
             repo().updatePassword(u.getId(), hash(nouveau));
-
-            // Invalider toutes les sessions actives de cet utilisateur
             sessions.entrySet().removeIf(e -> e.getValue().getId() == u.getId());
 
             logger.info("Mot de passe réinitialisé pour : {}", u.getEmail());
@@ -267,13 +356,13 @@ public class AuthController implements IController {
         }
     }
 
-    // ─── ADMIN : LIST ────────────────────────────────────────────────────────
+    // ─── ADMIN : LIST ─────────────────────────────────────────────────────────
     public String listusers(AppRequest request) {
         if (!isAdmin(request)) return AppResponse.unauthorized("Droits admin requis.");
         return AppResponse.success(repo().getAll());
     }
 
-    // ─── ADMIN : BLOCK ───────────────────────────────────────────────────────
+    // ─── ADMIN : BLOCK ────────────────────────────────────────────────────────
     public String blockuser(AppRequest request) {
         if (!isAdmin(request)) return AppResponse.unauthorized("Droits admin requis.");
         IdPayload p = JsonUtils.fromJson(request.getPayload(), IdPayload.class);
@@ -281,7 +370,7 @@ public class AuthController implements IController {
         return repo().updateStatut(p.id, "inactif") ? AppResponse.ok() : AppResponse.error("Échec.");
     }
 
-    // ─── ADMIN : UNBLOCK ─────────────────────────────────────────────────────
+    // ─── ADMIN : UNBLOCK ──────────────────────────────────────────────────────
     public String unblockuser(AppRequest request) {
         if (!isAdmin(request)) return AppResponse.unauthorized("Droits admin requis.");
         IdPayload p = JsonUtils.fromJson(request.getPayload(), IdPayload.class);
@@ -289,13 +378,73 @@ public class AuthController implements IController {
         return repo().updateStatut(p.id, "actif") ? AppResponse.ok() : AppResponse.error("Échec.");
     }
 
-    // ─── ADMIN : DELETE ──────────────────────────────────────────────────────
+    // ─── ADMIN : DELETE ───────────────────────────────────────────────────────
     public String deleteuser(AppRequest request) {
         if (!isAdmin(request)) return AppResponse.unauthorized("Droits admin requis.");
         IdPayload p = JsonUtils.fromJson(request.getPayload(), IdPayload.class);
         if (p == null) return AppResponse.badRequest("id requis.");
         sessions.entrySet().removeIf(e -> e.getValue().getId() == p.id);
         return repo().delete(p.id) ? AppResponse.ok() : AppResponse.error("Échec.");
+    }
+
+    // ─── TWO FACTOR AUTH ─────────────────────────────────────────────────────
+
+    public String twofactorenable(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+
+        String qrCodeBase64 = twoFactorService.initEnable(u.getId());
+        if (qrCodeBase64 == null) return AppResponse.error("Impossible d'activer le 2FA.");
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("qrCode", qrCodeBase64);
+        return AppResponse.success(data);
+    }
+
+    public String twofactorenableconfirm(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> payload = JsonUtils.fromJson(request.getPayload(), Map.class);
+        if (payload == null || payload.get("code") == null)
+            return AppResponse.badRequest("Code requis.");
+
+        return twoFactorService.confirmEnable(u.getId(), payload.get("code"))
+                ? AppResponse.ok()
+                : AppResponse.error("Code invalide. Réessayez.");
+    }
+
+    public String twofactorverify(AppRequest request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, String> payload = JsonUtils.fromJson(request.getPayload(), Map.class);
+            if (payload == null) return AppResponse.badRequest("Payload invalide.");
+
+            Utilisateur u = twoFactorVerifier.verify(payload.get("tempToken"), payload.get("code"));
+            if (u == null) return AppResponse.error("Code invalide ou expiré.");
+
+            String token = UUID.randomUUID().toString();
+            sessions.put(token, u);
+            return AppResponse.success(userData(u, token));
+
+        } catch (Exception e) {
+            return AppResponse.error("Erreur 2FA : " + e.getMessage());
+        }
+    }
+
+    public String twofactordisable(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> payload = JsonUtils.fromJson(request.getPayload(), Map.class);
+        if (payload == null || payload.get("code") == null)
+            return AppResponse.badRequest("Code requis.");
+
+        return twoFactorService.disable(u.getId(), payload.get("code"))
+                ? AppResponse.ok()
+                : AppResponse.error("Code invalide.");
     }
 
     // ─── HELPERS ─────────────────────────────────────────────────────────────
@@ -334,6 +483,15 @@ public class AuthController implements IController {
             for (byte b : bytes) sb.append(String.format("%02x", b));
             return sb.toString();
         } catch (Exception e) { throw new RuntimeException("Hash error", e); }
+    }
+
+
+    public String twofactorstatus(AppRequest request) {
+        Utilisateur u = session(request);
+        if (u == null) return AppResponse.unauthorized("Session expirée.");
+        Map<String, Object> data = new HashMap<>();
+        data.put("enabled", u.isTwoFactorEnabled());
+        return AppResponse.success(data);
     }
 
     public static Map<String, Utilisateur> getSessions() { return sessions; }

@@ -25,6 +25,7 @@ public class AppRequest {
     private String clientId;
     private String clientVersion;
     private String authToken;
+    private String captchaToken;
 
     private AppRequest() {
         this.id = UUID.randomUUID().toString();
@@ -44,6 +45,10 @@ public class AppRequest {
     public String getClientId() { return clientId; }
     public String getClientVersion() { return clientVersion; }
     public String getAuthToken() { return authToken; }
+    public String getCaptchaToken() { return captchaToken; }
+    public void setCaptchaToken(String captchaToken) {
+        this.captchaToken = captchaToken;
+    }
 
 
     @SuppressWarnings("unchecked")

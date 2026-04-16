@@ -1,5 +1,4 @@
 module com.chrionline.clientmodule {
-    requires javafx.controls;
     requires javafx.fxml;
     requires org.slf4j;
 
@@ -10,6 +9,10 @@ module com.chrionline.clientmodule {
     requires org.kordamp.ikonli.feather;
     requires org.kordamp.ikonli.core;
     requires com.google.gson;
+    requires javafx.web;
+    requires javafx.graphics;
+    requires jdk.jsobject;
+    requires jdk.httpserver;
 
     opens com.chrionline.clientmodule to javafx.fxml;
     exports com.chrionline.clientmodule.client;

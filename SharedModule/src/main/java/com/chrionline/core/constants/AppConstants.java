@@ -58,5 +58,10 @@ public final class AppConstants {
      ========================= */
 
     public static final int DB_CONNECTION_TIMEOUT = 10;
+    // ── reCAPTCHA ──────────────────────────────────────
+    public static final String RECAPTCHA_SITE_KEY   = "6LdVSKosAAAAANyQFpO5gKauqVkovhHfCix-fdf1";
+    public static final String RECAPTCHA_SECRET_KEY = "6LdVSKosAAAAAOvnDSHVwx_gihG0vDRzRG6eSVl4";
+    public static final String RECAPTCHA_VERIFY_URL =
+            "https://www.google.com/recaptcha/api/siteverify";
 
 }

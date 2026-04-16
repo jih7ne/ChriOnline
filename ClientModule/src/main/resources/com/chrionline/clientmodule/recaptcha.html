@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            width: 100%;
+            height: 100%;
+        }
+        body {
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            padding: 8px 0 0 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="g-recaptcha"
+     data-sitekey="6LdVSKosAAAAANyQFpO5gKauqVkovhHfCix-fdf1"
+     data-callback="onSuccess"
+     data-expired-callback="onExpired">
+</div>
+<script>
+    function onSuccess(token) {
+        if (window.javabridge) window.javabridge.onTokenReceived(token);
+    }
+    function onExpired() {
+        if (window.javabridge) window.javabridge.onTokenExpired();
+    }
+</script>
+</body>
+</html>

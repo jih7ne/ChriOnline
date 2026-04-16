@@ -34,4 +34,13 @@ public class AuthPayloads {
     public static class IdPayload {
         public int id;
     }
+
+    public static class TwoFactorVerifyPayload {
+        public String tempToken; // token temporaire après login
+        public String code;      // code 6 chiffres saisi par l'utilisateur
+    }
+
+    public static class TwoFactorEnablePayload {
+        public String code; // premier code pour confirmer l'activation
+    }
 }
