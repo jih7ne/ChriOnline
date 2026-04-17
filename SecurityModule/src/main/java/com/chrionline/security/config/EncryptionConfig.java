@@ -20,4 +20,5 @@ public final class EncryptionConfig {
     public static final String HANDSHAKE_KEY_OFFER  = "CHRI_KEY";
     public static final String HANDSHAKE_ACK        = "CHRI_ACK";
     public static final String HANDSHAKE_READY      = "CHRI_READY";
+
 }

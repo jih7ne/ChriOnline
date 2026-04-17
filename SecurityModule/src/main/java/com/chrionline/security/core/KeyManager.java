@@ -15,7 +15,7 @@ import java.util.Base64;
  * Keys are persisted to disk so the server doesn't regenerate them on every restart.
  *
  * Usage (in ServerConfig or ServerApplication):
- *   KeyManager.getInstance().init();
+ *   KeyManager.getInstance().init();]
  *   PublicKey pub = KeyManager.getInstance().getPublicKey();
  */
 public class KeyManager {
@@ -29,7 +29,7 @@ public class KeyManager {
 
     private KeyPair keyPair;
 
-    private KeyManager() {}
+    protected KeyManager() {}
 
     public static KeyManager getInstance() { return INSTANCE; }
 

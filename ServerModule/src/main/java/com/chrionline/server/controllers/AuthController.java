@@ -7,6 +7,7 @@ import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.network.protocol.AppResponse;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.server.data.dto.AuthPayloads.*;
+import com.chrionline.server.security.ChallengeGenerator;
 import com.chrionline.server.security.LoginAttemptGuard;
 import com.chrionline.server.security.PasswordValidator;
 import com.chrionline.server.services.RecaptchaService;
@@ -21,9 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AuthController implements IController {
@@ -137,6 +136,17 @@ public class AuthController implements IController {
             logger.error("Erreur login", e);
             return AppResponse.error("Erreur serveur : " + e.getMessage());
         }
+    }
+
+    public String adminLogin(AppRequest request){
+        String challengeString = ChallengeGenerator.generate();
+        Map<String, String> data = new HashMap<>();
+        data.put("challenge", challengeString);
+        return AppResponse.success(data);
+    }
+
+    public String verifySignedChallenge(AppRequest request){
+        return null;
     }
 
     // ─── REGISTER ────────────────────────────────────────────────────────────
