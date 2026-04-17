@@ -7,6 +7,7 @@ import com.chrionline.network.protocol.AppResponse;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.network.tcp.TCPClient;
 import javafx.animation.Animation;
+import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -26,22 +27,37 @@ import javafx.concurrent.Worker;
 
 public class LoginView extends StackPane {
 
-    private final TextField                    emailField;
-    private final PasswordField                passwordField;
-    private final Button                       loginButton;
-    private final Label                        errorLabel;
-    private final TCPClient                    tcpClient;
+    // ── Mode courant ──────────────────────────────────────
+    private enum Mode { CLIENT, ADMIN }
+    private Mode currentMode = Mode.CLIENT;
+
+    // ── Champs communs ────────────────────────────────────
+    private final TextField                     emailField;
+    private final PasswordField                 passwordField;
+    private final Button                        loginButton;
+    private final Label                         errorLabel;
+    private final TCPClient                     tcpClient;
     private final Consumer<Map<String, Object>> onLoginSuccess;
-    private final Runnable                     onGoToRegister;
-    private final Runnable                     onGoToForgotPassword;
-    // ── Captcha ───────────────────────────────────────────
-    private WebView captchaWebView;
-    private String  captchaToken = null;
-//on passe le tcp client, un consumer appele en cas de succes, runnables vers l inscription ou mot de passe oublié
+    private final Runnable                      onGoToRegister;
+    private final Runnable                      onGoToForgotPassword;
+
+    // ── Sections conditionnelles ──────────────────────────
+    private final StackPane  passPane;
+    private final Label      passLabel;
+    private final HBox       forgotRow;
+    private final HBox       toggleClientMode;   // Connexion | Inscription — Client only
+    private       WebView    captchaWebView;
+    private       String     captchaToken = null;
+
+    // ── Boutons du mode switcher ──────────────────────────
+    private final Button btnModeClient;
+    private final Button btnModeAdmin;
+
     public LoginView(TCPClient tcpClient,
                      Consumer<Map<String, Object>> onLoginSuccess,
                      Runnable onGoToRegister,
                      Runnable onGoToForgotPassword) {
+
         this.tcpClient            = tcpClient;
         this.onLoginSuccess       = onLoginSuccess;
         this.onGoToRegister       = onGoToRegister;
@@ -55,23 +71,52 @@ public class LoginView extends StackPane {
         AppTheme.styleCard(card);
         card.setPadding(new Insets(40, 40, 40, 40));
 
-        // Icon
+        // ── Icône ─────────────────────────────────────────
         Label icon = new Label("🛍");
-        icon.setStyle("-fx-font-size: 40px;");
+        icon.setStyle("-fx-font-size: 44px;");
         VBox iconBox = new VBox(icon);
         iconBox.setAlignment(Pos.CENTER);
-        VBox.setMargin(iconBox, new Insets(0, 0, 8, 0));
+        VBox.setMargin(iconBox, new Insets(0, 0, 6, 0));
 
-        // Title
+        // ── Titre ─────────────────────────────────────────
         Label title = new Label("ChriOnline");
-        title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
+        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: " + AppTheme.TEXT_MAIN + ";");
         Label subtitle = new Label("Boutique artisanale");
         subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
         VBox titleBox = new VBox(4, title, subtitle);
         titleBox.setAlignment(Pos.CENTER);
         VBox.setMargin(titleBox, new Insets(0, 0, 24, 0));
 
-        // Toggle Connexion / Inscription
+        // ══════════════════════════════════════════════════
+        //  SWITCHER  Client | Admin
+        // ══════════════════════════════════════════════════
+        btnModeClient = new Button("Client");
+        btnModeAdmin  = new Button("Admin");
+        styleModeActive(btnModeClient);
+        styleModeInactive(btnModeAdmin);
+
+        btnModeClient.setMaxWidth(Double.MAX_VALUE);
+        btnModeAdmin.setMaxWidth(Double.MAX_VALUE);
+        btnModeClient.setPrefHeight(40);
+        btnModeAdmin.setPrefHeight(40);
+        HBox.setHgrow(btnModeClient, Priority.ALWAYS);
+        HBox.setHgrow(btnModeAdmin,  Priority.ALWAYS);
+
+        btnModeClient.setOnAction(e -> switchMode(Mode.CLIENT));
+        btnModeAdmin .setOnAction(e -> switchMode(Mode.ADMIN));
+
+        HBox modeSwitcher = new HBox(0, btnModeClient, btnModeAdmin);
+        modeSwitcher.setStyle(
+                "-fx-background-color: " + AppTheme.TOGGLE_INACTIVE + ";" +
+                        "-fx-background-radius: 30px;" +
+                        "-fx-padding: 4px;"
+        );
+        modeSwitcher.setMaxWidth(Double.MAX_VALUE);
+        VBox.setMargin(modeSwitcher, new Insets(0, 0, 20, 0));
+
+        // ══════════════════════════════════════════════════
+        //  SWITCHER  Connexion | Inscription  (CLIENT only)
+        // ══════════════════════════════════════════════════
         Button btnConnexion   = new Button("Connexion");
         Button btnInscription = new Button("Inscription");
         AppTheme.styleToggleActive(btnConnexion);
@@ -82,16 +127,18 @@ public class LoginView extends StackPane {
         HBox.setHgrow(btnConnexion,   Priority.ALWAYS);
         HBox.setHgrow(btnInscription, Priority.ALWAYS);
 
-        HBox toggle = new HBox(0, btnConnexion, btnInscription);
-        toggle.setStyle(
+        toggleClientMode = new HBox(0, btnConnexion, btnInscription);
+        toggleClientMode.setStyle(
                 "-fx-background-color: " + AppTheme.TOGGLE_INACTIVE + ";" +
                         "-fx-background-radius: 30px;" +
                         "-fx-padding: 4px;"
         );
-        toggle.setMaxWidth(Double.MAX_VALUE);
-        VBox.setMargin(toggle, new Insets(0, 0, 24, 0));
+        toggleClientMode.setMaxWidth(Double.MAX_VALUE);
+        VBox.setMargin(toggleClientMode, new Insets(0, 0, 24, 0));
 
-        // Email
+
+
+        // ── Email ─────────────────────────────────────────
         emailField = new TextField();
         emailField.setPromptText("votre@email.com");
         AppTheme.styleTextField(emailField);
@@ -99,16 +146,16 @@ public class LoginView extends StackPane {
         StackPane emailPane = wrapWithIcon("✉", emailField);
         VBox.setMargin(emailPane, new Insets(0, 0, 14, 0));
 
-        // Password
+        // ── Password (CLIENT only) ────────────────────────
         passwordField = new PasswordField();
         passwordField.setPromptText("••••••••");
         AppTheme.styleTextField(passwordField);
         AppTheme.styleFocusedTextField(passwordField);
         passwordField.setOnAction(e -> handleLogin());
-        StackPane passPane = wrapWithIcon("🔒", passwordField);
+        passPane  = wrapWithIcon("🔒", passwordField);
         VBox.setMargin(passPane, new Insets(0, 0, 6, 0));
 
-        // Forgot password — navigates via the Runnable callback (safe, no getScene() call)
+        // ── Mot de passe oublié (CLIENT only) ─────────────
         Hyperlink forgot = new Hyperlink("Mot de passe oublié ?");
         forgot.setStyle(
                 "-fx-text-fill: " + AppTheme.TEXT_MUTED + ";" +
@@ -116,36 +163,67 @@ public class LoginView extends StackPane {
                         "-fx-border-color: transparent;"
         );
         forgot.setOnAction(e -> onGoToForgotPassword.run());
-
-        HBox forgotRow = new HBox(forgot);
+        forgotRow = new HBox(forgot);
         forgotRow.setAlignment(Pos.CENTER_RIGHT);
         VBox.setMargin(forgotRow, new Insets(0, 0, 18, 0));
 
-        // Error label
+        // ── Labels de section ─────────────────────────────
+        passLabel = createFieldLabel("Mot de passe");
+
+        // ── Message d'erreur ──────────────────────────────
         errorLabel = new Label();
         errorLabel.setStyle(
-                "-fx-text-fill: " + AppTheme.ERROR_COLOR + ";" +
-                        "-fx-font-size: 13px;" +
-                        "-fx-padding: 0 0 8 0;"
+                "-fx-background-color: #FFF0F0;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-text-fill: " + AppTheme.ERROR_COLOR + ";" +
+                        "-fx-font-size: 12px;" +
+                        "-fx-padding: 8 12 8 12;" +
+                        "-fx-border-color: " + AppTheme.ERROR_COLOR + "44;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-border-width: 1px;"
         );
         errorLabel.setVisible(false);
+        errorLabel.setManaged(false);
         errorLabel.setWrapText(true);
+        errorLabel.setMaxWidth(Double.MAX_VALUE);
+        VBox.setMargin(errorLabel, new Insets(0, 0, 10, 0));
 
-        // Login button
+        // ── Séparateur ────────────────────────────────────
+        Separator sep = new Separator();
+        sep.setOpacity(0.3);
+        VBox.setMargin(sep, new Insets(4, 0, 18, 0));
+
+        // ── Bouton de connexion ───────────────────────────
         loginButton = new Button("Se connecter");
+        loginButton.setPrefHeight(46);
+        loginButton.setMaxWidth(Double.MAX_VALUE);
         AppTheme.stylePrimaryButton(loginButton);
-        loginButton.setOnAction(e -> handleLogin()); //what happens when we click on the log in button
-        // ── WebView reCAPTCHA ─────────────────────────────────
+        loginButton.setOnAction(e -> handleLogin());
+
+        // ── reCAPTCHA WebView ─────────────────────────────
         captchaWebView = buildCaptchaWebView();
+
+        // ── Assemblage ────────────────────────────────────
         card.getChildren().addAll(
-                iconBox, titleBox, toggle,
-                createFieldLabel("Email"),        emailPane,
-                createFieldLabel("Mot de passe"), passPane,
-                forgotRow, errorLabel, captchaWebView, loginButton
+                iconBox,
+                titleBox,
+                modeSwitcher,
+                toggleClientMode,          // masqué en mode Admin
+                createFieldLabel("Email"),
+                emailPane,
+                passLabel,                 // masqué en mode Admin
+                passPane,                  // masqué en mode Admin
+                forgotRow,                 // masqué en mode Admin
+                errorLabel,
+                captchaWebView,            // masqué en mode Admin
+                sep,
+                loginButton
         );
 
+        // ── ScrollPane ────────────────────────────────────
         ScrollPane scroll = new ScrollPane();
         scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setStyle("-fx-background: " + AppTheme.BG + "; -fx-background-color: " + AppTheme.BG + ";");
 
         VBox wrapper = new VBox(card);
@@ -156,77 +234,169 @@ public class LoginView extends StackPane {
         scroll.setContent(wrapper);
         StackPane.setAlignment(scroll, Pos.CENTER);
         this.getChildren().add(scroll);
+
+        // État initial
+        applyModeUI(Mode.CLIENT);
     }
-//methode appéle le moemnt on clique sur le button de connexion
-private void handleLogin() {
-    String email    = emailField.getText().trim();
-    String password = passwordField.getText();
 
-    if (email.isEmpty() || password.isEmpty()) { showError("Veuillez remplir tous les champs."); return; }
-    if (!email.contains("@"))                  { showError("Adresse e-mail invalide."); return; }
+    // ══════════════════════════════════════════════════════
+    //  Logique de changement de mode
+    // ══════════════════════════════════════════════════════
 
-    // ✅ NOUVEAU — vérification captcha côté client
-    if (captchaToken == null) { showError("Veuillez valider le reCAPTCHA."); return; }
+    private void switchMode(Mode mode) {
+        if (currentMode == mode) return;
+        currentMode = mode;
+        hideError();
+        resetCaptcha();
+        emailField.clear();
+        passwordField.clear();
+        applyModeUI(mode);
+    }
 
-    loginButton.setDisable(true);
-    loginButton.setText("Connexion...");
-    hideError();
+    private void applyModeUI(Mode mode) {
+        boolean isClient = (mode == Mode.CLIENT);
 
-    new Thread(() -> {
-        try {
-            Map<String, String> payload = new HashMap<>();
-            payload.put("email",        email);
-            payload.put("password",     password);
-            payload.put("captchaToken", captchaToken); // ← NOUVEAU
+        // Switcher style
+        if (isClient) { styleModeActive(btnModeClient); styleModeInactive(btnModeAdmin); }
+        else          { styleModeInactive(btnModeClient); styleModeActive(btnModeAdmin); }
 
-            AppRequest request = new AppRequest.Builder()
-                    .controller("Auth").action("login")
-                    .payload(JsonUtils.toJson(payload))
-                    .build();
+        // Toggle Connexion/Inscription — Client only
+        toggleClientMode.setVisible(isClient);
+        toggleClientMode.setManaged(isClient);
 
-            AppResponse response = tcpClient.sendAndParse(request);
 
-            Platform.runLater(() -> {
-                loginButton.setDisable(false);
-                loginButton.setText("Se connecter");
 
-                if (response != null && response.isSuccess()) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> data = response.getDataAs(Map.class);
-                    if (data != null) onLoginSuccess.accept(data);
-                } else {
-                    showError(response != null && response.getMessage() != null
-                            ? response.getMessage()
-                            : "Connexion échouée. Vérifiez vos identifiants.");
-                    resetCaptcha(); // ← NOUVEAU — reset après échec
-                }
-            });
-        } catch (Exception e) {
-            Platform.runLater(() -> {
-                loginButton.setDisable(false);
-                loginButton.setText("Se connecter");
-                showError("Erreur réseau : " + e.getMessage());
-                resetCaptcha(); // ← NOUVEAU
-            });
+        // Password, forgot, captcha — Client only
+        passLabel.setVisible(isClient);
+        passLabel.setManaged(isClient);
+        passPane.setVisible(isClient);
+        passPane.setManaged(isClient);
+        forgotRow.setVisible(isClient);
+        forgotRow.setManaged(isClient);
+        captchaWebView.setVisible(isClient);
+        captchaWebView.setManaged(isClient);
+
+        // Bouton
+        loginButton.setDisable(isClient && captchaToken == null);
+        loginButton.setText(isClient ? "Se connecter" : "Demander l'accès  →");
+
+        // Prompt email
+        emailField.setPromptText(isClient ? "votre@email.com" : "admin@chrionline.com");
+
+        // Fondu
+        FadeTransition ft = new FadeTransition(Duration.millis(220), this);
+        ft.setFromValue(0.75);
+        ft.setToValue(1.0);
+        ft.play();
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  Gestion du login
+    // ══════════════════════════════════════════════════════
+
+    private void handleLogin() {
+        String email    = emailField.getText().trim();
+        String password = currentMode == Mode.CLIENT ? passwordField.getText() : null;
+
+        if (email.isEmpty())       { showError("Veuillez saisir votre email."); return; }
+        if (!email.contains("@")) { showError("Adresse e-mail invalide."); return; }
+
+        if (currentMode == Mode.CLIENT) {
+            if (password == null || password.isEmpty()) { showError("Veuillez saisir votre mot de passe."); return; }
+            if (captchaToken == null) { showError("Veuillez valider le reCAPTCHA."); return; }
         }
-    }).start();
-}
-//creation des labels
+
+        loginButton.setDisable(true);
+        loginButton.setText("Connexion en cours...");
+        hideError();
+
+        new Thread(() -> {
+            try {
+                Map<String, String> payload = new HashMap<>();
+                payload.put("email", email);
+                payload.put("mode",  currentMode.name().toLowerCase());
+
+                if (currentMode == Mode.CLIENT) {
+                    payload.put("password",     password);
+                    payload.put("captchaToken", captchaToken);
+                }
+
+                String action = (currentMode == Mode.ADMIN) ? "adminChallenge" : "login";
+
+                AppRequest request = new AppRequest.Builder()
+                        .controller("Auth").action(action)
+                        .payload(JsonUtils.toJson(payload))
+                        .build();
+
+                AppResponse response = tcpClient.sendAndParse(request);
+
+                Platform.runLater(() -> {
+                    loginButton.setDisable(false);
+                    loginButton.setText(currentMode == Mode.ADMIN ? "Demander l'accès  →" : "Se connecter");
+
+                    if (response != null && response.isSuccess()) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> data = response.getDataAs(Map.class);
+                        if (data != null) onLoginSuccess.accept(data);
+                    } else {
+                        showError(response != null && response.getMessage() != null
+                                ? response.getMessage()
+                                : "Connexion échouée. Vérifiez vos identifiants.");
+                        if (currentMode == Mode.CLIENT) resetCaptcha();
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    loginButton.setDisable(false);
+                    loginButton.setText(currentMode == Mode.ADMIN ? "Demander l'accès  →" : "Se connecter");
+                    showError("Erreur réseau : " + e.getMessage());
+                    if (currentMode == Mode.CLIENT) resetCaptcha();
+                });
+            }
+        }).start();
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  Helpers UI
+    // ══════════════════════════════════════════════════════
+
+    private void styleModeActive(Button btn) {
+        btn.setStyle(
+                "-fx-background-color: " + AppTheme.PRIMARY + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-background-radius: 26px;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 6, 0, 0, 2);"
+        );
+    }
+
+    private void styleModeInactive(Button btn) {
+        btn.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-text-fill: " + AppTheme.TEXT_MUTED + ";" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-background-radius: 26px;" +
+                        "-fx-cursor: hand;"
+        );
+    }
+
     private Label createFieldLabel(String text) {
         Label lbl = new Label(text);
         lbl.setStyle(
-                "-fx-font-size: 13px;" +
+                "-fx-font-size: 12px;" +
                         "-fx-font-weight: bold;" +
-                        "-fx-text-fill: " + AppTheme.TEXT_MAIN + ";" +
-                        "-fx-padding: 0 0 4 4;"
+                        "-fx-text-fill: " + AppTheme.TEXT_MUTED + ";" +
+                        "-fx-padding: 0 0 4 2;"
         );
-        VBox.setMargin(lbl, new Insets(4, 0, 4, 0));
+        VBox.setMargin(lbl, new Insets(6, 0, 4, 0));
         return lbl;
     }
-//tilisation des emojis
+
     private StackPane wrapWithIcon(String emoji, Control field) {
         Label iconLabel = new Label(emoji);
-        iconLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
+        iconLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + AppTheme.TEXT_MUTED + ";");
         StackPane pane = new StackPane(field, iconLabel);
         StackPane.setAlignment(iconLabel, Pos.CENTER_LEFT);
         iconLabel.setTranslateX(14);
@@ -234,8 +404,21 @@ private void handleLogin() {
         return pane;
     }
 
-    private void showError(String msg) { errorLabel.setText(msg); errorLabel.setVisible(true); }
-    private void hideError()           { errorLabel.setVisible(false); }
+    private void showError(String msg) {
+        errorLabel.setText("⚠  " + msg);
+        errorLabel.setVisible(true);
+        errorLabel.setManaged(true);
+    }
+
+    private void hideError() {
+        errorLabel.setVisible(false);
+        errorLabel.setManaged(false);
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  reCAPTCHA
+    // ══════════════════════════════════════════════════════
+
     private WebView buildCaptchaWebView() {
         WebView wv = new WebView();
         wv.setPrefSize(400, 560);
@@ -252,23 +435,22 @@ private void handleLogin() {
             System.err.println("Erreur démarrage serveur captcha : " + e.getMessage());
         }
 
-        // Polling toutes les 500 ms — contourne la perte de référence window.javabridge
         Timeline poller = new Timeline(new KeyFrame(Duration.millis(500), ev -> {
             try {
                 Object result = engine.executeScript(
-                    "(typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse === 'function')"
-                    + " ? grecaptcha.getResponse() : ''"
+                        "(typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse === 'function')"
+                                + " ? grecaptcha.getResponse() : ''"
                 );
                 String token = (result instanceof String) ? (String) result : "";
                 if (!token.isEmpty()) {
                     if (captchaToken == null || !captchaToken.equals(token)) {
                         captchaToken = token;
-                        loginButton.setDisable(false);
+                        if (currentMode == Mode.CLIENT) loginButton.setDisable(false);
                     }
                 } else {
                     if (captchaToken != null) {
                         captchaToken = null;
-                        loginButton.setDisable(true);
+                        if (currentMode == Mode.CLIENT) loginButton.setDisable(true);
                     }
                 }
             } catch (Exception ignored) {}
@@ -276,9 +458,7 @@ private void handleLogin() {
         poller.setCycleCount(Animation.INDEFINITE);
 
         engine.getLoadWorker().stateProperty().addListener((obs, old, newState) -> {
-            if (newState == Worker.State.SUCCEEDED) {
-                poller.play();
-            }
+            if (newState == Worker.State.SUCCEEDED) poller.play();
         });
 
         loginButton.setDisable(true);
@@ -287,7 +467,7 @@ private void handleLogin() {
 
     private void resetCaptcha() {
         captchaToken = null;
-        loginButton.setDisable(true);
+        if (currentMode == Mode.CLIENT) loginButton.setDisable(true);
         try {
             captchaWebView.getEngine().executeScript("grecaptcha.reset()");
         } catch (Exception ignored) {}
