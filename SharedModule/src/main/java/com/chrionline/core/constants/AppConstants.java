@@ -24,7 +24,7 @@ public final class AppConstants {
     public static final String SERVER_HOST = "localhost";
 
     public static final int SERVER_PORT = 5000;
-    public static final int UDP_PORT = 5001;
+    public static final int UDP_PORT = 5009;
 
     public static final int SOCKET_TIMEOUT_MS = 30000;
     public static final String BUFFER_CHARSET = "UTF-8";
