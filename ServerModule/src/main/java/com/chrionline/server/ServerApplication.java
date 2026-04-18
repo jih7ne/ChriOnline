@@ -79,6 +79,8 @@ public class ServerApplication {
                 new PaiementRepository(ServerConfig.getConnection(), new PaiementRowMapper()));
         ServerConfig.registerRepo(AdresseRepository.class,
                 new AdresseRepository(ServerConfig.getConnection(), new AdresseRowMapper()));
+        ServerConfig.registerRepo(UserDeviceRepository.class,
+                new UserDeviceRepository(ServerConfig.getConnection()));
         logger.info("Repositories enregistrés");
     }
 
@@ -130,6 +132,7 @@ public class ServerApplication {
         ServerConfig.registerController("Paiement",  new PaiementController());
         ServerConfig.registerController("Adresse", new AdresseController());
         ServerConfig.registerController("Categorie", new CategorieController());
+        ServerConfig.registerController("KeyAuth", new KeyAuthController());
         logger.info("Controllers enregistrés");
     }
 

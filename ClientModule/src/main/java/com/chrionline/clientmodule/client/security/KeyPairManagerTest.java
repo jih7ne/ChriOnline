@@ -88,7 +88,7 @@ public class KeyPairManagerTest {
 
         // ── 6: Cleanup ────────────────────────────────────────────────────
         System.out.print("6. Cleaning up test file... ");
-        KeyPairManager.deleteKeyFile(deviceName);
+        //KeyPairManager.deleteKeyFile(deviceName);
         System.out.println("done.");
         System.out.println();
         System.out.println("=== All tests passed ===");
