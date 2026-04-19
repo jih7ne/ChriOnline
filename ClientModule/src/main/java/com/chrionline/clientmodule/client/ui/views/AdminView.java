@@ -189,4 +189,30 @@ public class AdminView extends BorderPane {
         rebuildSidebar();
         rightPane.setCenter(new AdminUtilisateursView(client, userData, viewManager, this));
     }
+    public void showSettings() {
+        currentPage = AdminSidebar.AdminPage.SETTINGS;
+        rebuildSidebar();
+        String email = (userData != null && userData.containsKey("email"))
+                ? String.valueOf(userData.get("email")) : "";
+        String token = (userData != null && userData.containsKey("token"))
+                ? String.valueOf(userData.get("token")) : "";
+
+        KeyAuthSettingsView settingsView = new KeyAuthSettingsView(client, email, token);
+
+        ScrollPane scroll = new ScrollPane(settingsView);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle(
+                "-fx-background:" + AppTheme.BG + ";" +
+                        "-fx-background-color:" + AppTheme.BG + ";"
+        );
+
+        // Wrap in a padded container so it doesn't hug the edges
+        VBox wrapper = new VBox(settingsView);
+        wrapper.setPadding(new Insets(36, 40, 40, 40));
+        wrapper.setStyle("-fx-background-color:" + AppTheme.BG + ";");
+
+        scroll.setContent(wrapper);
+        rightPane.setCenter(scroll);
+    }
 }
