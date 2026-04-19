@@ -1,5 +1,6 @@
 package com.chrionline.server.repositories;
 
+import com.chrionline.core.config.ServerConfig;
 import com.chrionline.shared.models.UserDevice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,42 +77,48 @@ public class UserDeviceRepository {
         return list;
     }
 
-    public boolean hasKeys(String email) {
-        String sql = """
-            SELECT count(*) FROM user_devices where  user_email = ? AND revoked = FALSE
-        """;
-
-        try(PreparedStatement stmt = connection.prepareStatement(sql)){
-            stmt.setString(1, email);
-            ResultSet rs =  stmt.executeQuery();
-            if (rs.next()) { return rs.getInt(1) > 0; }
-        }catch (SQLException e){
-            logger.error("Error fetching keys for {}: {}", email, e.getMessage());
+    public boolean isAdmin(String email) {
+        String sql = "SELECT role FROM Utilisateur WHERE email = ?";
+        try {
+            Connection conn = ServerConfig.getConnection(); // fresh each time
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, email);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    String role = rs.getString(1);
+                    logger.info("isAdmin check for {}: role={}", email, role);
+                    return role.equalsIgnoreCase("ADMIN");
+                }
+                logger.warn("isAdmin: no user found with email={}", email);
+            }
+        } catch (SQLException e) {
+            logger.error("isAdmin SQL error for {}: {}", email, e.getMessage());
         }
         return false;
     }
 
-    public boolean isAdmin(String email) {
-        String sql = """
-            SELECT role from utilisateur where email = ?
-        """;
-
-        try(PreparedStatement stmt = connection.prepareStatement(sql)){
-            stmt.setString(1, email);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                String role = rs.getString(1);
-                return role.equalsIgnoreCase("ADMIN");
+    public boolean hasKeys(String email) {
+        String sql = "SELECT COUNT(*) FROM user_devices WHERE user_email = ? AND revoked = FALSE";
+        try {
+            Connection conn = ServerConfig.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, email);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    int count = rs.getInt(1);
+                    logger.info("hasKeys check for {}: count={}", email, count);
+                    return count > 0;
+                }
             }
-        }catch (SQLException e){
-            logger.error("Error checking if administrator {}: {}", email, e.getMessage());
+        } catch (SQLException e) {
+            logger.error("hasKeys SQL error for {}: {}", email, e.getMessage());
         }
         return false;
     }
 
     public Map<String, String> getUserInfo(String email) {
         String sql = """
-        SELECT nom, prenom, email, role FROM utilisateur WHERE email = ?
+        SELECT nom, prenom, email, role FROM Utilisateur WHERE email = ?
     """;
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -133,7 +140,7 @@ public class UserDeviceRepository {
 
     public String getRole(String email){
         String sql = """
-            SELECT role from utilisateur where email = ?
+            SELECT role from Utilisateur where email = ?
         """;
 
         try(PreparedStatement stmt = connection.prepareStatement(sql)){

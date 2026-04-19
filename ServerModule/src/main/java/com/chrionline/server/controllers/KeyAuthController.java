@@ -141,10 +141,19 @@ public class KeyAuthController implements IController {
         if (payload == null) return AppResponse.badRequest("No payload provided.");
 
         String email = (String) payload.get("email");
+        logger.info("requestLogin called for email={}", email);
+
         if (!isValidEmail(email)) return AppResponse.badRequest("Valid userEmail required.");
 
-        boolean authorized = repo().isAdmin(email) && repo().hasKeys(email);
-        if (!authorized) return AppResponse.error("Login request denied.");
+        boolean isAdmin = repo().isAdmin(email);
+        boolean hasKeys = repo().hasKeys(email);
+        logger.info("isAdmin={} hasKeys={} for email={}", isAdmin, hasKeys, email);
+
+        boolean authorized = isAdmin && hasKeys;
+        if (!authorized) {
+            logger.warn("Login denied: isAdmin={} hasKeys={}", isAdmin, hasKeys);
+            return AppResponse.error("Login request denied.");
+        }
 
         String id        = UUID.randomUUID().toString();
         String challenge = ChallengeGenerator.generate();
