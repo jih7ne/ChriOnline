@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Repository for the user_devices table.
@@ -106,6 +107,46 @@ public class UserDeviceRepository {
             logger.error("Error checking if administrator {}: {}", email, e.getMessage());
         }
         return false;
+    }
+
+    public Map<String, String> getUserInfo(String email) {
+        String sql = """
+        SELECT nom, prenom, email, role FROM utilisateur WHERE email = ?
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return Map.of(
+                        "nom",    rs.getString("nom"),
+                        "prenom", rs.getString("prenom"),
+                        "email",  rs.getString("email"),
+                        "role",   rs.getString("role")
+                );
+            }
+        } catch (SQLException e) {
+            logger.error("Error getting user info for {}: {}", email, e.getMessage());
+        }
+        return null;
+    }
+
+    public String getRole(String email){
+        String sql = """
+            SELECT role from utilisateur where email = ?
+        """;
+
+        try(PreparedStatement stmt = connection.prepareStatement(sql)){
+            stmt.setString(1, email);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+        }catch (SQLException e){
+            logger.error("Error getting role for {}: {}", email, e.getMessage());
+        }
+        return null;
+
     }
 
     /**

@@ -1,11 +1,16 @@
 package com.chrionline.clientmodule.client.ui.views;
 
+import com.chrionline.clientmodule.client.security.KeyPairManager;
+import com.chrionline.clientmodule.client.security.Signer;
 import com.chrionline.clientmodule.utils.CaptchaServer;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.network.protocol.AppResponse;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.network.tcp.TCPClient;
+import com.chrionline.shared.models.PanierProduit;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
@@ -18,7 +23,12 @@ import javafx.scene.layout.*;
 import javafx.scene.web.WebView;
 import javafx.util.Duration;
 
+import java.lang.reflect.Type;
+import java.net.InetAddress;
+import java.security.KeyPair;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import javafx.scene.web.WebEngine;
@@ -294,6 +304,96 @@ public class LoginView extends StackPane {
     //  Gestion du login
     // ══════════════════════════════════════════════════════
 
+    private AppResponse handleAdminLogin(String email) throws Exception {
+        AppRequest requestLogin = new AppRequest.Builder()
+                .controller("KeyAuth").action("requestLogin")
+                .payload(JsonUtils.toJson(Map.of(
+                        "email", email,
+                        "mode",      currentMode.name().toLowerCase()
+                )))
+                .build();
+
+        AppResponse resp = tcpClient.sendAndParse(requestLogin);
+        if (!resp.isSuccess()) return resp;
+
+        System.out.println("Reached here 1");
+        System.out.println(resp.getDataAs(Map.class));
+        Map<String, Object> data = resp.getDataAs(Map.class);
+        String challengeId = (String) data.get("challengeId");
+        String challenge   = (String) data.get("challenge");
+        long expiresAt = ((Number) data.get("expiresAt")).longValue();
+
+        System.out.println("Reached here 2");
+
+        if (challengeId == null || challenge == null) {
+            throw new IllegalStateException("Incomplete challenge response from server.");
+        }
+        if (expiresAt <= System.currentTimeMillis()) {
+            throw new IllegalStateException("Challenge already expired.");
+        }
+
+        String deviceName = InetAddress.getLocalHost().getHostName();
+
+        KeyPair keyPair      = KeyPairManager.loadFromFile(deviceName);
+        byte[]  sigBytes     = Signer.sign(challenge, keyPair.getPrivate());
+        String  signature    = Base64.getEncoder().encodeToString(sigBytes);
+        String  fingerprint  = KeyPairManager.computeFingerprint(keyPair.getPublic());
+
+        AppRequest loginRequest = new AppRequest.Builder()
+                .controller("KeyAuth").action("login")
+                .payload(JsonUtils.toJson(Map.of(
+                        "email",   email,
+                        "challengeId", challengeId,
+                        "signature",   signature,
+                        "fingerprint", fingerprint
+                )))
+                .build();
+
+        return tcpClient.sendAndParse(loginRequest);
+    }
+
+
+    private AppResponse handleClientLogin(String email, String password) throws Exception {
+        AppRequest request = new AppRequest.Builder()
+                .controller("Auth").action("login")
+                .payload(JsonUtils.toJson(Map.of(
+                        "email",        email,
+                        "mode",         currentMode.name().toLowerCase(),
+                        "password",     password,
+                        "captchaToken", captchaToken
+                )))
+                .build();
+
+        return tcpClient.sendAndParse(request);
+    }
+
+
+    private void onLoginResponse(AppResponse response) {
+        resetLoginButton();
+        if (response != null && response.isSuccess()) {
+            Map<String, Object> data = response.getDataAs(Map.class);
+            if (data != null) onLoginSuccess.accept(data);
+        } else {
+            showError(response != null && response.getMessage() != null
+                    ? response.getMessage()
+                    : "Connexion échouée. Vérifiez vos identifiants.");
+            if (currentMode == Mode.CLIENT) resetCaptcha();
+        }
+    }
+
+    private void onLoginError(String message) {
+        resetLoginButton();
+        showError("Erreur réseau : " + message);
+        if (currentMode == Mode.CLIENT) resetCaptcha();
+    }
+
+    private void resetLoginButton() {
+        loginButton.setDisable(false);
+        loginButton.setText(currentMode == Mode.ADMIN
+                ? "Demander l'accès  →"
+                : "Se connecter");
+    }
+
     private void handleLogin() {
         String email    = emailField.getText().trim();
         String password = currentMode == Mode.CLIENT ? passwordField.getText() : null;
@@ -312,46 +412,14 @@ public class LoginView extends StackPane {
 
         new Thread(() -> {
             try {
-                Map<String, String> payload = new HashMap<>();
-                payload.put("email", email);
-                payload.put("mode",  currentMode.name().toLowerCase());
+                AppResponse response = currentMode == Mode.ADMIN
+                        ? handleAdminLogin(email)
+                        : handleClientLogin(email, password);
 
-                if (currentMode == Mode.CLIENT) {
-                    payload.put("password",     password);
-                    payload.put("captchaToken", captchaToken);
-                }
+                Platform.runLater(() -> onLoginResponse(response));
 
-                String action = (currentMode == Mode.ADMIN) ? "adminChallenge" : "login";
-
-                AppRequest request = new AppRequest.Builder()
-                        .controller("Auth").action(action)
-                        .payload(JsonUtils.toJson(payload))
-                        .build();
-
-                AppResponse response = tcpClient.sendAndParse(request);
-
-                Platform.runLater(() -> {
-                    loginButton.setDisable(false);
-                    loginButton.setText(currentMode == Mode.ADMIN ? "Demander l'accès  →" : "Se connecter");
-
-                    if (response != null && response.isSuccess()) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> data = response.getDataAs(Map.class);
-                        if (data != null) onLoginSuccess.accept(data);
-                    } else {
-                        showError(response != null && response.getMessage() != null
-                                ? response.getMessage()
-                                : "Connexion échouée. Vérifiez vos identifiants.");
-                        if (currentMode == Mode.CLIENT) resetCaptcha();
-                    }
-                });
             } catch (Exception e) {
-                Platform.runLater(() -> {
-                    loginButton.setDisable(false);
-                    loginButton.setText(currentMode == Mode.ADMIN ? "Demander l'accès  →" : "Se connecter");
-                    showError("Erreur réseau : " + e.getMessage());
-                    if (currentMode == Mode.CLIENT) resetCaptcha();
-                });
+                Platform.runLater(() -> onLoginError(e.getMessage()));
             }
         }).start();
     }

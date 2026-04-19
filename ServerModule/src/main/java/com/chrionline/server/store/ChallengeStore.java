@@ -54,6 +54,11 @@ public class ChallengeStore {
 
     private static void persist(Map<String, ChallengeEntry> store) throws IOException {
         Path path = Paths.get(FILE_PATH);
+
+        if (path.getParent() != null) {
+            Files.createDirectories(path.getParent());
+        }
+
         try (ObjectOutputStream out = new ObjectOutputStream(
                 new BufferedOutputStream(Files.newOutputStream(path)))) {
             out.writeObject(store);

@@ -140,7 +140,7 @@ public class KeyAuthController implements IController {
         Map<String, Object> payload = parsePayload(request);
         if (payload == null) return AppResponse.badRequest("No payload provided.");
 
-        String email = (String) payload.get("userEmail");
+        String email = (String) payload.get("email");
         if (!isValidEmail(email)) return AppResponse.badRequest("Valid userEmail required.");
 
         boolean authorized = repo().isAdmin(email) && repo().hasKeys(email);
@@ -168,7 +168,7 @@ public class KeyAuthController implements IController {
         Map<String, Object> payload = parsePayload(request);
         if (payload == null) return AppResponse.badRequest("No payload provided.");
 
-        String email       = (String) payload.get("userEmail");
+        String email       = (String) payload.get("email");
         String signature   = (String) payload.get("signature");
         String challengeId = (String) payload.get("challengeId");
         String fingerprint = (String) payload.get("fingerprint");
@@ -195,12 +195,15 @@ public class KeyAuthController implements IController {
 
         try {
             PublicKey publicKey = EncoderDecoderUtils.decodePublicKey(base64PublicKey, "RSA");
-            boolean verified    = SignatureVerifier.verify(entry.challenge(), signature.getBytes(), publicKey);
+            boolean verified    = SignatureVerifier.verify(entry.challenge(), signature, publicKey);
 
             ChallengeStore.delete(challengeId);
-            return verified
-                    ? AppResponse.ok()
-                    : AppResponse.error("Login failed.");
+            if (!verified) return AppResponse.error("Login failed.");
+
+            Map<String, String> userInfo = repo().getUserInfo(email);
+            if (userInfo == null) return AppResponse.error("User not found.");
+
+            return AppResponse.success(userInfo, "Login successful.");
 
         } catch (Exception e) {
             logger.error("Signature verification error for challengeId={}", challengeId, e);
@@ -231,10 +234,6 @@ public class KeyAuthController implements IController {
     }
 
 
-
-    private boolean verifySignature(String challenge, byte[] signatureBytes, PublicKey publicKey) {
-        return SignatureVerifier.verify(challenge, signatureBytes, publicKey);
-    }
 
     private String extractEmail(AppRequest request) {
         // Try parameter first, then payload
