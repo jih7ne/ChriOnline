@@ -17,7 +17,7 @@ import java.util.Map;
 public class AdminSidebar extends VBox {
 
     public enum AdminPage {
-        DASHBOARD, PRODUITS, CATEGORIES, COMMANDES, UTILISATEURS
+        DASHBOARD, PRODUITS, CATEGORIES, COMMANDES, UTILISATEURS, SETTINGS
     }
 
     private static final Color  C_BG         = Color.web(AppTheme.PRIMARY);
@@ -51,6 +51,7 @@ public class AdminSidebar extends VBox {
         setPadding(new Insets(28, 16, 28, 16));
         setSpacing(4);
 
+        // Logo
         HBox logoBox = new HBox(12);
         logoBox.setAlignment(Pos.CENTER_LEFT);
         logoBox.setPadding(new Insets(0, 8, 28, 8));
@@ -66,14 +67,18 @@ public class AdminSidebar extends VBox {
         );
         logoBox.getChildren().addAll(logoIcon, logoText);
 
+        // Nav items
         HBox dashboardBtn    = createMenuItem(Feather.GRID,         "Dashboard",    AdminPage.DASHBOARD);
         HBox produitsBtn     = createMenuItem(Feather.PACKAGE,      "Produits",     AdminPage.PRODUITS);
         HBox categoriesBtn   = createMenuItem(Feather.FOLDER,       "Catégories",   AdminPage.CATEGORIES);
         HBox commandesBtn    = createMenuItem(Feather.SHOPPING_BAG, "Commandes",    AdminPage.COMMANDES);
         HBox utilisateursBtn = createMenuItem(Feather.USERS,        "Utilisateurs", AdminPage.UTILISATEURS);
 
+        // Spacer pushes settings to the bottom
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        HBox settingsBtn = createMenuItem(Feather.KEY, "Clés RSA", AdminPage.SETTINGS);
 
         getChildren().addAll(
                 logoBox,
@@ -82,7 +87,8 @@ public class AdminSidebar extends VBox {
                 categoriesBtn,
                 commandesBtn,
                 utilisateursBtn,
-                spacer
+                spacer,
+                settingsBtn
         );
     }
 
@@ -138,6 +144,7 @@ public class AdminSidebar extends VBox {
                 case CATEGORIES   -> adminView.showCategories();
                 case COMMANDES    -> adminView.showCommandes();
                 case UTILISATEURS -> adminView.showUtilisateurs();
+                case SETTINGS     -> adminView.showSettings();
             }
         });
 

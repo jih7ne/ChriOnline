@@ -8,10 +8,14 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -72,6 +76,22 @@ public class AdminView extends BorderPane {
                         "-fx-font-family:'Segoe UI','Arial',sans-serif;"
         );
 
+        // ── Bouton Settings (clé RSA) ──────────────────────────────────────────
+        FontIcon settingsIcon = new FontIcon(Feather.KEY);
+        settingsIcon.setIconSize(19);
+        settingsIcon.setIconColor(Color.web(AppTheme.TEXT_MUTED));
+        StackPane settingsBtn = new StackPane(settingsIcon);
+        settingsBtn.setPrefSize(38, 38); settingsBtn.setMinSize(38, 38); settingsBtn.setMaxSize(38, 38);
+        settingsBtn.setCursor(Cursor.HAND);
+        settingsBtn.setStyle("-fx-background-color:transparent;-fx-background-radius:8;");
+        settingsBtn.setOnMouseEntered(e -> settingsBtn.setStyle(
+                "-fx-background-color:" + AppTheme.FIELD_BG + ";-fx-background-radius:8;"));
+        settingsBtn.setOnMouseExited(e -> settingsBtn.setStyle(
+                "-fx-background-color:transparent;-fx-background-radius:8;"));
+        settingsBtn.setOnMouseClicked(e -> openKeySettings());
+        Tooltip.install(settingsBtn, new Tooltip("Paramètres clé RSA"));
+
+        // ── Avatar ─────────────────────────────────────────────────────────────
         FontIcon userIcon = new FontIcon(Feather.USER);
         userIcon.setIconSize(19);
         userIcon.setIconColor(Color.WHITE);
@@ -86,6 +106,7 @@ public class AdminView extends BorderPane {
                 Color.web(AppTheme.PRIMARY), new CornerRadii(50), Insets.EMPTY))));
         Tooltip.install(avatar, new Tooltip("Mon profil"));
 
+        // ── Logout ─────────────────────────────────────────────────────────────
         FontIcon logoutIcon = new FontIcon(Feather.LOG_OUT);
         logoutIcon.setIconSize(19);
         logoutIcon.setIconColor(Color.web(AppTheme.ERROR_COLOR));
@@ -101,7 +122,7 @@ public class AdminView extends BorderPane {
                 new Thread(() -> Platform.runLater(() -> viewManager.showLoginView())).start());
         Tooltip.install(logoutBtn, new Tooltip("Se déconnecter"));
 
-        HBox profileBox = new HBox(10, nameLabel, avatar, logoutBtn);
+        HBox profileBox = new HBox(10, nameLabel, settingsBtn, avatar, logoutBtn);
         profileBox.setAlignment(Pos.CENTER);
 
         Region spacer = new Region();
@@ -109,6 +130,32 @@ public class AdminView extends BorderPane {
 
         topBar.getChildren().addAll(spacer, profileBox);
         return topBar;
+    }
+
+    // ─── Ouvre la modale KeyAuthSettingsView ──────────────────────────────────
+
+    private void openKeySettings() {
+        String email = (userData != null && userData.containsKey("email"))
+                ? String.valueOf(userData.get("email")) : "";
+        String token = (userData != null && userData.containsKey("token"))
+                ? String.valueOf(userData.get("token")) : "";
+
+        KeyAuthSettingsView settingsView = new KeyAuthSettingsView(client, email, token);
+
+        ScrollPane scroll = new ScrollPane(settingsView);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle(
+                "-fx-background:" + AppTheme.BG + ";" +
+                        "-fx-background-color:" + AppTheme.BG + ";"
+        );
+
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setTitle("Paramètres — Authentification par clé RSA");
+        stage.setScene(new Scene(scroll, 520, 580));
+        stage.setResizable(false);
+        stage.show();
     }
 
     // ─── Page navigation ──────────────────────────────────────────────────────
@@ -142,6 +189,30 @@ public class AdminView extends BorderPane {
         rebuildSidebar();
         rightPane.setCenter(new AdminUtilisateursView(client, userData, viewManager, this));
     }
+    public void showSettings() {
+        currentPage = AdminSidebar.AdminPage.SETTINGS;
+        rebuildSidebar();
+        String email = (userData != null && userData.containsKey("email"))
+                ? String.valueOf(userData.get("email")) : "";
+        String token = (userData != null && userData.containsKey("token"))
+                ? String.valueOf(userData.get("token")) : "";
 
-    // ─── Removed Coming soon placeholder ──────────────────────────────────────
+        KeyAuthSettingsView settingsView = new KeyAuthSettingsView(client, email, token);
+
+        ScrollPane scroll = new ScrollPane(settingsView);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle(
+                "-fx-background:" + AppTheme.BG + ";" +
+                        "-fx-background-color:" + AppTheme.BG + ";"
+        );
+
+        // Wrap in a padded container so it doesn't hug the edges
+        VBox wrapper = new VBox(settingsView);
+        wrapper.setPadding(new Insets(36, 40, 40, 40));
+        wrapper.setStyle("-fx-background-color:" + AppTheme.BG + ";");
+
+        scroll.setContent(wrapper);
+        rightPane.setCenter(scroll);
+    }
 }
