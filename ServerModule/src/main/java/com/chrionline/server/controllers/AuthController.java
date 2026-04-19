@@ -138,12 +138,7 @@ public class AuthController implements IController {
         }
     }
 
-    public String adminLogin(AppRequest request){
-        String challengeString = ChallengeGenerator.generate();
-        Map<String, String> data = new HashMap<>();
-        data.put("challenge", challengeString);
-        return AppResponse.success(data);
-    }
+
 
     public String verifySignedChallenge(AppRequest request){
         return null;

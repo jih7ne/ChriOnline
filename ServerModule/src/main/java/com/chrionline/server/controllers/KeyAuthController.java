@@ -1,22 +1,26 @@
 package com.chrionline.server.controllers;
 
+import com.chrionline.core.config.AppConfig;
 import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.interfaces.IController;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.network.protocol.AppRequest;
 import com.chrionline.network.protocol.AppResponse;
 import com.chrionline.server.repositories.UserDeviceRepository;
+import com.chrionline.server.security.ChallengeGenerator;
+import com.chrionline.server.security.SignatureVerifier;
+import com.chrionline.server.store.ChallengeStore;
+import com.chrionline.server.utils.EncoderDecoderUtils;
 import com.chrionline.shared.models.UserDevice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Handles key-based authentication device management.
@@ -98,6 +102,12 @@ public class KeyAuthController implements IController {
         }
     }
 
+
+
+
+
+
+
     // ─── REVOKE DEVICE ────────────────────────────────────────────────────
     // INPUT : { id }
     // OUTPUT: ok
@@ -119,6 +129,82 @@ public class KeyAuthController implements IController {
         } catch (Exception e) {
             logger.error("Erreur revokedevice", e);
             return AppResponse.error("Erreur serveur : " + e.getMessage());
+        }
+    }
+
+
+
+
+
+    public String requestLogin(AppRequest request) {
+        Map<String, Object> payload = parsePayload(request);
+        if (payload == null) return AppResponse.badRequest("No payload provided.");
+
+        String email = (String) payload.get("userEmail");
+        if (!isValidEmail(email)) return AppResponse.badRequest("Valid userEmail required.");
+
+        boolean authorized = repo().isAdmin(email) && repo().hasKeys(email);
+        if (!authorized) return AppResponse.error("Login request denied.");
+
+        String id        = UUID.randomUUID().toString();
+        String challenge = ChallengeGenerator.generate();
+        long   expiresAt = System.currentTimeMillis() + AppConfig.CHALLENGE_TTL_MS;
+
+        try {
+            ChallengeStore.save(id, challenge, expiresAt);
+        } catch (IOException e) {
+            logger.error("Failed to persist challenge for email={}", email, e);
+            return AppResponse.error("Could not initiate login. Please try again.");
+        }
+
+        return AppResponse.success(Map.of(
+                "challengeId", id,
+                "challenge",   challenge,
+                "expiresAt",   expiresAt
+        ));
+    }
+
+    public String login(AppRequest request) {
+        Map<String, Object> payload = parsePayload(request);
+        if (payload == null) return AppResponse.badRequest("No payload provided.");
+
+        String email       = (String) payload.get("userEmail");
+        String signature   = (String) payload.get("signature");
+        String challengeId = (String) payload.get("challengeId");
+        String fingerprint = (String) payload.get("fingerprint");
+
+        if (email == null || signature == null || challengeId == null || fingerprint == null) {
+            return AppResponse.badRequest("userEmail, signature, challengeId and fingerprint are required.");
+        }
+
+        String base64PublicKey = repo().getPublicKey(fingerprint);
+        if (base64PublicKey == null) return AppResponse.badRequest("Invalid fingerprint.");
+
+        ChallengeStore.ChallengeEntry entry;
+        try {
+            Optional<ChallengeStore.ChallengeEntry> found = ChallengeStore.find(challengeId);
+            if (found.isEmpty() || found.get().isExpired()) {
+                ChallengeStore.delete(challengeId);
+                return AppResponse.error("Challenge invalid or expired.");
+            }
+            entry = found.get();
+        } catch (IOException e) {
+            logger.error("Failed to read challenge id={}", challengeId, e);
+            return AppResponse.error("Could not process login. Please try again.");
+        }
+
+        try {
+            PublicKey publicKey = EncoderDecoderUtils.decodePublicKey(base64PublicKey, "RSA");
+            boolean verified    = SignatureVerifier.verify(entry.challenge(), signature.getBytes(), publicKey);
+
+            ChallengeStore.delete(challengeId);
+            return verified
+                    ? AppResponse.ok()
+                    : AppResponse.error("Login failed.");
+
+        } catch (Exception e) {
+            logger.error("Signature verification error for challengeId={}", challengeId, e);
+            return AppResponse.error("Could not verify signature.");
         }
     }
 
@@ -144,6 +230,12 @@ public class KeyAuthController implements IController {
         }
     }
 
+
+
+    private boolean verifySignature(String challenge, byte[] signatureBytes, PublicKey publicKey) {
+        return SignatureVerifier.verify(challenge, signatureBytes, publicKey);
+    }
+
     private String extractEmail(AppRequest request) {
         // Try parameter first, then payload
         String email = request.getString("userEmail");
@@ -154,5 +246,14 @@ public class KeyAuthController implements IController {
             if (p != null) return (String) p.get("userEmail");
         }
         return null;
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> parsePayload(AppRequest request) {
+        return JsonUtils.fromJson(request.getPayload(), Map.class);
     }
 }

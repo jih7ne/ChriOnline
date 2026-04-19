@@ -75,6 +75,39 @@ public class UserDeviceRepository {
         return list;
     }
 
+    public boolean hasKeys(String email) {
+        String sql = """
+            SELECT count(*) FROM user_devices where  user_email = ? AND revoked = FALSE
+        """;
+
+        try(PreparedStatement stmt = connection.prepareStatement(sql)){
+            stmt.setString(1, email);
+            ResultSet rs =  stmt.executeQuery();
+            if (rs.next()) { return rs.getInt(1) > 0; }
+        }catch (SQLException e){
+            logger.error("Error fetching keys for {}: {}", email, e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean isAdmin(String email) {
+        String sql = """
+            SELECT role from utilisateur where email = ?
+        """;
+
+        try(PreparedStatement stmt = connection.prepareStatement(sql)){
+            stmt.setString(1, email);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String role = rs.getString(1);
+                return role.equalsIgnoreCase("ADMIN");
+            }
+        }catch (SQLException e){
+            logger.error("Error checking if administrator {}: {}", email, e.getMessage());
+        }
+        return false;
+    }
+
     /**
      * Get ALL devices (including revoked) for a user — needed for the settings UI.
      */
@@ -173,6 +206,20 @@ public class UserDeviceRepository {
         return false;
     }
 
+
+    public String getPublicKey(String fingerprint) {
+        String sql = "SELECT public_key FROM user_devices WHERE fingerprint = ? and  revoked = FALSE";
+
+        try(PreparedStatement stmt = connection.prepareStatement(sql)){
+            stmt.setString(1, fingerprint);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return rs.getString(1);
+        }catch (SQLException e){
+            logger.error("Error getting public key for {}: {}", fingerprint, e.getMessage());
+        }
+        return null;
+    }
+
     // ── ROW MAPPER ────────────────────────────────────────────────────────
 
     private UserDevice mapRow(ResultSet rs) throws SQLException {
@@ -196,4 +243,7 @@ public class UserDeviceRepository {
 
         return d;
     }
+
+
+
 }
