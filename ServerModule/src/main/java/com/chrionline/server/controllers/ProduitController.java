@@ -2,8 +2,8 @@ package com.chrionline.server.controllers;
 
 import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.interfaces.IController;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.shared.models.Produit;
 import com.chrionline.server.services.ProduitService;
 import org.slf4j.Logger;

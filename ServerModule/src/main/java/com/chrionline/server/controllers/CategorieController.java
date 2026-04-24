@@ -1,9 +1,11 @@
 package com.chrionline.server.controllers;
 
+import com.chrionline.core.annotations.RequiresRole;
 import com.chrionline.core.config.ServerConfig;
+import com.chrionline.core.enums.UserRole;
 import com.chrionline.core.interfaces.IController;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.shared.models.Categorie;
 import com.chrionline.server.services.CategorieService;
 import org.slf4j.Logger;
@@ -49,6 +51,7 @@ public class CategorieController implements IController {
         }
     }
 
+    @RequiresRole(value = UserRole.ADMIN, description = "Seuls les administrateurs peuvent ajouter des catégories")
     public String ajouter(AppRequest request) {
         try {
             Categorie categorie = request.getPayloadAs(Categorie.class);
@@ -64,6 +67,7 @@ public class CategorieController implements IController {
         }
     }
 
+    @RequiresRole(value = UserRole.ADMIN, description = "Seuls les administrateurs peuvent modifier des catégories")
     public String modifier(AppRequest request) {
         try {
             Integer id = request.getInt("id");
@@ -80,6 +84,7 @@ public class CategorieController implements IController {
         }
     }
 
+    @RequiresRole(value = UserRole.ADMIN, description = "Seuls les administrateurs peuvent supprimer des catégories")
     public String supprimer(AppRequest request) {
         try {
             Integer id = request.getInt("id");

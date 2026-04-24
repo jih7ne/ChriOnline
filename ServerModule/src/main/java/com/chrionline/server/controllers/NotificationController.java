@@ -1,11 +1,13 @@
 package com.chrionline.server.controllers;
 
+import com.chrionline.core.annotations.RequiresRole;
+import com.chrionline.core.enums.UserRole;
 import com.chrionline.core.interfaces.IController;
 import com.chrionline.network.enums.NotificationType;
 import com.chrionline.network.enums.Severity;
 import com.chrionline.network.protocol.AppNotification;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.udp.UDPNotificationDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,8 @@ import java.util.UUID;
 /**
  * Handles admin-triggered UDP notifications.
  * All method names are lowercase — required by RequestDispatcher reflection.
+ * 
+ * Sécurité: Tous les endpoints sont protégés par @RequiresRole.
  */
 public class NotificationController implements IController {
 
@@ -30,6 +34,7 @@ public class NotificationController implements IController {
     // ─── SEND TO SPECIFIC USER ────────────────────────────────────────────────
     // action: "sendnotification"
     // INPUT : { type, title, message, source?, idUtilisateur }
+    @RequiresRole(value = {UserRole.ADMIN, UserRole.SUPPORT}, description = "Seuls les administrateurs et support peuvent envoyer des notifications ciblées")
     public String sendnotification(AppRequest request) {
         try {
             if (dispatcher == null)
@@ -84,6 +89,7 @@ public class NotificationController implements IController {
     // ─── BROADCAST TO ALL ─────────────────────────────────────────────────────
     // action: "broadcastnotification"
     // INPUT : { type, title, message, source? }
+    @RequiresRole(value = UserRole.ADMIN, description = "Seuls les administrateurs peuvent envoyer des broadcasts à tous les utilisateurs")
     public String broadcastnotification(AppRequest request) {
         try {
             if (dispatcher == null)
