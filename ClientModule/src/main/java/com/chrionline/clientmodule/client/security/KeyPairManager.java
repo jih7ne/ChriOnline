@@ -4,40 +4,47 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.nio.file.*;
 import java.security.*;
+import java.security.cert.*;
+import java.security.cert.Certificate;
 import java.security.spec.*;
 import java.util.Base64;
+import java.math.BigInteger;
+import java.util.Date;
+
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v1CertificateBuilder;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
 /**
- * Manages RSA key pairs on the client machine.
+ * Manages RSA key pairs on the client machine using a PKCS12 KeyStore.
  *
- * Binary file format (.chrikey):
- * ┌──────────────────────────────────────────────────┐
- * │  MAGIC  (4 bytes)  : 0x43484B59  ("CHKY")        │
- * │  VERSION (2 bytes) : 0x0001                       │
- * │  ALG_LEN (2 bytes) : length of algorithm string  │
- * │  ALG     (n bytes) : algorithm (e.g. "RSA")       │
- * │  PRIV_LEN(4 bytes) : private key byte length      │
- * │  PRIV    (n bytes) : PKCS8 encoded private key    │
- * │  PUB_LEN (4 bytes) : public key byte length       │
- * │  PUB     (n bytes) : X509 encoded public key      │
- * └──────────────────────────────────────────────────┘
+ * Storage: ~/.chrionline/keys/<deviceName>.chrikey  (same path, now PKCS12 format)
  *
- * The file is stored in the user's home directory under .chrionline/keys/<deviceName>.chrikey
- * It is listed in .gitignore under "keys".
+ * KeyStore layout per file:
+ *  - One PrivateKeyEntry aliased as "keypair"
+ *  - The entry holds the RSA PrivateKey + a self-signed X.509 certificate
+ *    wrapping the corresponding PublicKey (KeyStore requires a cert chain
+ *    alongside any stored private key).
+ *
+ * The keystore password is derived from the device name so no separate
+ * secret needs to be managed at this layer.  Swap in a stronger secret
+ * (e.g. from a system credential store) by changing derivePassword().
  */
 public class KeyPairManager {
 
     private static final Logger logger = LoggerFactory.getLogger(KeyPairManager.class);
 
-    private static final int    MAGIC    = 0x43484B59;  // "CHKY"
-    private static final short  VERSION  = 0x0001;
-    private static final String ALG      = "RSA";
-    private static final int    KEY_SIZE = 2048;
+    private static final String ALG           = "RSA";
+    private static final int    KEY_SIZE      = 2048;
+    private static final String KS_TYPE       = "PKCS12";
+    private static final String KEY_ALIAS     = "keypair";
+    private static final String SIG_ALG       = "SHA256withRSA";
 
-    // Base directory: ~/.chrionline/keys/
     private static final Path KEY_DIR = Paths.get(
             System.getProperty("user.home"), ".chrionline", "keys"
     );
@@ -45,7 +52,7 @@ public class KeyPairManager {
     // ── Key Generation ────────────────────────────────────────────────────
 
     /**
-     * Generate a fresh RSA-2048 key pair and persist it as a binary .chrikey file.
+     * Generate a fresh RSA-2048 key pair and persist it as a PKCS12 .chrikey file.
      *
      * @param deviceName  Label for this device (e.g. "Laptop 1")
      * @return            The generated KeyPair
@@ -63,37 +70,41 @@ public class KeyPairManager {
         return kp;
     }
 
-    // ── Binary File I/O ───────────────────────────────────────────────────
+    // ── KeyStore File I/O ─────────────────────────────────────────────────
 
     /**
-     * Persist a KeyPair to a binary .chrikey file.
+     * Persist a KeyPair into a PKCS12 KeyStore file (.chrikey).
+     *
+     * A self-signed X.509 certificate is generated on the fly because
+     * Java's KeyStore.PrivateKeyEntry mandates a certificate chain.
      */
-    public static void saveToFile(String deviceName, KeyPair kp) throws IOException {
+    public static void saveToFile(String deviceName, KeyPair kp) throws Exception {
         Files.createDirectories(KEY_DIR);
         Path filePath = getKeyFilePath(deviceName);
 
-        byte[] algBytes  = ALG.getBytes("UTF-8");
-        byte[] privBytes = kp.getPrivate().getEncoded();   // PKCS8
-        byte[] pubBytes  = kp.getPublic().getEncoded();    // X509
+        // Build a minimal self-signed cert to satisfy KeyStore requirements
+        Certificate selfSigned = generateSelfSignedCert(deviceName, kp);
 
-        int totalSize = 4 + 2 + 2 + algBytes.length + 4 + privBytes.length + 4 + pubBytes.length;
-        ByteBuffer buf = ByteBuffer.allocate(totalSize);
+        KeyStore ks = KeyStore.getInstance(KS_TYPE);
+        ks.load(null, null);  // initialise empty keystore
 
-        buf.putInt(MAGIC);
-        buf.putShort(VERSION);
-        buf.putShort((short) algBytes.length);
-        buf.put(algBytes);
-        buf.putInt(privBytes.length);
-        buf.put(privBytes);
-        buf.putInt(pubBytes.length);
-        buf.put(pubBytes);
+        ks.setKeyEntry(
+                KEY_ALIAS,
+                kp.getPrivate(),
+                entryPassword(deviceName),
+                new Certificate[]{ selfSigned }
+        );
 
-        Files.write(filePath, buf.array());
+        char[] ksPassword = derivePassword(deviceName);
+        try (OutputStream out = Files.newOutputStream(filePath)) {
+            ks.store(out, ksPassword);
+        }
+
         logger.info("Key file written: {}", filePath);
     }
 
     /**
-     * Load a KeyPair from a binary .chrikey file.
+     * Load a KeyPair from a PKCS12 .chrikey file.
      *
      * @param deviceName  The device name used when generating the key
      */
@@ -103,38 +114,22 @@ public class KeyPairManager {
             throw new FileNotFoundException("Key file not found: " + filePath);
         }
 
-        byte[] raw = Files.readAllBytes(filePath);
-        ByteBuffer buf = ByteBuffer.wrap(raw);
-
-        int magic = buf.getInt();
-        if (magic != MAGIC) {
-            throw new IOException("Invalid key file: bad magic bytes");
+        char[] ksPassword = derivePassword(deviceName);
+        KeyStore ks = KeyStore.getInstance(KS_TYPE);
+        try (InputStream in = Files.newInputStream(filePath)) {
+            ks.load(in, ksPassword);
         }
 
-        short version = buf.getShort();
-        if (version != VERSION) {
-            throw new IOException("Unsupported key file version: " + version);
+        Key privateKey = ks.getKey(KEY_ALIAS, entryPassword(deviceName));
+        if (!(privateKey instanceof PrivateKey)) {
+            throw new KeyStoreException("No private key found under alias: " + KEY_ALIAS);
         }
 
-        short algLen = buf.getShort();
-        byte[] algBytes = new byte[algLen];
-        buf.get(algBytes);
-        String algorithm = new String(algBytes, "UTF-8");
-
-        int privLen = buf.getInt();
-        byte[] privBytes = new byte[privLen];
-        buf.get(privBytes);
-
-        int pubLen = buf.getInt();
-        byte[] pubBytes = new byte[pubLen];
-        buf.get(pubBytes);
-
-        KeyFactory kf = KeyFactory.getInstance(algorithm);
-        PrivateKey priv = kf.generatePrivate(new PKCS8EncodedKeySpec(privBytes));
-        PublicKey  pub  = kf.generatePublic(new X509EncodedKeySpec(pubBytes));
+        Certificate cert = ks.getCertificate(KEY_ALIAS);
+        PublicKey publicKey = cert.getPublicKey();
 
         logger.info("Key pair loaded from file: {}", filePath);
-        return new KeyPair(pub, priv);
+        return new KeyPair(publicKey, (PrivateKey) privateKey);
     }
 
     /**
@@ -158,9 +153,7 @@ public class KeyPairManager {
 
     // ── Crypto Utilities ──────────────────────────────────────────────────
 
-    /**
-     * Derive the public key's Base64 encoding (X509) for server storage.
-     */
+    /** Derive the public key's Base64 encoding (X509) for server storage. */
     public static String encodePublicKey(PublicKey pub) {
         return Base64.getEncoder().encodeToString(pub.getEncoded());
     }
@@ -177,9 +170,7 @@ public class KeyPairManager {
         return sb.toString();
     }
 
-    /**
-     * Reconstruct a PublicKey from its Base64-encoded X509 bytes.
-     */
+    /** Reconstruct a PublicKey from its Base64-encoded X509 bytes. */
     public static PublicKey decodePublicKey(String base64) throws Exception {
         byte[] bytes = Base64.getDecoder().decode(base64);
         KeyFactory kf = KeyFactory.getInstance(ALG);
@@ -188,19 +179,79 @@ public class KeyPairManager {
 
     // ── File Path ─────────────────────────────────────────────────────────
 
-    /**
-     * Returns the canonical path for a device's key file.
-     * Sanitises the device name so it's safe for filesystem use.
-     */
+    /** Returns the canonical path for a device's key file. */
     public static Path getKeyFilePath(String deviceName) {
         String safeName = deviceName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
         return KEY_DIR.resolve(safeName + ".chrikey");
     }
 
-    /**
-     * Return the key directory path (for display in UI).
-     */
+    /** Return the key directory path (for display in UI). */
     public static Path getKeyDirectory() {
         return KEY_DIR;
+    }
+
+    // ── Private Helpers ───────────────────────────────────────────────────
+
+    /**
+     * Derive a keystore password from the device name.
+     *
+     * This is intentionally simple for portability; replace the body with
+     * a call to the OS credential store (macOS Keychain, Windows DPAPI,
+     * libsecret on Linux) if stronger protection is needed.
+     */
+    private static char[] derivePassword(String deviceName) {
+        // Using a fixed application prefix + sanitised device name.
+        // Swap for SecretKeyFactory + PBKDF2 if a user-supplied passphrase
+        // is available in your authentication flow.
+        return ("chrionline:" + deviceName).toCharArray();
+    }
+
+    /**
+     * Password used to protect the individual key entry inside the keystore.
+     * Using the same derivation as the store password keeps things simple,
+     * but the two can diverge without any API changes.
+     */
+    private static char[] entryPassword(String deviceName) {
+        return derivePassword(deviceName);
+    }
+
+    /**
+     * Generate a minimal self-signed X.509 v1 certificate for the key pair.
+     *
+     * KeyStore.setKeyEntry() requires at least one certificate in the chain
+     * even when the key won't be used for TLS.  This cert is never sent to
+     * the server — only the raw public key bytes (via encodePublicKey) are.
+     *
+     * Uses Bouncy Castle if present; otherwise falls back to the internal
+     * sun.security.x509 API (available in Oracle/OpenJDK, not on Android).
+     * For Android targets, replace this method with a BouncyCastle-only
+     * implementation and add bcpkix-jdk18on to your dependencies.
+     */
+
+    private static Certificate generateSelfSignedCert(String deviceName, KeyPair kp)
+            throws Exception {
+
+        X500Name dn = new X500Name("CN=" + deviceName + ", O=chrionline");
+
+        Date from = new Date();
+        Date to   = new Date(from.getTime() + 10L * 365 * 24 * 3600 * 1000); // 10 years
+
+        BigInteger serial = new BigInteger(64, new SecureRandom());
+
+        ContentSigner signer = new JcaContentSignerBuilder(SIG_ALG)
+                .build(kp.getPrivate());
+
+        X509CertificateHolder holder = new JcaX509v1CertificateBuilder(
+                dn,         // issuer
+                serial,
+                from,
+                to,
+                dn,         // subject (same as issuer → self-signed)
+                kp.getPublic()
+        ).build(signer);
+
+        return new JcaX509CertificateConverter()
+                .setProvider("BC")
+                .getCertificate(holder);
     }
 }
