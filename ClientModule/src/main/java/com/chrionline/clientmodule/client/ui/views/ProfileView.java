@@ -4,8 +4,8 @@ import com.chrionline.clientmodule.client.ui.components.ClientNavbar;
 import com.chrionline.core.interfaces.ViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -16,6 +16,9 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -265,7 +268,10 @@ public class ProfileView extends BorderPane {
                         ancienMdpField.clear();
                         nouveauMdpField.clear();
                         confirmerMdpField.clear();
-                        showFeedback(mdpFeedbackLabel, "Mot de passe modifié avec succès !", true);
+                        showFeedback(mdpFeedbackLabel, "Mot de passe modifié. Reconnexion requise...", true);
+
+                        // Redirection automatique après 2 secondes
+                        new Timeline(new KeyFrame(Duration.seconds(2), ev -> viewManager.showLoginView())).play();
                     } else {
                         showFeedback(mdpFeedbackLabel,
                                 resp != null ? resp.getMessage() : "Erreur réseau.", false);
