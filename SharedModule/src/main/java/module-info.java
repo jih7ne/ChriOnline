@@ -11,7 +11,11 @@ module com.chrionline.sharedmodule {
     exports com.chrionline.core.theme;
     exports com.chrionline.core.enums;
     exports com.chrionline.core.exceptions;
+    exports com.chrionline.core.security;
+    exports com.chrionline.core.network.protocol;
+    exports com.chrionline.core.annotations;
 
     opens com.chrionline.shared.models to com.google.gson;
+    opens com.chrionline.core.network.protocol to com.google.gson;
 
 }
