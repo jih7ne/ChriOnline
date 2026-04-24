@@ -3,7 +3,7 @@ package com.chrionline.network;
 import com.chrionline.security.core.SecureStreamWrapper;
 import com.chrionline.security.core.SessionCipher;
 import com.chrionline.core.constants.AppConstants;
-import com.chrionline.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.security.handshake.ServerHandshake;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
