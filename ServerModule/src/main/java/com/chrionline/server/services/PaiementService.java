@@ -81,6 +81,13 @@ public class PaiementService {
 
         logger.info("Traitement paiement pour commande id={}", idCommande);
 
+        // 🔒 SÉCURITÉ: Prévenir les doubles paiements pour une même commande
+        if (paiementRepository.existsByCommandeId(idCommande)) {
+            logger.warn("Tentative de double paiement refusée pour commande id={}", idCommande);
+            throw new com.chrionline.core.exceptions.BusinessException(
+                "Un paiement confirmé existe déjà pour la commande " + idCommande);
+        }
+
         // 1 : validation du format
         String erreur = validerPaiement(numeroCarte, cvv, dateExpiration);
 
@@ -137,5 +144,28 @@ public class PaiementService {
     // RÉCUPÉRER LE PAIEMENT D'UNE COMMANDE
     public Paiement getPaiementByCommande(int idCommande) {
         return paiementRepository.getPaiementByCommande(idCommande);
+    }
+
+    /**
+     * Modifie un paiement existant.
+     * ⭐ SÉCURITÉ (Immuabilité): Bloque toute modification si le paiement est déjà CONFIRME.
+     */
+    public void modifierPaiement(int idPaiement, int idUtilisateur, Paiement nouveauxDetails) {
+        // ⭐ SÉCURITÉ IDOR: On récupère le paiement uniquement si la commande associée appartient à l'utilisateur
+        Paiement existing = paiementRepository.getPaiementByIdAndUser(idPaiement, idUtilisateur);
+        
+        if (existing == null) {
+            throw new com.chrionline.core.exceptions.BusinessException("Paiement introuvable");
+        }
+
+        // 🔒 Règle d'immuabilité financière
+        if (existing.getStatut() == StatutPaiement.CONFIRME) {
+            logger.warn("Tentative de modification d'un paiement CONFIRME bloquée (id={})", idPaiement);
+            throw new com.chrionline.core.exceptions.BusinessException(
+                "Impossible de modifier un paiement confirmé — créez un remboursement à la place");
+        }
+
+        paiementRepository.update(String.valueOf(idPaiement), nouveauxDetails);
+        logger.info("Paiement id={} mis à jour avec succès", idPaiement);
     }
 }
