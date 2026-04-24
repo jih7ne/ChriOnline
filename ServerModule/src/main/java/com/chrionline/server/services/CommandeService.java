@@ -21,6 +21,7 @@ public class CommandeService {
     private final LigneCommandeRepository ligneCommandeRepository;
     private final ProduitRepository produitRepository;
     private final PanierService panierService;
+    private final OrderCalculator orderCalculator;
 
     public CommandeService(CommandeRepository commandeRepository,
                            LigneCommandeRepository ligneCommandeRepository,
@@ -29,7 +30,8 @@ public class CommandeService {
         this.ligneCommandeRepository = ligneCommandeRepository;
         this.produitRepository = produitRepository;
         this.panierService = ServerConfig.getService(PanierService.class);
-        logger.info("CommandeService initialized");
+        this.orderCalculator = new OrderCalculator();
+        logger.info("CommandeService initialized with secure OrderCalculator");
     }
 
     private NotificationService getNotificationService() {
@@ -57,10 +59,25 @@ public class CommandeService {
             }
         }
 
-        // 2 : calcul du prix total
-        double prixTotal = lignes.stream()
-                .mapToDouble(l -> l.getPrix_unitaire() * l.getQuantite())
-                .sum();
+        // 🔒 SÉCURITÉ: Détecte si le client a tenté de manipuler les prix
+        // Les prix envoyés par le client peuvent être ignorés/manipulés
+        boolean manipulationDetected = !orderCalculator.detectPriceManipulation(lignes);
+        if (manipulationDetected) {
+            logger.warn(" ⚠️ Une tentative de manipulation de prix a été détectée et ignorée");
+        }
+
+        // 🔒 SÉCURITÉ: Recalcule le prix total UNIQUEMENT depuis la BDD
+        // Les prix envoyés par le client sont COMPLÈTEMENT IGNORÉS
+        // Cela garantit que le serveur facture TOUJOURS le bon prix
+        double prixTotal = orderCalculator.calculateTotalPrice(lignes);
+        if (prixTotal < 0) {
+            logger.error("Impossible de recalculer le prix total depuis la BDD");
+            return null;
+        }
+
+        // Correction optionnelle: actualise les prix dans les lignes avec les vrais prix
+        int corrected = orderCalculator.correctPrices(lignes);
+        logger.info(" {} ligne(s) ont été corrigées avec les prix réels de la BDD", corrected);
 
         // 3 : création et insertion de la commande
         Commande commande = new Commande();
@@ -147,12 +164,12 @@ public class CommandeService {
 
     // ANNULER UNE COMMANDE
     // + UDP Scénario 5 : confirme l'annulation au client
-    public boolean annulerCommande(int idCommande) {
-        logger.info("Annulation commande id={}", idCommande);
+    public boolean annulerCommande(int idCommande, int idUtilisateur) {
+        logger.info("Annulation commande id={} pour utilisateur id={}", idCommande, idUtilisateur);
 
-        Commande commande = commandeRepository.getCommandeById(idCommande);
+        Commande commande = commandeRepository.getCommandeByIdAndUser(idCommande, idUtilisateur);
         if (commande == null) {
-            logger.warn("Commande id={} introuvable", idCommande);
+            logger.warn("Commande id={} introuvable ou n'appartient pas à l'utilisateur {}", idCommande, idUtilisateur);
             return false;
         }
 
@@ -180,6 +197,15 @@ public class CommandeService {
         Commande commande = commandeRepository.getCommandeById(idCommande);
         if (commande == null) {
             logger.warn("Commande id={} introuvable", idCommande);
+            return false;
+        }
+
+        StatutCommande currentStatut = commande.getStatut();
+        
+        // 🔒 MACHINE À ÉTATS: Vérifier si la transition est autorisée
+        if (!OrderStateMachine.isValidTransition(currentStatut, newStatut)) {
+            logger.warn("⚠️ Transition illégale refusée: {} → {} (Commande id={})", 
+                        currentStatut, newStatut, idCommande);
             return false;
         }
 
