@@ -10,11 +10,11 @@
     <packaging>pom</packaging>
     <name>ChriOnline</name>
     <modules>
-        <module>NetworkModule</module>
+        <module>SecurityModule</module>
         <module>SharedModule</module>
+        <module>NetworkModule</module>
         <module>ServerModule</module>
         <module>ClientModule</module>
-        <module>SecurityModule</module>
     </modules>
 
     <properties>

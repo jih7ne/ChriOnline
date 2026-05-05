@@ -2,7 +2,7 @@ module com.chrionline.network {
     requires com.chrionline.sharedmodule;
     requires com.google.gson;
     requires org.slf4j;
-    requires SecurityModule;
+    requires com.chrionline.security;
     exports com.chrionline.network.protocol;
     exports com.chrionline.network.tcp;
     exports com.chrionline.network.udp;

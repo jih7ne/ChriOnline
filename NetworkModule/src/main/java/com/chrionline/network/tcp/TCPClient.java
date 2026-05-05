@@ -1,8 +1,8 @@
 package com.chrionline.network.tcp;
 
 import com.chrionline.core.constants.AppConstants;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.security.core.SecureStreamWrapper;
 import com.chrionline.security.core.SessionCipher;
 import com.chrionline.security.handshake.ClientHandshake;

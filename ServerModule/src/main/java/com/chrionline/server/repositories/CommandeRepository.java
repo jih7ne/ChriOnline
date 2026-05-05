@@ -150,6 +150,24 @@ public class CommandeRepository extends JdbcRepository<Commande> {
         return null;
     }
 
+    /**
+     * ⭐ SÉCURITÉ IDOR: Récupère une commande UNIQUEMENT si elle appartient à l'utilisateur.
+     */
+    public Commande getCommandeByIdAndUser(int idCommande, int idUtilisateur) {
+        String sql = "SELECT * FROM commande WHERE id_commande = ? AND id_utilisateur = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, idCommande);
+            stmt.setInt(2, idUtilisateur);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rowMapper.mapRow(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null; // Retourne null si la commande n'existe pas OU appartient à un autre
+    }
+
     // METTRE À JOUR UNIQUEMENT LE STATUT D'UNE COMMANDE
     public void updateStatut(int idCommande, StatutCommande statut) {
         String sql = "UPDATE commande SET statut=? WHERE id_commande=?";

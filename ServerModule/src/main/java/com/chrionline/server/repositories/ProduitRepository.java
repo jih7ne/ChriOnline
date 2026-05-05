@@ -145,6 +145,25 @@ public class ProduitRepository extends JdbcRepository<Produit> {
         return null;
     }
 
+    /**
+     * Récupère un produit avec un verrou pessimiste (SELECT FOR UPDATE).
+     * Empêche d'autres transactions de modifier cette ligne jusqu'au commit/rollback.
+     */
+    public Produit findByIdForUpdate(int id) throws SQLException {
+        String sql = "SELECT p.*, c.nom AS nom_categorie " +
+                "FROM Produit p " +
+                "LEFT JOIN Categorie c ON p.id_categorie = c.id " +
+                "WHERE p.id = ? FOR UPDATE";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rowMapper.mapRow(rs);
+            }
+        }
+        return null;
+    }
+
     public List<Produit> findByCategorie(int idCategorie) {
         String sql = "SELECT p.*, c.nom AS nom_categorie " +
                 "FROM Produit p " +

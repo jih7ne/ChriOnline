@@ -3,13 +3,16 @@ package com.chrionline.server.controllers;
 import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.constants.AppConstants;
 import com.chrionline.core.interfaces.IController;
+import com.chrionline.core.security.TokenManager;
+import com.chrionline.core.utils.AuthorizationService;
 import com.chrionline.core.utils.JsonUtils;
-import com.chrionline.network.protocol.AppResponse;
-import com.chrionline.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.server.data.dto.AuthPayloads.*;
 import com.chrionline.server.security.ChallengeGenerator;
 import com.chrionline.server.security.LoginAttemptGuard;
 import com.chrionline.server.security.PasswordValidator;
+import com.chrionline.server.security.ResetTokenStore;
 import com.chrionline.server.services.RecaptchaService;
 import com.chrionline.server.services.TwoFactorService;
 import com.chrionline.server.services.TwoFactorVerifier;
@@ -28,7 +31,26 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthController implements IController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
-    private static final Map<String, Utilisateur> sessions = new ConcurrentHashMap<>();
+
+    /**
+     *  GESTIONNAIRE DE TOKENS AVEC CYCLE DE VIE COMPLET 
+     * - Expiration: 2 heures
+     * - Binding IP
+     * - Révocation (logout + changement de mot de passe)
+     * 
+     * Récupération de l'instance Singleton du TokenManager.
+     * Une seule instance partagée dans toute l'application.
+     */
+    private static final TokenManager tokenManager = TokenManager.getInstance();
+
+    /**
+     * Initialise le contexte d'authentification pour le RBAC
+     * Injecte le TokenManager dans AuthorizationService
+     */
+    static {
+        AuthorizationService.AuthContext.initializeTokenManager(tokenManager);
+        logger.info(" AuthContext initialisé avec TokenManager (cycle de vie 2h)");
+    }
 
     private final TwoFactorService   twoFactorService   = new TwoFactorService();
     private final TwoFactorVerifier twoFactorVerifier  = new TwoFactorVerifier();
@@ -127,9 +149,10 @@ public class AuthController implements IController {
                 return AppResponse.success(data);
             }
 
-            String token = UUID.randomUUID().toString();
-            sessions.put(token, u);
-            logger.info("Login réussi : {} depuis {}", u.getEmail(), ip);
+            // ⭐ CRÉATION DU TOKEN AVEC CYCLE DE VIE (2h + IP binding)
+            String token = tokenManager.createToken(u, ip);
+            logger.info(" Login réussi : {} depuis {} | Token: {} | Expire dans: 2h",
+                    u.getEmail(), ip, token.substring(0, 8) + "...");
             return AppResponse.success(userData(u, token));
 
         } catch (Exception e) {
@@ -216,9 +239,11 @@ public class AuthController implements IController {
                 }
             }
 
-            String token = UUID.randomUUID().toString();
-            sessions.put(token, u);
-            logger.info("Inscription réussie : {}", u.getEmail());
+            //  CRÉATION DU TOKEN AVEC CYCLE DE VIE (2h + IP binding)
+            String ip = extractIp(request);
+            String token = tokenManager.createToken(u, ip);
+            logger.info(" Inscription réussie : {} depuis {} | Token: {} | Expire dans: 2h",
+                    u.getEmail(), ip, token.substring(0, 8) + "...");
             return AppResponse.success(userData(u, token));
 
         } catch (Exception e) {
@@ -231,8 +256,10 @@ public class AuthController implements IController {
     public String logout(AppRequest request) {
         String token = request.getAuthToken();
         if (token == null) return AppResponse.badRequest("Token manquant.");
-        Utilisateur u = sessions.remove(token);
-        if (u != null) logger.info("Déconnexion : {}", u.getEmail());
+        
+        //  RÉVOCATION DU TOKEN
+        tokenManager.revokeToken(token);
+        logger.info(" Logout: Token révoqué");
         return AppResponse.ok();
     }
 
@@ -275,6 +302,11 @@ public class AuthController implements IController {
 
         u.setMotDePasse(hash(p.nouveau));
         repo().updatePassword(u.getId(), u.getMotDePasse());
+
+        // ⭐ SÉCURITÉ: Révoquer tous les tokens actifs (force la reconnexion)
+        tokenManager.revokeAllUserTokens(u.getId());
+        logger.info("Mot de passe changé pour {}. Toutes les sessions révoquées.", u.getEmail());
+
         return AppResponse.ok();
     }
 
@@ -305,6 +337,7 @@ public class AuthController implements IController {
     }
 
     // ─── VERIFY ANSWER ────────────────────────────────────────────────────────
+    // FLUX SÉCURISÉ: Génère un token à usage unique valable 10 min
     public String verifyanswer(AppRequest request) {
         try {
             @SuppressWarnings("unchecked")
@@ -321,8 +354,16 @@ public class AuthController implements IController {
             if (expected == null || !expected.toLowerCase().trim().equals(provided))
                 return AppResponse.error("Réponse incorrecte. Veuillez réessayer.");
 
-            logger.info("Réponse secrète vérifiée pour : {}", u.getEmail());
-            return AppResponse.ok();
+            //  GÉNÉRATION DU TOKEN: Token unique valable 10 min, à usage unique
+            ResetTokenStore tokenStore = ResetTokenStore.getInstance();
+            String resetToken = tokenStore.generateToken(u.getId());
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("resetToken", resetToken);
+            data.put("expiresIn", "10 minutes");
+            
+            logger.info(" Token de réinitialisation généré pour : {} | Expirant dans 10 min", u.getEmail());
+            return AppResponse.success(data);
 
         } catch (Exception e) {
             logger.error("Erreur verifyanswer", e);
@@ -331,17 +372,34 @@ public class AuthController implements IController {
     }
 
     // ─── RESET PASSWORD ───────────────────────────────────────────────────────
+    //  FLUX SÉCURISÉ: Exige un token temporaire valable 10 min, l'invalide après utilisation
     public String resetpassword(AppRequest request) {
         try {
             @SuppressWarnings("unchecked")
             Map<String, String> payload = JsonUtils.fromJson(request.getPayload(), Map.class);
-            if (payload == null || payload.get("email") == null || payload.get("nouveau") == null)
-                return AppResponse.badRequest("email et nouveau requis.");
+            if (payload == null || payload.get("email") == null || payload.get("nouveau") == null 
+                    || payload.get("resetToken") == null)
+                return AppResponse.badRequest("email, nouveau et resetToken requis.");
 
-            Utilisateur u = repo().getByEmail(payload.get("email"));
-            if (u == null) return AppResponse.error("Compte introuvable.");
-
+            String resetToken = payload.get("resetToken");
             String nouveau = payload.get("nouveau");
+
+            //  VALIDATION DU TOKEN: Vérifie et consomme le token
+            // Si le token est invalide, expiré ou déjà utilisé → rejet immédiat
+            ResetTokenStore tokenStore = ResetTokenStore.getInstance();
+            int userIdFromToken = tokenStore.validateAndConsumeToken(resetToken);
+            
+            if (userIdFromToken == -1) {
+                logger.warn(" Tentative de réinitialisation avec token invalide/expiré/utilisé");
+                return AppResponse.error("Token invalide, expiré ou déjà utilisé. Veuillez réessayer.");
+            }
+
+            //  VÉRIFICATION INTÉGRITÉ: L'utilisateur du token doit correspondre à l'email
+            Utilisateur u = repo().getByEmail(payload.get("email"));
+            if (u == null || u.getId() != userIdFromToken) {
+                logger.warn(" Tentative de réinitialisation avec email/token non correspondants");
+                return AppResponse.error("Email et token ne correspondent pas.");
+            }
 
             // Validation de la complexité du nouveau mot de passe
             PasswordValidator.ValidationResult result = PasswordValidator.validate(nouveau);
@@ -349,10 +407,15 @@ public class AuthController implements IController {
                 return AppResponse.badRequest(result.firstError());
             }
 
+            //  MISE À JOUR SÉCURISÉE: Nouveau mot de passe + révocation des tokens actifs
             repo().updatePassword(u.getId(), hash(nouveau));
-            sessions.entrySet().removeIf(e -> e.getValue().getId() == u.getId());
+            
+            //  Révoque tous les tokens de cet utilisateur (changement de mot de passe)
+            // Force la reconnexion avec le nouveau mot de passe
+            tokenManager.revokeAllUserTokens(u.getId());
 
-            logger.info("Mot de passe réinitialisé pour : {}", u.getEmail());
+            logger.info(" Mot de passe réinitialisé pour : {} | Token consommé et invalidé | Tous les tokens révoqués", 
+                    u.getEmail());
             return AppResponse.ok();
 
         } catch (Exception e) {
@@ -388,7 +451,10 @@ public class AuthController implements IController {
         if (!isAdmin(request)) return AppResponse.unauthorized("Droits admin requis.");
         IdPayload p = JsonUtils.fromJson(request.getPayload(), IdPayload.class);
         if (p == null) return AppResponse.badRequest("id requis.");
-        sessions.entrySet().removeIf(e -> e.getValue().getId() == p.id);
+        
+        //  Révoque tous les tokens de l'utilisateur avant suppression
+        tokenManager.revokeAllUserTokens(p.id);
+        
         return repo().delete(p.id) ? AppResponse.ok() : AppResponse.error("Échec.");
     }
 
@@ -429,11 +495,15 @@ public class AuthController implements IController {
             Utilisateur u = twoFactorVerifier.verify(payload.get("tempToken"), payload.get("code"));
             if (u == null) return AppResponse.error("Code invalide ou expiré.");
 
-            String token = UUID.randomUUID().toString();
-            sessions.put(token, u);
+            // ⭐ Création du token avec cycle de vie (2h + IP binding)
+            String ip = extractIp(request);
+            String token = tokenManager.createToken(u, ip);
+            logger.info(" 2FA réussi pour : {} depuis {} | Token créé: {} | Expire dans: 2h",
+                    u.getEmail(), ip, token.substring(0, 8) + "...");
             return AppResponse.success(userData(u, token));
 
         } catch (Exception e) {
+            logger.error("Erreur 2FA", e);
             return AppResponse.error("Erreur 2FA : " + e.getMessage());
         }
     }
@@ -454,9 +524,24 @@ public class AuthController implements IController {
 
     // ─── HELPERS ─────────────────────────────────────────────────────────────
 
+    /**
+     * Récupère l'utilisateur connecté depuis une requête.
+     * Valide le token et retourne l'utilisateur associé.
+     * 
+     * @param request la requête contenant le token
+     * @return l'Utilisateur, ou null si non connecté/token expiré
+     */
     private Utilisateur session(AppRequest request) {
+        if (request == null) {
+            return null;
+        }
         String token = request.getAuthToken();
-        return token != null ? sessions.get(token) : null;
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        
+        // Récupère l'utilisateur via AuthorizationService (utilise TokenManager si initié)
+        return AuthorizationService.getAuthenticatedUser(request);
     }
 
     private boolean isAdmin(AppRequest request) {
@@ -499,5 +584,16 @@ public class AuthController implements IController {
         return AppResponse.success(data);
     }
 
-    public static Map<String, Utilisateur> getSessions() { return sessions; }
+    /**
+     * Retourne les informations de session du TokenManager (à usage de débogage/monitoring).
+     * DEPRECATED: Utilisé uniquement pour obtenir des stats, ne retourne pas les sessions elles-mêmes.
+     * 
+     * @return une Map vide (la gestion des sessions est maintenant privée au TokenManager)
+     */
+    @Deprecated
+    public static Map<String, Utilisateur> getSessions() {
+        // Retourne une Map vide pour la compatibilité rétroactive
+        // Les sessions sont maintenant gérées de manière interne par TokenManager Singleton
+        return Collections.emptyMap();
+    }
 }

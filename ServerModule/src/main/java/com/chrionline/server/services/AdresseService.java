@@ -26,14 +26,21 @@ public class AdresseService {
         adresseRepository.add(adresse);
     }
 
-    public void modifierAdresse(int id, Adresse adresse) {
-        logger.info("Modification adresse id={}", id);
+    public void modifierAdresse(int id, int idUtilisateur, Adresse adresse) {
+        logger.info("Modification adresse id={} pour utilisateur id={}", id, idUtilisateur);
+        // 🔒 SÉCURITÉ IDOR: On vérifie que l'adresse appartient bien à l'utilisateur avant de modifier
+        Adresse existing = adresseRepository.getAdresseByIdAndUser(id, idUtilisateur);
+        if (existing == null) {
+            logger.warn("Tentative de modification d'une adresse (id={}) n'appartenant pas à l'utilisateur {}", id, idUtilisateur);
+            throw new com.chrionline.core.exceptions.BusinessException("Adresse introuvable ou accès refusé");
+        }
         adresseRepository.update(id, adresse);
     }
 
-    public void supprimerAdresse(int id) {
-        logger.info("Suppression adresse id={}", id);
-        adresseRepository.delete(id);
+    public void supprimerAdresse(int id, int idUtilisateur) {
+        logger.info("Suppression adresse id={} pour utilisateur id={}", id, idUtilisateur);
+        // 🔒 SÉCURITÉ IDOR: On utilise le deleteScoped pour garantir l'ownership
+        adresseRepository.deleteScoped(id, idUtilisateur);
     }
 
     public void setAdressePrincipale(int idUtilisateur, int idAdresse) {

@@ -104,6 +104,40 @@ public class AdresseRepository extends JdbcRepository<Adresse> {
         return adresses;
     }
 
+    // RÉCUPÉRER UNE ADRESSE PAR SON ID
+    // ⭐ Utile pour les vérifications de propriété (OwnershipValidator)
+    public Adresse getAdresseById(int id) {
+        String sql = "SELECT * FROM adresse WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rowMapper.mapRow(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * ⭐ SÉCURITÉ IDOR: Récupère une adresse UNIQUEMENT si elle appartient à l'utilisateur.
+     */
+    public Adresse getAdresseByIdAndUser(int id, int idUtilisateur) {
+        String sql = "SELECT * FROM adresse WHERE id = ? AND id_utilisateur = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            stmt.setInt(2, idUtilisateur);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rowMapper.mapRow(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     // RÉCUPÉRER L'ADRESSE PRINCIPALE D'UN UTILISATEUR
     public Adresse getAdressePrincipale(int idUtilisateur) {
         String sql = "SELECT * FROM adresse WHERE id_utilisateur = ? AND est_principale = 1 LIMIT 1";
@@ -153,6 +187,20 @@ public class AdresseRepository extends JdbcRepository<Adresse> {
         String sql = "DELETE FROM adresse WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, idAdresse);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * ⭐ SÉCURITÉ IDOR: Supprime une adresse UNIQUEMENT si elle appartient à l'utilisateur.
+     */
+    public void deleteScoped(int idAdresse, int idUtilisateur) {
+        String sql = "DELETE FROM adresse WHERE id = ? AND id_utilisateur = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, idAdresse);
+            stmt.setInt(2, idUtilisateur);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

@@ -3,10 +3,13 @@ package com.chrionline.server.controllers;
 import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.interfaces.IController;
 import com.chrionline.core.enums.MethodePaiement;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.security.OwnershipValidator;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.shared.models.Commande;
 import com.chrionline.shared.models.Paiement;
+import com.chrionline.shared.models.Utilisateur;
+import com.chrionline.core.utils.AuthorizationService;
 import com.chrionline.server.repositories.CommandeRepository;
 import com.chrionline.server.services.NotificationService;
 import com.chrionline.server.services.PaiementService;
@@ -17,14 +20,17 @@ public class PaiementController implements IController {
 
     private static final Logger logger = LoggerFactory.getLogger(PaiementController.class);
     private final PaiementService paiementService;
+    private final CommandeRepository commandeRepository;
 
     public PaiementController() {
         this.paiementService = ServerConfig.getService(PaiementService.class);
+        this.commandeRepository = ServerConfig.getRepo(CommandeRepository.class);
     }
 
     // TRAITER UN PAIEMENT
     // INPUT  : { idCommande, numeroCarte, cvv, dateExpiration, methodePaiement }
     // OUTPUT : { statut, numeroMasque }
+    // ⭐ PRÉVENTION ESCALADE: Vérifier que la commande appartient à l'utilisateur authentifié
     public String traiter(AppRequest request) {
         try {
             java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
@@ -43,6 +49,19 @@ public class PaiementController implements IController {
                 return AppResponse.badRequest("idCommande, numeroCarte, cvv et dateExpiration sont requis");
             }
 
+            // ⭐ VÉRIFICATION OWNERSHIP: Récupère la commande
+            Commande commande = commandeRepository.getCommandeById(idCommande);
+            if (commande == null) {
+                logger.warn("❌ Commande id={} non trouvée", idCommande);
+                return AppResponse.notFound("Commande");
+            }
+
+            // ⭐ VÉRIFICATION OWNERSHIP: Valide que la commande appartient à l'utilisateur authentifié
+            String ownershipError = OwnershipValidator.validateOwnership(request, commande.getId_utilisateur(), "commande");
+            if (ownershipError != null) {
+                return AppResponse.forbidden(ownershipError);
+            }
+
             // Conversion String -> enum MethodePaiement (défaut : CARTE_BANCAIRE)
             MethodePaiement methode;
             try {
@@ -53,7 +72,8 @@ public class PaiementController implements IController {
                 return AppResponse.badRequest("Méthode de paiement invalide : " + methodeStr);
             }
 
-            logger.info("Action: traiter paiement commande id={} méthode={}", idCommande, methode);
+            logger.info("✅ Action: traiter paiement commande id={} (utilisateur id={}) méthode={}",
+                    idCommande, commande.getId_utilisateur(), methode);
 
             // Validation du format avant traitement
             String erreurValidation = paiementService.validerPaiement(numeroCarte, cvv, dateExpiration);
@@ -62,11 +82,9 @@ public class PaiementController implements IController {
 
                 // ── UDP : Scénario 2 — notif de refus au client même en cas d'échec de validation
                 try {
-                    Commande cmd =
-                            ServerConfig.getRepo(CommandeRepository.class).getCommandeById(idCommande);
-                    if (cmd != null) {
+                    if (commande != null) {
                         NotificationService ns = ServerConfig.getService(NotificationService.class);
-                        if (ns != null) ns.notifyPaymentFailed(cmd.getId_utilisateur());
+                        if (ns != null) ns.notifyPaymentFailed(commande.getId_utilisateur());
                     }
                 } catch (Exception ex) {
                     logger.warn("Impossible d'envoyer la notif de refus : {}", ex.getMessage());
@@ -102,6 +120,7 @@ public class PaiementController implements IController {
     // RÉCUPÉRER LE PAIEMENT D'UNE COMMANDE
     // INPUT  : { idCommande }
     // OUTPUT : { paiement }
+    // ⭐ PRÉVENTION ESCALADE: Vérifier que la commande appartient à l'utilisateur authentifié
     public String getPaiement(AppRequest request) {
         try {
             java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
@@ -116,7 +135,20 @@ public class PaiementController implements IController {
                 return AppResponse.badRequest("idCommande est requis");
             }
 
-            logger.info("Action: récupérer paiement commande id={}", idCommande);
+            // ⭐ SÉCURITÉ IDOR: On récupère l'utilisateur authentifié
+            Utilisateur authenticatedUser = AuthorizationService.getAuthenticatedUser(request);
+            if (authenticatedUser == null) {
+                return AppResponse.forbidden("Authentification requise");
+            }
+ 
+            // ⭐ SÉCURITÉ IDOR: On récupère la commande UNIQUEMENT si elle appartient à l'utilisateur
+            Commande commande = commandeRepository.getCommandeByIdAndUser(idCommande, authenticatedUser.getId());
+            if (commande == null) {
+                // On retourne generic 404 même si l'ID existe mais appartient à un autre
+                return AppResponse.notFound("Commande");
+            }
+ 
+            logger.info("✅ Action: récupérer paiement commande id={} utilisateur id={}", idCommande, authenticatedUser.getId());
 
             Paiement paiement = paiementService.getPaiementByCommande(idCommande);
             if (paiement == null) {

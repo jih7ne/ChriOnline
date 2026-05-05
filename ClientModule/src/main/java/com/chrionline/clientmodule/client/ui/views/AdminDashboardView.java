@@ -3,8 +3,8 @@ package com.chrionline.clientmodule.client.ui.views;
 
 import com.chrionline.core.interfaces.ViewManager;
 import com.chrionline.core.theme.AppTheme;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
 import com.chrionline.shared.models.*;
 import javafx.beans.property.SimpleObjectProperty;
