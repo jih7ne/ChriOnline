@@ -112,8 +112,14 @@ public class AuthController implements IController {
 
             Utilisateur u = repo().getByEmail(p.email);
 
+            // Prévention de l'énumération des comptes (Timing attack) :
+            // On hache le mot de passe même si l'utilisateur n'existe pas,
+            // afin que le temps de réponse soit constant.
+            String providedHash = hash(p.password);
+            boolean isValidCredentials = (u != null) && providedHash.equals(u.getMotDePasse());
+
             // 2 — Identifiants incorrects → enregistrer l'échec
-            if (u == null || !hash(p.password).equals(u.getMotDePasse())) {
+            if (!isValidCredentials) {
                 boolean justBlocked = attemptGuard.recordFailure(ip);
                 if (justBlocked) {
                     return AppResponse.error(

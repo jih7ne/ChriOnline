@@ -14,6 +14,7 @@ module com.chrionline.sharedmodule {
     exports com.chrionline.core.security;
     exports com.chrionline.core.network.protocol;
     exports com.chrionline.core.annotations;
+    exports com.chrionline.core.validation;
 
     opens com.chrionline.shared.models to com.google.gson;
     opens com.chrionline.core.network.protocol to com.google.gson;

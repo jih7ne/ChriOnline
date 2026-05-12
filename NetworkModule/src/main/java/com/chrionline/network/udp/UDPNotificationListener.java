@@ -47,8 +47,10 @@ public class UDPNotificationListener {
             while (listening && !Thread.currentThread().isInterrupted()) {
                 try {
                     AppNotification notification = receiveNotification();
-                    receivedNotifications.add(notification);
-                    dispatchToHandler(notification);
+                    if (notification != null) {
+                        receivedNotifications.add(notification);
+                        dispatchToHandler(notification);
+                    }
                 } catch (SocketTimeoutException e) {
                     // expected — just loop
                 } catch (IOException e) {
@@ -89,6 +91,7 @@ public class UDPNotificationListener {
             AppNotification notification = new AppNotification.Builder()
                     .message(message)
                     .build();
+            notification.sign();
 
             byte[] data = notification.toJson().getBytes(StandardCharsets.UTF_8);
             DatagramPacket registration = new DatagramPacket(
@@ -136,8 +139,14 @@ public class UDPNotificationListener {
         DatagramPacket receivePacket = new DatagramPacket(buffer, buffer.length);
         try {
             clientSocket.receive(receivePacket);
-            return AppNotification.fromJson(new String(
+            AppNotification notif = AppNotification.fromJson(new String(
                     receivePacket.getData(), 0, receivePacket.getLength(), StandardCharsets.UTF_8));
+            
+            if (notif != null && notif.getMessage() != null && !notif.getMessage().startsWith("REGISTER") && !notif.verifySignature()) {
+                logger.warn("Notification rejetée (Signature HMAC invalide) : {}", notif.getId());
+                return null;
+            }
+            return notif;
         } catch (SocketTimeoutException e) {
             throw e;
         } catch (SocketException e) {
