@@ -81,6 +81,18 @@ public class UDPNotificationDispatcher {
 
             try {
                 AppNotification notification = AppNotification.fromJson(receivedJson);
+
+                if (!notification.verifySignature()) {
+                    com.chrionline.core.security.AuditLog.logEvent(
+                            com.chrionline.core.security.SecurityEvent.EventType.INVALID_HMAC,
+                            clientAddress.getHostAddress(),
+                            "anonymous",
+                            "Invalid HMAC signature for UDP packet"
+                    );
+                    ServerConfig.getLogger().warn("Invalid HMAC signature from {}:{} - dropping packet", clientAddress, clientPort);
+                    return;
+                }
+
                 String msg = notification.getMessage();
 
                 if (msg != null && msg.trim().startsWith("REGISTER")) {
@@ -141,6 +153,7 @@ public class UDPNotificationDispatcher {
         ClientInfo target = userClients.get(userId);
         if (target != null) {
             try {
+                notification.sign();
                 String json = notification.toJson();
                 byte[] sendData = json.getBytes(StandardCharsets.UTF_8);
                 DatagramPacket packet = new DatagramPacket(
@@ -162,6 +175,7 @@ public class UDPNotificationDispatcher {
     // ─── Broadcast to all ─────────────────────────────────────────────────────
 
     public void broadcastNotification(AppNotification notification) {
+        notification.sign();
         String json = notification.toJson();
         byte[] sendData = json.getBytes(StandardCharsets.UTF_8);
         List<ClientInfo> deadClients = new ArrayList<>();

@@ -17,6 +17,7 @@ public class AppNotification {
     private String source;
     private int version = 1;
     private Map<String, String> data;
+    private String hmacSignature;
 
 
     private AppNotification() {
@@ -66,6 +67,19 @@ public class AppNotification {
 
     public String toJson() {
         return JsonUtils.toJson(this);
+    }
+
+    public String generateSignaturePayload() {
+        return String.format("%s|%s|%s|%s|%s|%s|%d", 
+                id, type, severity, message, timestamp, source, version);
+    }
+
+    public void sign() {
+        this.hmacSignature = com.chrionline.security.utils.HmacUtil.sign(generateSignaturePayload());
+    }
+
+    public boolean verifySignature() {
+        return com.chrionline.security.utils.HmacUtil.verify(generateSignaturePayload(), this.hmacSignature);
     }
 
 
@@ -134,6 +148,10 @@ public class AppNotification {
         }
         public Builder version(int version) {
             notification.version = version;
+            return this;
+        }
+        public Builder hmacSignature(String hmacSignature) {
+            notification.hmacSignature = hmacSignature;
             return this;
         }
         public AppNotification build() {
