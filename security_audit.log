@@ -1,0 +1,4 @@
+[2026-05-12T22:03:49.224663200] INVALID_HMAC - IP: 127.0.0.1 - User: anonymous - Invalid HMAC signature for UDP packet
+[2026-05-12T22:04:10.864687500] INVALID_HMAC - IP: 127.0.0.1 - User: anonymous - Invalid HMAC signature for UDP packet
+[2026-05-12T22:21:05.526434500] INVALID_HMAC - IP: 127.0.0.1 - User: anonymous - Invalid HMAC signature for UDP packet
+[2026-05-12T22:21:22.499433400] INVALID_HMAC - IP: 127.0.0.1 - User: anonymous - Invalid HMAC signature for UDP packet
