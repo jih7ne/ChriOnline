@@ -58,6 +58,24 @@ public class ClientHandler extends Thread {
                         logger.info("Client {} déconnecté normalement", clientId);
                         break;
                     }
+                    if (!com.chrionline.network.security.PayloadGuard.isPayloadValid(message)) {
+                        logger.warn("Déconnexion forcée du client {} : Payload trop volumineux", clientId);
+                        com.chrionline.core.security.AuditLog.logEvent(
+                            com.chrionline.core.security.SecurityEvent.EventType.PAYLOAD_TOO_LARGE, 
+                            clientIp, null, "Payload de taille " + message.length());
+                        output.println("{\"status\":\"ERROR\",\"message\":\"Payload trop volumineux (max 64 KB).\"}");
+                        break;
+                    }
+                    
+                    if (!com.chrionline.core.security.RateLimiter.allowRequest(clientIp)) {
+                        logger.warn("Rate limit dépassé pour l'IP {}", clientIp);
+                        com.chrionline.core.security.AuditLog.logEvent(
+                            com.chrionline.core.security.SecurityEvent.EventType.RATE_LIMIT_EXCEEDED, 
+                            clientIp, null, "Trop de requêtes");
+                        output.println("{\"status\":\"ERROR\",\"message\":\"Trop de requêtes, veuillez patienter.\"}");
+                        break;
+                    }
+
                     processMessage(message);
                 } catch (SocketTimeoutException e) {
                     logger.debug("Timeout de lecture pour {}", clientId);
