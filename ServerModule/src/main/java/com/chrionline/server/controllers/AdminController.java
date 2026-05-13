@@ -1,9 +1,11 @@
 package com.chrionline.server.controllers;
 
+import com.chrionline.core.annotations.RequiresRole;
 import com.chrionline.core.config.ServerConfig;
+import com.chrionline.core.enums.UserRole;
 import com.chrionline.core.interfaces.IController;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.core.enums.StatutCommande;
 import com.chrionline.shared.models.DashboardStats;
 import com.chrionline.server.services.AdminService;
@@ -22,6 +24,7 @@ public class AdminController implements IController {
         this.adminService = ServerConfig.getService(AdminService.class);
     }
 
+    @RequiresRole(value = UserRole.ADMIN, description = "Seuls les administrateurs peuvent accéder au tableau de bord")
     public String getStats(AppRequest request) {
         try {
             logger.info("Getting Admin Dashboard Stats");
@@ -33,6 +36,7 @@ public class AdminController implements IController {
         }
     }
 
+    @RequiresRole(value = UserRole.ADMIN, description = "Seuls les administrateurs peuvent voir toutes les commandes")
     public String getAllOrders(AppRequest request) {
         try {
             logger.info("Admin Action: get all orders");
@@ -44,6 +48,7 @@ public class AdminController implements IController {
         }
     }
 
+    @RequiresRole(value = UserRole.ADMIN, description = "Seuls les administrateurs peuvent modifier le statut des commandes")
     public String updateOrderStatus(AppRequest request) {
         try {
             Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);

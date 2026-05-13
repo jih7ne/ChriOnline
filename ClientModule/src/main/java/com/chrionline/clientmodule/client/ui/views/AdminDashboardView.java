@@ -3,8 +3,8 @@ package com.chrionline.clientmodule.client.ui.views;
 
 import com.chrionline.core.interfaces.ViewManager;
 import com.chrionline.core.theme.AppTheme;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
 import com.chrionline.shared.models.*;
 import javafx.beans.property.SimpleObjectProperty;
@@ -106,15 +106,18 @@ public class AdminDashboardView extends BorderPane {
             AppRequest request = new AppRequest.Builder()
                     .action("getStats")
                     .controller("Admin")
+                    .authToken(client.getAuthToken())
                     .build();
 
             AppResponse response = client.sendAndParse(request);
-            currentStats = response.getDataAs(DashboardStats.class);
-
-            refreshContent();
-
-            refreshTimeLabel.setText("Last update: " +
-                    java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+            if (response.isSuccess()) {
+                currentStats = response.getDataAs(DashboardStats.class);
+                refreshContent();
+                refreshTimeLabel.setText("Last update: " +
+                        java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+            } else {
+                showError("Failed to load statistics: " + response.getMessage());
+            }
 
         } catch (Exception e) {
             showError("Failed to load statistics: " + e.getMessage());
@@ -123,6 +126,7 @@ public class AdminDashboardView extends BorderPane {
     }
 
     public void refreshContent() {
+        if (currentStats == null) return;
         contentArea.getChildren().clear();
 
         // Section: KPI Cards

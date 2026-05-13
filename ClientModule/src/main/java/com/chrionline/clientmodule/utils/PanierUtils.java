@@ -1,8 +1,8 @@
 package com.chrionline.clientmodule.utils;
 
 import com.chrionline.clientmodule.client.ui.components.ClientNavbar;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
 import com.chrionline.shared.models.PanierProduit;
 import com.google.gson.Gson;

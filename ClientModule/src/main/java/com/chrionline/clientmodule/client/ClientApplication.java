@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.security.Security;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 public class ClientApplication extends Application implements ViewManager {
 
@@ -280,7 +282,7 @@ public class ClientApplication extends Application implements ViewManager {
             if (!client.isConnected())
                 throw new RuntimeException("Failed to connect to server");
             logger.info("Successfully connected to server");
-
+            Security.addProvider(new BouncyCastleProvider());
             launch(args);
 
         } catch (IOException e) {

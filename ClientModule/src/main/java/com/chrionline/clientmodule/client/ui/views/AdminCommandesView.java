@@ -2,8 +2,8 @@ package com.chrionline.clientmodule.client.ui.views;
 
 import com.chrionline.core.enums.StatutCommande;
 import com.chrionline.core.interfaces.ViewManager;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
 import com.chrionline.shared.models.OrderSummary;
 import javafx.application.Platform;
@@ -580,6 +580,7 @@ public class AdminCommandesView extends BorderPane {
                 AppRequest request = new AppRequest.Builder()
                         .controller("Commande").action("details")
                         .payload(Map.of("idCommande", idCommande))
+                        .authToken(client.getAuthToken())
                         .build();
                 AppResponse response = client.sendAndParse(request);
 
@@ -630,7 +631,9 @@ public class AdminCommandesView extends BorderPane {
         new Thread(() -> {
             try {
                 AppRequest request = new AppRequest.Builder()
-                        .controller("Admin").action("getAllOrders").build();
+                        .controller("Admin").action("getAllOrders")
+                        .authToken(client.getAuthToken())
+                        .build();
                 AppResponse response = client.sendAndParse(request);
 
                 if (response != null && response.isSuccess()) {
@@ -655,6 +658,7 @@ public class AdminCommandesView extends BorderPane {
                 AppRequest request = new AppRequest.Builder()
                         .controller("Admin").action("updateOrderStatus")
                         .payload(Map.of("idCommande", orderId, "statut", newStatus.name()))
+                        .authToken(client.getAuthToken())
                         .build();
                 AppResponse response = client.sendAndParse(request);
 

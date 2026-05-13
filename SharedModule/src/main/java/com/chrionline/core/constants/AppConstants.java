@@ -51,6 +51,7 @@ public final class AppConstants {
      ========================= */
 
     public static final String HASH_ALGORITHM = "SHA-256";
+    public static final String HMAC_SECRET_KEY = "ChriOnlineSecretKey2026!HmacUDP#";
 
 
     /* =========================

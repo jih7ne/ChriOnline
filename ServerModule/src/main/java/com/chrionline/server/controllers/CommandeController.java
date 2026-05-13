@@ -3,10 +3,14 @@ package com.chrionline.server.controllers;
 import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.enums.StatutCommande;
 import com.chrionline.core.interfaces.IController;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.security.OwnershipValidator;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
+import com.chrionline.core.utils.AuthorizationService;
 import com.chrionline.shared.models.Commande;
 import com.chrionline.shared.models.LigneCommande;
+import com.chrionline.shared.models.Utilisateur;
+import com.chrionline.server.repositories.CommandeRepository;
 import com.chrionline.server.services.CommandeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,14 +21,17 @@ public class CommandeController implements IController {
 
     private static final Logger logger = LoggerFactory.getLogger(CommandeController.class);
     private final CommandeService commandeService;
+    private final CommandeRepository commandeRepository;
 
     public CommandeController() {
         this.commandeService = ServerConfig.getService(CommandeService.class);
+        this.commandeRepository = ServerConfig.getRepo(CommandeRepository.class);
     }
 
     // VALIDER UNE COMMANDE
     // INPUT  : { idUtilisateur, idAdresse, lignes: [{id_produit, quantite, prix_unitaire}] }
     // OUTPUT : { uuidCommande, idCommande, statut }
+    // ⭐ PRÉVENTION ESCALADE: Vérifier que idUtilisateur correspond à l'utilisateur authentifié
     public String valider(AppRequest request) {
         try {
             // First, get the entire payload as a Map
@@ -59,7 +66,13 @@ public class CommandeController implements IController {
                 return AppResponse.badRequest("La commande doit contenir au moins une ligne");
             }
 
-            logger.info("Action: valider commande utilisateur id={}", idUtilisateur);
+            // ⭐ VÉRIFICATION OWNERSHIP: L'utilisateur authentifié ne peut commander que pour LUI-MÊME
+            String ownershipError = OwnershipValidator.validateOwnership(request, idUtilisateur, "commande");
+            if (ownershipError != null) {
+                return AppResponse.forbidden(ownershipError);
+            }
+
+            logger.info("✅ Action: valider commande utilisateur id={}", idUtilisateur);
 
             Commande commande = commandeService.validerCommande(idUtilisateur, idAdresse, lignes);
 
@@ -87,6 +100,7 @@ public class CommandeController implements IController {
     // LISTER LES COMMANDES D'UN UTILISATEUR
     // INPUT  : { idUtilisateur }
     // OUTPUT : [ { idCommande, uuidCommande, statut, prixTotal, date } ]
+    // ⭐ PRÉVENTION ESCALADE: Vérifier que l'utilisateur ne liste que SES propres commandes
     public String lister(AppRequest request) {
         try {
             java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
@@ -95,7 +109,13 @@ public class CommandeController implements IController {
             }
             Integer idUtilisateur = ((Number) payloadMap.get("idUtilisateur")).intValue();
 
-            logger.info("Action: lister commandes utilisateur id={}", idUtilisateur);
+            // ⭐ VÉRIFICATION OWNERSHIP: L'utilisateur authentifié ne peut voir que SES commandes
+            String ownershipError = OwnershipValidator.validateOwnership(request, idUtilisateur, "commande");
+            if (ownershipError != null) {
+                return AppResponse.forbidden(ownershipError);
+            }
+
+            logger.info("✅ Action: lister commandes utilisateur id={}", idUtilisateur);
 
             List<Commande> commandes = commandeService.getHistoriqueCommandes(idUtilisateur);
             return AppResponse.success(commandes, "Commandes récupérées avec succès");
@@ -110,6 +130,7 @@ public class CommandeController implements IController {
     // DÉTAILS D'UNE COMMANDE + SES LIGNES (avec nom produit)
     // INPUT  : { idCommande }
     // OUTPUT : { idCommande, lignes: [{id, id_produit, quantite, prix_unitaire, nom_produit}] }
+    // ⭐ PRÉVENTION ESCALADE: Vérifier que la commande appartient à l'utilisateur authentifié
     public String details(AppRequest request) {
         try {
             java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
@@ -120,6 +141,19 @@ public class CommandeController implements IController {
 
             logger.info("Action: détails commande id={}", idCommande);
 
+            // ⭐ SÉCURITÉ IDOR: On récupère l'utilisateur authentifié
+            Utilisateur authenticatedUser = AuthorizationService.getAuthenticatedUser(request);
+            if (authenticatedUser == null) {
+                return AppResponse.forbidden("Authentification requise");
+            }
+ 
+            // ⭐ SÉCURITÉ IDOR: On récupère la commande UNIQUEMENT si elle appartient à l'utilisateur
+            Commande commande = commandeRepository.getCommandeByIdAndUser(idCommande, authenticatedUser.getId());
+            if (commande == null) {
+                return AppResponse.notFound("Commande");
+            }
+ 
+            logger.info("Action: détails commande id={} pour utilisateur id={}", idCommande, authenticatedUser.getId());
             List<java.util.Map<String, Object>> lignes = commandeService.getLignesAvecNom(idCommande);
             if (lignes == null) {
                 return AppResponse.notFound("Commande");
@@ -140,7 +174,7 @@ public class CommandeController implements IController {
     // ANNULER UNE COMMANDE
     // INPUT  : { idCommande }
     // OUTPUT : { message }
-    // REMPLACER l'ancienne méthode annuler par :
+    // ⭐ PRÉVENTION ESCALADE: Vérifier que la commande appartient à l'utilisateur authentifié
     public String annuler(AppRequest request) {
         try {
             java.util.Map<String, Object> payloadMap = request.getPayloadAs(java.util.Map.class);
@@ -155,9 +189,21 @@ public class CommandeController implements IController {
                 return AppResponse.badRequest("idCommande est requis");
             }
 
-            logger.info("Action: annuler commande id={}", idCommande);
-
-            boolean succes = commandeService.annulerCommande(idCommande);
+            // ⭐ SÉCURITÉ IDOR: On récupère l'utilisateur authentifié
+            Utilisateur authenticatedUser = AuthorizationService.getAuthenticatedUser(request);
+            if (authenticatedUser == null) {
+                return AppResponse.forbidden("Authentification requise");
+            }
+ 
+            // ⭐ SÉCURITÉ IDOR: On récupère la commande UNIQUEMENT si elle appartient à l'utilisateur
+            Commande commande = commandeRepository.getCommandeByIdAndUser(idCommande, authenticatedUser.getId());
+            if (commande == null) {
+                return AppResponse.notFound("Commande");
+            }
+ 
+            logger.info("✅ Action: annuler commande id={} utilisateur id={}", idCommande, authenticatedUser.getId());
+ 
+            boolean succes = commandeService.annulerCommande(idCommande, authenticatedUser.getId());
 
             if (!succes) {
                 return AppResponse.error("Impossible d'annuler cette commande. Elle est peut-être déjà validée ou n'existe pas.");

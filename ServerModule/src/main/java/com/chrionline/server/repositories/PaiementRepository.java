@@ -121,6 +121,26 @@ public class PaiementRepository extends JdbcRepository<Paiement> {
         return null;
     }
 
+    /**
+     * ⭐ SÉCURITÉ IDOR: Récupère un paiement UNIQUEMENT si la commande associée appartient à l'utilisateur.
+     */
+    public Paiement getPaiementByIdAndUser(int idPaiement, int idUtilisateur) {
+        String sql = "SELECT p.* FROM paiement p " +
+                     "JOIN commande c ON p.id_commande = c.id_commande " +
+                     "WHERE p.id = ? AND c.id_utilisateur = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, idPaiement);
+            stmt.setInt(2, idUtilisateur);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rowMapper.mapRow(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     // RÉCUPÉRER TOUS LES PAIEMENTS
     public List<Paiement> getAll() {
         String sql = "SELECT * FROM paiement";
@@ -134,5 +154,22 @@ public class PaiementRepository extends JdbcRepository<Paiement> {
             e.printStackTrace();
         }
         return paiements;
+    }
+
+    /**
+     * Vérifie si un paiement existe déjà pour une commande donnée.
+     */
+    public boolean existsByCommandeId(int idCommande) {
+        String sql = "SELECT COUNT(*) FROM paiement WHERE id_commande = ? AND statut = 'confirme'";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, idCommande);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

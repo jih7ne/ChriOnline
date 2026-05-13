@@ -4,8 +4,8 @@ import com.chrionline.core.config.AppConfig;
 import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.interfaces.IController;
 import com.chrionline.core.utils.JsonUtils;
-import com.chrionline.network.protocol.AppRequest;
-import com.chrionline.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.server.repositories.UserDeviceRepository;
 import com.chrionline.server.security.ChallengeGenerator;
 import com.chrionline.server.security.SignatureVerifier;
@@ -209,10 +209,21 @@ public class KeyAuthController implements IController {
             ChallengeStore.delete(challengeId);
             if (!verified) return AppResponse.error("Login failed.");
 
-            Map<String, String> userInfo = repo().getUserInfo(email);
-            if (userInfo == null) return AppResponse.error("User not found.");
+            com.chrionline.shared.models.Utilisateur u = ServerConfig.getRepo(com.chrionline.server.repositories.UtilisateurRepository.class).getByEmail(email);
+            if (u == null) return AppResponse.error("User not found.");
 
-            return AppResponse.success(userInfo, "Login successful.");
+            String token = com.chrionline.core.security.TokenManager.getInstance().createToken(u, extractIp(request));
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("token",  token);
+            data.put("id",     u.getId());
+            data.put("nom",    u.getNom());
+            data.put("prenom", u.getPrenom());
+            data.put("email",  u.getEmail());
+            data.put("role",   u.getRole());
+            data.put("statut", u.getStatut());
+
+            return AppResponse.success(data, "Login successful.");
 
         } catch (Exception e) {
             logger.error("Signature verification error for challengeId={}", challengeId, e);
@@ -263,5 +274,16 @@ public class KeyAuthController implements IController {
     @SuppressWarnings("unchecked")
     private Map<String, Object> parsePayload(AppRequest request) {
         return JsonUtils.fromJson(request.getPayload(), Map.class);
+    }
+
+    private static String extractIp(AppRequest request) {
+        if (request == null) return "unknown";
+        String ip = request.getHeader("client-address");
+        if (ip != null && !ip.isBlank()) return ip.trim();
+        String clientId = request.getClientId();
+        if (clientId != null && clientId.contains(":")) {
+            return clientId.substring(0, clientId.lastIndexOf(':'));
+        }
+        return "unknown";
     }
 }

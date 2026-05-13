@@ -1,8 +1,8 @@
 package com.chrionline.server.controllers;
 
 import com.chrionline.core.interfaces.IController;
-import com.chrionline.network.protocol.AppResponse;
-import com.chrionline.network.protocol.AppRequest;
+import com.chrionline.core.network.protocol.AppResponse;
+import com.chrionline.core.network.protocol.AppRequest;
 
 import java.util.HashMap;
 import java.util.Map;
