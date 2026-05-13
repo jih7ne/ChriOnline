@@ -1,6 +1,7 @@
-package com.chrionline.clientmodule.client.ui.views;
+package com.chrionline.adminmodule.admin.ui.views;
 
-import com.chrionline.core.interfaces.ViewManager;
+
+import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.core.network.protocol.AppRequest;
@@ -32,7 +33,7 @@ public class AdminUtilisateursView extends BorderPane {
     @SuppressWarnings("unused")
     private final Map<String, Object> userData;
     @SuppressWarnings("unused")
-    private final ViewManager         viewManager;
+    private final AdminViewManager viewManager;
     @SuppressWarnings("unused")
     private final AdminView           adminView;
 
@@ -50,7 +51,7 @@ public class AdminUtilisateursView extends BorderPane {
     private Label totalLabel;
 
     public AdminUtilisateursView(TCPClient client, Map<String, Object> userData,
-                                 ViewManager viewManager, AdminView adminView) {
+                                 AdminViewManager viewManager, AdminView adminView) {
         this.client      = client;
         this.userData    = userData;
         this.viewManager = viewManager;

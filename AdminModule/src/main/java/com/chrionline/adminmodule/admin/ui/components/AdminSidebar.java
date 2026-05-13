@@ -1,7 +1,8 @@
-package com.chrionline.clientmodule.client.ui.components;
+package com.chrionline.adminmodule.admin.ui.components;
 
-import com.chrionline.clientmodule.client.ui.views.AdminView;
-import com.chrionline.core.interfaces.ViewManager;
+
+import com.chrionline.adminmodule.admin.ui.views.AdminView;
+import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.theme.AppTheme;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -26,13 +27,13 @@ public class AdminSidebar extends VBox {
     private static final Color  C_TEXT       = Color.WHITE;
     private static final Color  C_TEXT_MUTED = Color.web("#D4A882");
 
-    private final ViewManager         viewManager;
+    private final AdminViewManager viewManager;
     private final Map<String, Object> userData;
     private final AdminPage           activePage;
-    private final AdminView           adminView;
+    private final AdminView adminView;
 
     public AdminSidebar(AdminPage activePage, Map<String, Object> userData,
-                        ViewManager viewManager, AdminView adminView) {
+                        AdminViewManager viewManager, AdminView adminView) {
         this.activePage  = activePage;
         this.userData    = userData;
         this.viewManager = viewManager;

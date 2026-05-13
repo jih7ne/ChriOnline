@@ -1,7 +1,7 @@
 package com.chrionline.clientmodule.client.ui.views;
 
 import com.chrionline.clientmodule.client.ui.components.ClientNavbar;
-import com.chrionline.core.interfaces.ViewManager;
+import com.chrionline.clientmodule.core.ClientViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.core.network.protocol.AppRequest;
@@ -25,7 +25,7 @@ public class CheckoutView extends BorderPane {
 
     private final TCPClient tcpClient;
     private final Map<String, Object> userData;
-    private final ViewManager viewManager;
+    private final ClientViewManager viewManager;
     private final Consumer<Map<String, Object>> onPaiementSuccess;
     private final Runnable onAnnuler;
     private int idCommandeEnAttente = -1;
@@ -47,8 +47,7 @@ public class CheckoutView extends BorderPane {
 
     public CheckoutView(TCPClient tcpClient,
             List<Map<String, Object>> lignes,
-            Map<String, Object> userData,
-            ViewManager viewManager,
+            Map<String, Object> userData, ClientViewManager viewManager,
             Consumer<Map<String, Object>> onPaiementSuccess,
             Runnable onAnnuler) {
         this(tcpClient, lignes, userData, viewManager, onPaiementSuccess, onAnnuler, -1, null);
@@ -57,7 +56,7 @@ public class CheckoutView extends BorderPane {
     public CheckoutView(TCPClient tcpClient,
             List<Map<String, Object>> lignes,
             Map<String, Object> userData,
-            ViewManager viewManager,
+            ClientViewManager viewManager,
             Consumer<Map<String, Object>> onPaiementSuccess,
             Runnable onAnnuler,
             int idCommandeExistante,

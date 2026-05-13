@@ -1,7 +1,7 @@
 package com.chrionline.clientmodule.client.ui.views;
 
 import com.chrionline.clientmodule.client.ui.components.ClientNavbar;
-import com.chrionline.core.interfaces.ViewManager;
+import com.chrionline.clientmodule.core.ClientViewManager;
 import com.chrionline.clientmodule.utils.PanierUtils;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
@@ -26,7 +26,7 @@ public class DetailsProduitView extends BorderPane {
 
     private final TCPClient client;
     private final Map<String, Object> userData;
-    private final ViewManager viewManager;
+    private final ClientViewManager viewManager;
     private final Produit produit;
 
     private int quantite = 1;
@@ -35,7 +35,7 @@ public class DetailsProduitView extends BorderPane {
     private ClientNavbar navbar;
 
     public DetailsProduitView(TCPClient client, Produit produit,
-                              Map<String, Object> userData, ViewManager viewManager) {
+                              Map<String, Object> userData, ClientViewManager viewManager) {
         this.client = client;
         this.produit = produit;
         this.userData = userData;

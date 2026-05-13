@@ -1,7 +1,8 @@
-package com.chrionline.clientmodule.client.ui.views;
+package com.chrionline.adminmodule.admin.ui.views;
 
-import com.chrionline.clientmodule.client.ui.components.AdminSidebar;
-import com.chrionline.core.interfaces.ViewManager;
+
+import com.chrionline.adminmodule.admin.ui.components.AdminSidebar;
+import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.network.tcp.TCPClient;
 import javafx.application.Platform;
@@ -25,12 +26,12 @@ public class AdminView extends BorderPane {
 
     private final TCPClient           client;
     private final Map<String, Object> userData;
-    private final ViewManager         viewManager;
+    private final AdminViewManager viewManager;
 
     private AdminSidebar.AdminPage currentPage = AdminSidebar.AdminPage.DASHBOARD;
     private final BorderPane       rightPane   = new BorderPane();
 
-    public AdminView(TCPClient client, Map<String, Object> userData, ViewManager viewManager) {
+    public AdminView(TCPClient client, Map<String, Object> userData, AdminViewManager viewManager) {
         this.client      = client;
         this.userData    = userData;
         this.viewManager = viewManager;

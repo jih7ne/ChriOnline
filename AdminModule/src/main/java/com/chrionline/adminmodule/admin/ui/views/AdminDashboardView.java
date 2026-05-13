@@ -1,7 +1,7 @@
-package com.chrionline.clientmodule.client.ui.views;
+package com.chrionline.adminmodule.admin.ui.views;
 
 
-import com.chrionline.core.interfaces.ViewManager;
+import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
@@ -26,7 +26,7 @@ import java.time.format.DateTimeFormatter;
 public class AdminDashboardView extends BorderPane {
 
     private final TCPClient client;
-    private final ViewManager viewManager;
+    private final AdminViewManager viewManager;
     private VBox contentArea;
     private Label refreshTimeLabel;
     private DashboardStats currentStats;
@@ -47,7 +47,7 @@ public class AdminDashboardView extends BorderPane {
                     ".default-color0.chart-line-symbol { -fx-background-color: " + AppTheme.TEXT_MAIN + ", black; }" +
                     ".default-color0.chart-series-line { -fx-stroke: " + AppTheme.PRIMARY + "; }";
 
-    public AdminDashboardView(TCPClient client, ViewManager viewManager) {
+    public AdminDashboardView(TCPClient client, AdminViewManager viewManager) {
         this.client = client;
         this.viewManager = viewManager;
         createMainLayout();

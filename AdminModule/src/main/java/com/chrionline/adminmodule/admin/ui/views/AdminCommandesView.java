@@ -1,7 +1,7 @@
-package com.chrionline.clientmodule.client.ui.views;
+package com.chrionline.adminmodule.admin.ui.views;
 
+import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.enums.StatutCommande;
-import com.chrionline.core.interfaces.ViewManager;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
@@ -58,7 +58,7 @@ public class AdminCommandesView extends BorderPane {
                     "-fx-padding:0 16 0 16;-fx-font-size:13px;" +
                     "-fx-text-fill:#3B1F0E;-fx-prompt-text-fill:#9C6644;";
 
-    public AdminCommandesView(TCPClient client, ViewManager viewManager) {
+    public AdminCommandesView(TCPClient client, AdminViewManager viewManager) {
         this.client = client;
         setBackground(new Background(new BackgroundFill(Color.web(BG), CornerRadii.EMPTY, Insets.EMPTY)));
         buildUI();

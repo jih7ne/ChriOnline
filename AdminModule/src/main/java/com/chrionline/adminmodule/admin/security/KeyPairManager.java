@@ -1,4 +1,4 @@
-package com.chrionline.clientmodule.client.security;
+package com.chrionline.adminmodule.admin.security;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.*;
 import java.security.*;
-import java.security.cert.*;
 import java.security.cert.Certificate;
 import java.security.spec.*;
 import java.util.Base64;

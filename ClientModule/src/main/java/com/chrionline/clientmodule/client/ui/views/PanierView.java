@@ -1,7 +1,7 @@
 package com.chrionline.clientmodule.client.ui.views;
 
 import com.chrionline.clientmodule.client.ui.components.ClientNavbar;
-import com.chrionline.core.interfaces.ViewManager;
+import com.chrionline.clientmodule.core.ClientViewManager;
 import com.chrionline.clientmodule.utils.PanierUtils;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
@@ -34,7 +34,7 @@ public class PanierView extends BorderPane {
 
     private final TCPClient client;
     private final Map<String, Object> userData;
-    private final ViewManager viewManager;
+    private final ClientViewManager viewManager;
 
     private VBox itemsContainer;
     private List<PanierProduit> panierItems = new ArrayList<>();
@@ -50,7 +50,7 @@ public class PanierView extends BorderPane {
     private static final String TEXT_DARK    = "#3B1F0E";
     private static final String SEPARATOR    = "#DDB892";
 
-    public PanierView(TCPClient client, Map<String, Object> userData, ViewManager viewManager) {
+    public PanierView(TCPClient client, Map<String, Object> userData, ClientViewManager viewManager) {
         this.client      = client;
         this.userData    = userData;
         this.viewManager = viewManager;

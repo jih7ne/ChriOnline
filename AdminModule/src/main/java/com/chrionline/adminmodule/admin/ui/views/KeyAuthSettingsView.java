@@ -1,6 +1,6 @@
-package com.chrionline.clientmodule.client.ui.views;
+package com.chrionline.adminmodule.admin.ui.views;
 
-import com.chrionline.clientmodule.client.security.KeyPairManager;
+import com.chrionline.adminmodule.admin.security.KeyPairManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.core.network.protocol.AppRequest;

@@ -1,7 +1,7 @@
 package com.chrionline.clientmodule.client.ui.views;
 
 import com.chrionline.clientmodule.client.ui.components.ClientNavbar;
-import com.chrionline.core.interfaces.ViewManager;
+import com.chrionline.clientmodule.core.ClientViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.core.network.protocol.AppRequest;
@@ -31,7 +31,7 @@ public class ProfileView extends BorderPane {
 
     private final TCPClient client;
     private final Map<String, Object> userData;
-    private final ViewManager viewManager;
+    private final ClientViewManager viewManager;
 
     private TextField nomField;
     private TextField prenomField;
@@ -45,7 +45,7 @@ public class ProfileView extends BorderPane {
     private VBox adressesContainer;
     private List<Map<String, Object>> adressesList = new ArrayList<>();
 
-    public ProfileView(TCPClient client, Map<String, Object> userData, ViewManager viewManager) {
+    public ProfileView(TCPClient client, Map<String, Object> userData, ClientViewManager viewManager) {
         this.client      = client;
         this.userData    = userData;
         this.viewManager = viewManager;

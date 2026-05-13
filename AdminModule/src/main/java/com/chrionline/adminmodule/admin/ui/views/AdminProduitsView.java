@@ -1,6 +1,7 @@
-package com.chrionline.clientmodule.client.ui.views;
+package com.chrionline.adminmodule.admin.ui.views;
 
-import com.chrionline.core.interfaces.ViewManager;
+
+import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
@@ -34,7 +35,7 @@ public class AdminProduitsView extends BorderPane {
 
     private final TCPClient client;
     @SuppressWarnings("unused") private final Map<String, Object> userData;
-    @SuppressWarnings("unused") private final ViewManager viewManager;
+    @SuppressWarnings("unused") private final AdminViewManager viewManager;
     @SuppressWarnings("unused") private final AdminView adminView;
 
     private VBox   tableContainer;
@@ -51,7 +52,7 @@ public class AdminProduitsView extends BorderPane {
     private ComboBox<String> sortBox  = new ComboBox<>();
 
     public AdminProduitsView(TCPClient client, Map<String, Object> userData,
-                             ViewManager viewManager, AdminView adminView) {
+                             AdminViewManager viewManager, AdminView adminView) {
         this.client      = client;
         this.userData    = userData;
         this.viewManager = viewManager;

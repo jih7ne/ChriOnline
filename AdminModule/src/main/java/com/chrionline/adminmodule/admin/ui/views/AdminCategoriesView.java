@@ -1,6 +1,7 @@
-package com.chrionline.clientmodule.client.ui.views;
+package com.chrionline.adminmodule.admin.ui.views;
 
-import com.chrionline.core.interfaces.ViewManager;
+
+import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
@@ -31,7 +32,7 @@ public class AdminCategoriesView extends BorderPane {
 
     private final TCPClient client;
     @SuppressWarnings("unused") private final Map<String, Object> userData;
-    @SuppressWarnings("unused") private final ViewManager viewManager;
+    @SuppressWarnings("unused") private final AdminViewManager viewManager;
     @SuppressWarnings("unused") private final AdminView adminView;
 
     private List<Categorie> categories         = new ArrayList<>();
@@ -43,7 +44,7 @@ public class AdminCategoriesView extends BorderPane {
     private int nbCols = 3;
 
     public AdminCategoriesView(TCPClient client, Map<String, Object> userData,
-                               ViewManager viewManager, AdminView adminView) {
+                               AdminViewManager viewManager, AdminView adminView) {
         this.client      = client;
         this.userData    = userData;
         this.viewManager = viewManager;

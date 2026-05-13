@@ -1,6 +1,6 @@
 package com.chrionline.clientmodule.client.ui.components;
 
-import com.chrionline.core.interfaces.ViewManager;
+import com.chrionline.clientmodule.core.ClientViewManager;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -22,7 +22,7 @@ public class ClientNavbar extends HBox {
 
     public ClientNavbar(int cartCount,
                         Map<String, Object> userData,
-                        ViewManager viewManager,
+                        ClientViewManager viewManager,
                         Consumer<String> onSearch) {
 
         setStyle(

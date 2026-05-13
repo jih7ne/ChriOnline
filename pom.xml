@@ -15,6 +15,7 @@
         <module>NetworkModule</module>
         <module>ServerModule</module>
         <module>ClientModule</module>
+        <module>AdminModule</module>
     </modules>
 
     <properties>

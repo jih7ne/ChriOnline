@@ -1,10 +1,10 @@
 package com.chrionline.clientmodule.client.ui.views;
 
+import com.chrionline.clientmodule.core.ClientViewManager;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
-import com.chrionline.core.interfaces.ViewManager;
 import com.chrionline.clientmodule.client.ui.components.ClientNavbar;
 
 import com.chrionline.shared.models.PanierProduit;
@@ -33,9 +33,9 @@ public class HistoriqueCommandesView extends BorderPane {
     private List<Map<String, Object>> allCommandes = new ArrayList<>();
     private String currentFilter = "Toutes";
     private final Runnable onBackToCatalog;
-    private final ViewManager viewManager;
+    private final ClientViewManager viewManager;
 
-    public HistoriqueCommandesView(TCPClient client, Map<String, Object> userData, Runnable onBackToCatalog, ViewManager viewManager) {
+    public HistoriqueCommandesView(TCPClient client, Map<String, Object> userData, Runnable onBackToCatalog, ClientViewManager viewManager) {
         this.client = client;
         this.userData = userData;
         this.onBackToCatalog = onBackToCatalog;

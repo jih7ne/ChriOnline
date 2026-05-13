@@ -1,4 +1,4 @@
-package com.chrionline.clientmodule.client.security;
+package com.chrionline.adminmodule.admin.security;
 
 import java.security.KeyPair;
 
