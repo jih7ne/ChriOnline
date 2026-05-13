@@ -13,6 +13,8 @@ module com.chrionline.clientmodule {
     requires javafx.graphics;
     requires jdk.jsobject;
     requires jdk.httpserver;
+    requires org.bouncycastle.provider;
+    requires org.bouncycastle.pkix;
 
     opens com.chrionline.clientmodule to javafx.fxml;
     exports com.chrionline.clientmodule.client;

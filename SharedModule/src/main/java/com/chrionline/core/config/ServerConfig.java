@@ -4,6 +4,8 @@ import com.chrionline.core.interfaces.IController;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -42,7 +44,10 @@ public class ServerConfig {
 
             Class.forName(driver);
 
-            connection = DriverManager.getConnection(url, username, password);
+            connection = DriverManager.getConnection(
+                    url + "?autoReconnect=true&useSSL=true&serverTimezone=UTC",
+                    username, password
+            );
 
             logger.info("Database connection established");
 
@@ -96,10 +101,22 @@ public class ServerConfig {
         return controllers.get(name);
     }
 
-
     public static Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            throw new SQLException("Database connection is not available");
+        if (connection == null || connection.isClosed() || !connection.isValid(2)) {
+            try {
+                Properties props = new Properties();
+                InputStream input = ServerConfig.class.getClassLoader()
+                        .getResourceAsStream("application.properties");
+                props.load(input); // ← IOException wrappée dans le try/catch
+                connection = DriverManager.getConnection(
+                        props.getProperty("db.url"),
+                        props.getProperty("db.username"),
+                        props.getProperty("db.password")
+                );
+                logger.info("Database reconnected successfully");
+            } catch (IOException e) {
+                throw new SQLException("Failed to load database properties", e);
+            }
         }
         return connection;
     }
