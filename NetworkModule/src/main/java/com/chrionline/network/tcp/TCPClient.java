@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.Socket;
 
+import static com.chrionline.network.utils.NetworkUtils.extractField;
+
 public class TCPClient {
 
     private static final Logger logger = LoggerFactory.getLogger(TCPClient.class);
@@ -38,9 +40,9 @@ public class TCPClient {
         }
         try {
             secureStream.writeLine(request);
-            logger.debug("Sent request: {}", request);
+            logger.debug("→ [{}/{}]", extractField(request, "controller"), extractField(request, "action"));
             String response = secureStream.readLine();
-            logger.debug("Received response: {}", response);
+            logger.debug("← [{}/{}] status={}", extractField(request, "controller"), extractField(request, "action"), extractField(response, "status"));
             return response;
 
         } catch (Exception e) {
