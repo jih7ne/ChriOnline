@@ -35,12 +35,14 @@ public class ServerConfig {
                     .getClassLoader()
                     .getResourceAsStream("application.properties");
 
+
+
             props.load(input);
 
-            String url = props.getProperty("db.url");
+            String url      = props.getProperty("db.url");
             String username = props.getProperty("db.username");
             String password = props.getProperty("db.password");
-            String driver = props.getProperty("db.driver");
+            String driver   = props.getProperty("db.driver");
 
             Class.forName(driver);
 
