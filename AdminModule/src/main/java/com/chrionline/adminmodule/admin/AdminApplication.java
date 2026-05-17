@@ -2,6 +2,7 @@ package com.chrionline.adminmodule.admin;
 
 import com.chrionline.adminmodule.admin.ui.views.AdminDashboardView;
 import com.chrionline.adminmodule.admin.ui.views.AdminLogin;
+import com.chrionline.adminmodule.admin.ui.views.AdminView;
 import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.constants.AppConstants;
 import com.chrionline.network.tcp.TCPClient;
@@ -43,9 +44,11 @@ public class AdminApplication extends Application implements AdminViewManager {
 
     private void onLoginSuccess(Map<String, Object> userData) {
         String token = (String) userData.get("token");
+        String role  = (String) userData.get("role");
         client.setAuthToken(token);
-        Platform.runLater(this::showDashboard);
+        if ("admin".equals(role)) showAdminView(userData);
     }
+
 
 
     private void setView(javafx.scene.Node view) {
@@ -107,7 +110,8 @@ public class AdminApplication extends Application implements AdminViewManager {
 
     @Override
     public void showAdminView(Map<String, Object> userData) {
-
+        primaryStage.setTitle("ChriOnline — Administration");
+        setView(new AdminView(client, userData, this));
     }
 
     @Override

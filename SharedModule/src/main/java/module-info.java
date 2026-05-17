@@ -3,6 +3,7 @@ module com.chrionline.sharedmodule {
     requires org.slf4j;
     requires java.sql;
     requires com.google.gson;
+    requires jdk.httpserver;
     exports com.chrionline.core.config;
     exports com.chrionline.core.constants;
     exports com.chrionline.core.interfaces;
@@ -18,5 +19,6 @@ module com.chrionline.sharedmodule {
 
     opens com.chrionline.shared.models to com.google.gson;
     opens com.chrionline.core.network.protocol to com.google.gson;
+    exports com.chrionline.utils;
 
 }

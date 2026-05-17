@@ -1,6 +1,6 @@
 package com.chrionline.clientmodule.client.ui.views;
 
-import com.chrionline.clientmodule.utils.CaptchaServer;
+import com.chrionline.utils.CaptchaServer;
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.core.network.protocol.AppResponse;

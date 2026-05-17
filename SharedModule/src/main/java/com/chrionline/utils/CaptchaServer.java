@@ -1,4 +1,4 @@
-package com.chrionline.clientmodule.utils;
+package com.chrionline.utils;
 
 import com.chrionline.core.constants.AppConstants;
 import com.sun.net.httpserver.HttpServer;

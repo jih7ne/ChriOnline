@@ -1,4 +1,4 @@
-package com.chrionline.clientmodule.utils;
+package com.chrionline.utils;
 
 import javafx.application.Platform;
 

@@ -1,11 +1,12 @@
 package com.chrionline.clientmodule.client.ui.views;
 
-import com.chrionline.clientmodule.utils.CaptchaServer;
+
 import com.chrionline.core.theme.AppTheme;
 import com.chrionline.core.utils.JsonUtils;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
+import com.chrionline.utils.CaptchaServer;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
