@@ -3,10 +3,12 @@ package com.chrionline.server.services;
 import com.chrionline.core.config.ServerConfig;
 import com.chrionline.core.enums.MethodePaiement;
 import com.chrionline.core.enums.StatutPaiement;
+import com.chrionline.core.exceptions.BusinessException;
 import com.chrionline.shared.models.Commande;
 import com.chrionline.shared.models.Paiement;
 import com.chrionline.server.repositories.CommandeRepository;
 import com.chrionline.server.repositories.PaiementRepository;
+import com.chrionline.server.security.PaymentImmutabilityGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,12 +83,9 @@ public class PaiementService {
 
         logger.info("Traitement paiement pour commande id={}", idCommande);
 
-        // 🔒 SÉCURITÉ: Prévenir les doubles paiements pour une même commande
-        if (paiementRepository.existsByCommandeId(idCommande)) {
-            logger.warn("Tentative de double paiement refusée pour commande id={}", idCommande);
-            throw new com.chrionline.core.exceptions.BusinessException(
-                "Un paiement confirmé existe déjà pour la commande " + idCommande);
-        }
+        // 🔒 SÉCURITÉ: Prévenir les doubles paiements (délégué à PaymentImmutabilityGuard)
+        PaymentImmutabilityGuard.assertNoDuplicatePayment(
+                idCommande, paiementRepository.existsByCommandeId(idCommande));
 
         // 1 : validation du format
         String erreur = validerPaiement(numeroCarte, cvv, dateExpiration);
@@ -151,19 +150,11 @@ public class PaiementService {
      * ⭐ SÉCURITÉ (Immuabilité): Bloque toute modification si le paiement est déjà CONFIRME.
      */
     public void modifierPaiement(int idPaiement, int idUtilisateur, Paiement nouveauxDetails) {
-        // ⭐ SÉCURITÉ IDOR: On récupère le paiement uniquement si la commande associée appartient à l'utilisateur
+        // 🔒 SÉCURITÉ IDOR: récupère le paiement seulement si la commande appartient à l'utilisateur
         Paiement existing = paiementRepository.getPaiementByIdAndUser(idPaiement, idUtilisateur);
-        
-        if (existing == null) {
-            throw new com.chrionline.core.exceptions.BusinessException("Paiement introuvable");
-        }
 
-        // 🔒 Règle d'immuabilité financière
-        if (existing.getStatut() == StatutPaiement.CONFIRME) {
-            logger.warn("Tentative de modification d'un paiement CONFIRME bloquée (id={})", idPaiement);
-            throw new com.chrionline.core.exceptions.BusinessException(
-                "Impossible de modifier un paiement confirmé — créez un remboursement à la place");
-        }
+        // 🔒 IMMUTABILITÉ: délègue au PaymentImmutabilityGuard (lance BusinessException si CONFIRME)
+        PaymentImmutabilityGuard.assertMutable(existing);
 
         paiementRepository.update(String.valueOf(idPaiement), nouveauxDetails);
         logger.info("Paiement id={} mis à jour avec succès", idPaiement);
