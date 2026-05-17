@@ -13,6 +13,7 @@ import com.chrionline.server.security.ChallengeGenerator;
 import com.chrionline.server.security.LoginAttemptGuard;
 import com.chrionline.server.security.PasswordValidator;
 import com.chrionline.server.security.ResetTokenStore;
+import com.chrionline.server.services.CaptchaValidator;
 import com.chrionline.server.services.RecaptchaService;
 import com.chrionline.server.services.TwoFactorService;
 import com.chrionline.server.services.TwoFactorVerifier;
@@ -60,7 +61,12 @@ public class AuthController implements IController {
      * de la classe. Plus aucune dépendance à la base de données.
      */
     private static final LoginAttemptGuard attemptGuard = new LoginAttemptGuard();
-    private final RecaptchaService recaptchaService = new RecaptchaService();
+
+    /**
+     * Validateur CAPTCHA — RecaptchaService implémente CaptchaValidator.
+     * Pour les tests unitaires, on peut substituer n'importe quelle implémentation.
+     */
+    private final CaptchaValidator captchaValidator = new RecaptchaService();
 
     // ── Extraction de l'IP depuis les headers de la requête ───────────────
 
@@ -88,7 +94,8 @@ public class AuthController implements IController {
             @SuppressWarnings("unchecked")
             Map<String, Object> rawCheck = JsonUtils.fromJson(request.getPayload(), Map.class);
             String captchaToken = rawCheck != null ? (String) rawCheck.get("captchaToken") : null;
-            if (!recaptchaService.verify(captchaToken)) {
+            // 🔒 CAPTCHA : délègué à CaptchaValidator (CaptchaService / reCAPTCHA v2)
+            if (!captchaValidator.validate(captchaToken)) {
                 logger.warn("reCAPTCHA invalide depuis IP : {}", ip);
                 return AppResponse.error("Validation reCAPTCHA échouée. Veuillez réessayer.");
             }
@@ -180,7 +187,8 @@ public class AuthController implements IController {
             Map<String, Object> raw = JsonUtils.fromJson(request.getPayload(), Map.class);
             if (raw == null) return AppResponse.badRequest("Payload invalide.");
             String captchaToken = (String) raw.get("captchaToken");
-            if (!recaptchaService.verify(captchaToken)) {
+            // 🔒 CAPTCHA : délègué à CaptchaValidator (CaptchaService / reCAPTCHA v2)
+            if (!captchaValidator.validate(captchaToken)) {
                 logger.warn("reCAPTCHA invalide à l'inscription.");
                 return AppResponse.error("Validation reCAPTCHA échouée. Veuillez réessayer.");
             }

@@ -7,7 +7,11 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.*;
 
-public class RecaptchaService {
+/**
+ * Service de validation reCAPTCHA Google v2.
+ * Implémente {@link CaptchaValidator} pour injection propre dans les contrôleurs.
+ */
+public class RecaptchaService implements CaptchaValidator {
 
     private static final Logger logger = LoggerFactory.getLogger(RecaptchaService.class);
 
@@ -45,5 +49,14 @@ public class RecaptchaService {
             logger.error("Erreur lors de la vérification reCAPTCHA", e);
             return false;
         }
+    }
+
+    /**
+     * Implémentation de {@link CaptchaValidator#validate(String)}.
+     * Délègue à {@link #verify(String)} pour rétrocompatibilité.
+     */
+    @Override
+    public boolean validate(String token) {
+        return verify(token);
     }
 }
