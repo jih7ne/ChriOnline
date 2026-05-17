@@ -1,3 +1,4 @@
+
 package com.chrionline.network.enums;
 
 public enum NotificationType {
@@ -12,6 +13,8 @@ public enum NotificationType {
     ERROR,
     ORDER_CONFIRMED,
     ORDER_CANCELLED,
+    ORDER_SHIPPED,
+    ORDER_DELIVERED,
     STOCK_UPDATE,
     PAYMENT_FAILED,
     UNKNOWN;

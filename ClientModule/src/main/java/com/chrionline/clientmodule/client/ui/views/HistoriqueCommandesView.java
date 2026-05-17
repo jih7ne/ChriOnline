@@ -75,7 +75,7 @@ public class HistoriqueCommandesView extends BorderPane {
         // FILTERS
         HBox filtersBox = new HBox(12);
         filtersBox.setAlignment(Pos.CENTER_LEFT);
-        String[] filters = {"Toutes", "En attente", "Validée", "Annulée"};
+        String[] filters = {"Toutes", "En attente", "Validée", "Expédiée", "Livrée", "Annulée"};
         for (String filter : filters) {
             filtersBox.getChildren().add(createFilterChip(filter, filtersBox));
         }
@@ -130,6 +130,7 @@ public class HistoriqueCommandesView extends BorderPane {
                         .controller("Commande")
                         .action("lister")
                         .payload(payload)
+                        .authToken(client.getAuthToken()) // 🔑 Requis pour OwnershipValidator
                         .build();
 
                 String jsonResponse = client.sendRequest(request);
@@ -270,7 +271,10 @@ public class HistoriqueCommandesView extends BorderPane {
                 java.util.Map<String, Object> payload = new java.util.HashMap<>();
                 payload.put("idCommande", idCommande);
                 AppRequest req = new AppRequest.Builder()
-                        .controller("Commande").action("details").payload(payload).build();
+                        .controller("Commande").action("details")
+                        .payload(payload)
+                        .authToken(client.getAuthToken()) // 🔑 Requis pour OwnershipValidator
+                        .build();
                 AppResponse res = AppResponse.fromJson(client.sendRequest(req));
 
                 Platform.runLater(() -> {
@@ -293,7 +297,10 @@ public class HistoriqueCommandesView extends BorderPane {
                 java.util.Map<String, Object> payload = new java.util.HashMap<>();
                 payload.put("idCommande", idCommande);
                 AppRequest req = new AppRequest.Builder()
-                        .controller("Commande").action("details").payload(payload).build();
+                        .controller("Commande").action("details")
+                        .payload(payload)
+                        .authToken(client.getAuthToken()) // 🔑 Requis pour OwnershipValidator
+                        .build();
                 AppResponse res = AppResponse.fromJson(client.sendRequest(req));
 
                 Platform.runLater(() -> {
@@ -433,10 +440,12 @@ public class HistoriqueCommandesView extends BorderPane {
 
         String bg, textCol, labelText;
         switch (statutCode) {
-            case "en_attente" -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "En attente"; }
-            case "validee"    -> { bg = "#7F5539"; textCol = "white";   labelText = "Validée"; }
-            case "annulee"    -> { bg = "#E74C3C"; textCol = "white";   labelText = "Annulée"; }
-            default           -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "Inconnu"; }
+            case "en_attente" -> { bg = "#FEF3C7"; textCol = "#92400E"; labelText = "⏳ En attente"; }
+            case "validee"    -> { bg = "#D1FAE5"; textCol = "#065F46"; labelText = "✅ Validée";    }
+            case "expediee"   -> { bg = "#DBEAFE"; textCol = "#1E40AF"; labelText = "🚚 Expédiée";  }
+            case "livree"     -> { bg = "#EDE9FE"; textCol = "#5B21B6"; labelText = "📦 Livrée";    }
+            case "annulee"    -> { bg = "#FEE2E2"; textCol = "#991B1B"; labelText = "❌ Annulée";   }
+            default           -> { bg = "#F3F4F6"; textCol = "#374151"; labelText = statutCode;     }
         }
 
         badge.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 12px;");
@@ -543,7 +552,9 @@ public class HistoriqueCommandesView extends BorderPane {
                     payload.put("idCommande", idCommande);
                     AppRequest req = new AppRequest.Builder()
                             .controller("Commande").action("annuler")
-                            .payload(payload).build();
+                            .payload(payload)
+                            .authToken(client.getAuthToken()) // 🔑 Requis pour OwnershipValidator
+                            .build();
                     AppResponse res = AppResponse.fromJson(client.sendRequest(req));
 
                     Platform.runLater(() -> {

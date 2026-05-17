@@ -77,6 +77,14 @@ public class NotificationService {
                 emoji = "✅"; statutFr = "validée";
                 type = NotificationType.ORDER_CONFIRMED; severity = Severity.LOW;
             }
+            case "expediee" -> {
+                emoji = "🚚"; statutFr = "expédiée";
+                type = NotificationType.ORDER_SHIPPED; severity = Severity.LOW;
+            }
+            case "livree" -> {
+                emoji = "📦"; statutFr = "livrée";
+                type = NotificationType.ORDER_DELIVERED; severity = Severity.LOW;
+            }
             case "annulee" -> {
                 emoji = "📋"; statutFr = "annulée";
                 type = NotificationType.ORDER_CANCELLED; severity = Severity.WARNING;

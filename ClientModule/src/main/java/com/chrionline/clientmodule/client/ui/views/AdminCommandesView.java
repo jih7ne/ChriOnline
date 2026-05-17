@@ -126,7 +126,7 @@ public class AdminCommandesView extends BorderPane {
 
         // ── Filtre statut ───────────────────────────────────────────────────
         statusFilter = new ComboBox<>();
-        statusFilter.getItems().addAll("Tous les statuts", "En attente", "Validée", "Annulée");
+        statusFilter.getItems().addAll("Tous les statuts", "En attente", "Validée", "Expédiée", "Livrée", "Annulée");
         statusFilter.setValue("Tous les statuts");
         statusFilter.setPrefWidth(210); statusFilter.setMinWidth(210); statusFilter.setMaxWidth(210);
         statusFilter.setPrefHeight(44);
@@ -244,6 +244,8 @@ public class AdminCommandesView extends BorderPane {
             boolean statusMatch = switch (statusSel == null ? "" : statusSel) {
                 case "En attente" -> o.getStatus() == StatutCommande.EN_ATTENTE;
                 case "Validée"    -> o.getStatus() == StatutCommande.VALIDEE;
+                case "Expédiée"   -> o.getStatus() == StatutCommande.EXPEDIEE;
+                case "Livrée"     -> o.getStatus() == StatutCommande.LIVREE;
                 case "Annulée"    -> o.getStatus() == StatutCommande.ANNULEE;
                 default           -> true;
             };
@@ -312,7 +314,7 @@ public class AdminCommandesView extends BorderPane {
         Label hClient = hCell("Client");      HBox.setHgrow(hClient, Priority.ALWAYS); hClient.setMaxWidth(Double.MAX_VALUE);
         Label hDate   = hCell("Date",   160);
         Label hTotal  = hCell("Total",  130);
-        Label hStatut = hCell("Statut", 150);
+        Label hStatut = hCell("Statut", 220);
         Label hAct    = hCell("Actions", 70);
 
         h.getChildren().addAll(hId, hClient, hDate, hTotal, hStatut, hAct);
@@ -373,37 +375,58 @@ public class AdminCommandesView extends BorderPane {
         totalLabel.setPrefWidth(130); totalLabel.setMinWidth(130);
 
         // ── Statut
-        HBox statutBox = new HBox();
-        statutBox.setPrefWidth(150); statutBox.setMinWidth(150);
+        HBox statutBox = new HBox(8);
+        statutBox.setPrefWidth(220); statutBox.setMinWidth(220);
         statutBox.setAlignment(Pos.CENTER_LEFT);
 
-        if (order.getStatus() == StatutCommande.EN_ATTENTE) {
-            // Editable combo for pending orders
-            ComboBox<StatutCommande> combo = new ComboBox<>();
-            combo.getItems().addAll(StatutCommande.values());
-            combo.setValue(StatutCommande.EN_ATTENTE);
-            combo.setCellFactory(lv -> new StatusListCell());
-            combo.setButtonCell(new StatusListCell());
-            combo.setStyle(
-                "-fx-background-color:#FEF3C7;" +
-                "-fx-border-color:#D97706;" +
-                "-fx-border-radius:20;-fx-background-radius:20;-fx-border-width:1.5;"
-            );
-            combo.setPrefWidth(140); combo.setMaxWidth(140);
-            combo.setOnAction(e -> {
-                StatutCommande sel = combo.getValue();
-                if (sel == null || sel == StatutCommande.EN_ATTENTE) return;
-                if (sel != StatutCommande.VALIDEE && sel != StatutCommande.ANNULEE) {
-                    combo.setValue(StatutCommande.EN_ATTENTE);
-                    return;
-                }
-                updateOrderStatus(order.getOrderId(), sel);
-            });
-            statutBox.getChildren().add(combo);
-        } else {
-            // Static simple rounded badge
-            Label badge = createStatusBadge(order.getStatus());
-            statutBox.getChildren().add(badge);
+        switch (order.getStatus()) {
+
+            case EN_ATTENTE -> {
+                // Combo : peut passer à VALIDEE ou ANNULEE
+                ComboBox<StatutCommande> combo = new ComboBox<>();
+                combo.getItems().addAll(StatutCommande.EN_ATTENTE, StatutCommande.VALIDEE, StatutCommande.ANNULEE);
+                combo.setValue(StatutCommande.EN_ATTENTE);
+                combo.setCellFactory(lv -> new StatusListCell());
+                combo.setButtonCell(new StatusListCell());
+                combo.setStyle(
+                    "-fx-background-color:#FEF3C7;-fx-border-color:#D97706;" +
+                    "-fx-border-radius:20;-fx-background-radius:20;-fx-border-width:1.5;"
+                );
+                combo.setPrefWidth(160); combo.setMaxWidth(160);
+                combo.setOnAction(e -> {
+                    StatutCommande sel = combo.getValue();
+                    if (sel == null || sel == StatutCommande.EN_ATTENTE) return;
+                    updateOrderStatus(order.getOrderId(), sel);
+                });
+                statutBox.getChildren().add(combo);
+            }
+
+            case VALIDEE -> {
+                // Badge + bouton "Expédier"
+                statutBox.getChildren().add(createStatusBadge(order.getStatus()));
+                Button expedierBtn = actionBtn("🚚  Expédier", "#1D4ED8", "#DBEAFE");
+                expedierBtn.setOnAction(e -> {
+                    expedierBtn.setDisable(true);
+                    updateOrderStatus(order.getOrderId(), StatutCommande.EXPEDIEE);
+                });
+                statutBox.getChildren().add(expedierBtn);
+            }
+
+            case EXPEDIEE -> {
+                // Badge + bouton "Marquer livré"
+                statutBox.getChildren().add(createStatusBadge(order.getStatus()));
+                Button livraisonBtn = actionBtn("📦  Livré", "#5B21B6", "#EDE9FE");
+                livraisonBtn.setOnAction(e -> {
+                    livraisonBtn.setDisable(true);
+                    updateOrderStatus(order.getOrderId(), StatutCommande.LIVREE);
+                });
+                statutBox.getChildren().add(livraisonBtn);
+            }
+
+            default -> {
+                // LIVREE / ANNULEE : badge statique (états terminaux)
+                statutBox.getChildren().add(createStatusBadge(order.getStatus()));
+            }
         }
 
         // ── Actions
@@ -440,9 +463,11 @@ public class AdminCommandesView extends BorderPane {
     private Label createStatusBadge(StatutCommande status) {
         String bgColor, textColor, text;
         switch (status) {
-            case EN_ATTENTE -> { bgColor = "#FEF3C7"; textColor = "#92400E"; text = "En attente"; }
-            case VALIDEE    -> { bgColor = "#D1FAE5"; textColor = "#065F46"; text = "Validée";    }
-            case ANNULEE    -> { bgColor = "#FEE2E2"; textColor = "#991B1B"; text = "Annulée";    }
+            case EN_ATTENTE -> { bgColor = "#FEF3C7"; textColor = "#92400E"; text = "⏳ En attente"; }
+            case VALIDEE    -> { bgColor = "#D1FAE5"; textColor = "#065F46"; text = "✅ Validée";    }
+            case EXPEDIEE   -> { bgColor = "#DBEAFE"; textColor = "#1E40AF"; text = "🚚 Expédiée";  }
+            case LIVREE     -> { bgColor = "#EDE9FE"; textColor = "#5B21B6"; text = "📦 Livrée";    }
+            case ANNULEE    -> { bgColor = "#FEE2E2"; textColor = "#991B1B"; text = "❌ Annulée";   }
             default         -> { bgColor = "#F3F4F6"; textColor = "#374151"; text = status.name(); }
         }
         Label lbl = new Label(text);
@@ -465,6 +490,26 @@ public class AdminCommandesView extends BorderPane {
         btn.setStyle("-fx-background-color:transparent;-fx-cursor:hand;-fx-padding:6;");
         btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color:" + hoverBg + ";-fx-background-radius:7;-fx-cursor:hand;-fx-padding:6;"));
         btn.setOnMouseExited(e  -> btn.setStyle("-fx-background-color:transparent;-fx-cursor:hand;-fx-padding:6;"));
+        return btn;
+    }
+
+    /**
+     * Petit bouton d'action inline (ex : "Expédier", "Livré").
+     * @param label   texte affiché
+     * @param color   couleur du texte
+     * @param hoverBg couleur de fond au survol
+     */
+    private Button actionBtn(String label, String color, String hoverBg) {
+        String base = "-fx-background-color:transparent;-fx-text-fill:" + color +
+                      ";-fx-font-size:11px;-fx-font-weight:bold;-fx-cursor:hand;" +
+                      "-fx-padding:3 10 3 10;-fx-border-color:" + color +
+                      ";-fx-border-radius:12;-fx-background-radius:12;-fx-border-width:1.2;";
+        Button btn = new Button(label);
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(
+                base.replace("-fx-background-color:transparent",
+                             "-fx-background-color:" + hoverBg)));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
         return btn;
     }
 
