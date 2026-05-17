@@ -161,7 +161,8 @@ public class AdresseDialogView extends VBox {
                 AppRequest.Builder builder = new AppRequest.Builder()
                         .controller("Adresse")
                         .action(action)
-                        .payload(JsonUtils.toJson(payload));
+                        .payload(JsonUtils.toJson(payload))
+                        .authToken(tcpClient.getAuthToken()); // 🔑 token de session requis pour OwnershipValidator
 
                 // FIX : id envoyé en parameter (pas dans le payload)
                 if (isEdit) {
