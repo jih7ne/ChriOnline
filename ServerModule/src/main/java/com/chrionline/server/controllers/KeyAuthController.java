@@ -149,10 +149,13 @@ public class KeyAuthController implements IController {
         boolean hasKeys = repo().hasKeys(email);
         logger.info("isAdmin={} hasKeys={} for email={}", isAdmin, hasKeys, email);
 
-        boolean authorized = isAdmin && hasKeys;
-        if (!authorized) {
-            logger.warn("Login denied: isAdmin={} hasKeys={}", isAdmin, hasKeys);
-            return AppResponse.error("Login request denied.");
+        if (!isAdmin) {
+            logger.warn("Login denied: email={} is not an admin", email);
+            return AppResponse.error("Accès refusé : compte non administrateur.");
+        }
+        if (!hasKeys) {
+            logger.warn("Login denied: admin email={} has no registered keys", email);
+            return AppResponse.error("Aucun appareil sécurisé (RSA) enregistré. Connectez-vous via l'onglet 'Client' (mot de passe) pour enregistrer ce PC.");
         }
 
         String id        = UUID.randomUUID().toString();
