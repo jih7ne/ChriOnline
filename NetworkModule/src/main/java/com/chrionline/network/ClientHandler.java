@@ -13,6 +13,8 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
+import static com.chrionline.network.utils.NetworkUtils.extractField;
+
 public class ClientHandler extends Thread {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
@@ -96,7 +98,7 @@ public class ClientHandler extends Thread {
 
     private void processMessage(String message) {
         try {
-            logger.info("Reçu de {} : {}", clientId, message);
+            logger.debug("←  [{}/{}]", extractField(message, "controller"), extractField(message, "action"));
 
             AppRequest request = AppRequest.fromJson(message);
 
