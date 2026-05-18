@@ -2,6 +2,7 @@ package com.chrionline.adminmodule.admin.ui.views;
 
 import com.chrionline.adminmodule.core.AdminViewManager;
 import com.chrionline.core.enums.StatutCommande;
+import com.chrionline.core.services.OrderStateMachine;
 import com.chrionline.core.network.protocol.AppRequest;
 import com.chrionline.core.network.protocol.AppResponse;
 import com.chrionline.network.tcp.TCPClient;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class AdminCommandesView extends BorderPane {
@@ -126,7 +128,15 @@ public class AdminCommandesView extends BorderPane {
 
         // ── Filtre statut ───────────────────────────────────────────────────
         statusFilter = new ComboBox<>();
-        statusFilter.getItems().addAll("Tous les statuts", "En attente", "Validée", "Annulée");
+        statusFilter.getItems().addAll(
+            "Tous les statuts",
+            "En attente",
+            "Validée",
+            "En préparation",
+            "Expédiée",
+            "Livrée",
+            "Annulée"
+        );
         statusFilter.setValue("Tous les statuts");
         statusFilter.setPrefWidth(210); statusFilter.setMinWidth(210); statusFilter.setMaxWidth(210);
         statusFilter.setPrefHeight(44);
@@ -242,10 +252,13 @@ public class AdminCommandesView extends BorderPane {
 
         List<OrderSummary> result = allOrders.stream().filter(o -> {
             boolean statusMatch = switch (statusSel == null ? "" : statusSel) {
-                case "En attente" -> o.getStatus() == StatutCommande.EN_ATTENTE;
-                case "Validée"    -> o.getStatus() == StatutCommande.VALIDEE;
-                case "Annulée"    -> o.getStatus() == StatutCommande.ANNULEE;
-                default           -> true;
+                case "En attente"     -> o.getStatus() == StatutCommande.EN_ATTENTE;
+                case "Validée"        -> o.getStatus() == StatutCommande.VALIDEE;
+                case "En préparation" -> o.getStatus() == StatutCommande.EN_PREPARATION;
+                case "Expédiée"       -> o.getStatus() == StatutCommande.EXPEDIEE;
+                case "Livrée"         -> o.getStatus() == StatutCommande.LIVREE;
+                case "Annulée"        -> o.getStatus() == StatutCommande.ANNULEE;
+                default               -> true;
             };
             if (!statusMatch) return false;
             if (query.isBlank()) return true;
@@ -377,31 +390,29 @@ public class AdminCommandesView extends BorderPane {
         statutBox.setPrefWidth(150); statutBox.setMinWidth(150);
         statutBox.setAlignment(Pos.CENTER_LEFT);
 
-        if (order.getStatus() == StatutCommande.EN_ATTENTE) {
-            // Editable combo for pending orders
+        Set<StatutCommande> nextStates = OrderStateMachine.getNextValidStatuses(order.getStatus());
+        if (!nextStates.isEmpty()) {
+            // État non-final : combo affichant uniquement les transitions légales
             ComboBox<StatutCommande> combo = new ComboBox<>();
-            combo.getItems().addAll(StatutCommande.values());
-            combo.setValue(StatutCommande.EN_ATTENTE);
+            combo.getItems().add(order.getStatus());   // état actuel en premier
+            combo.getItems().addAll(nextStates);        // transitions légales seulement
+            combo.setValue(order.getStatus());
             combo.setCellFactory(lv -> new StatusListCell());
             combo.setButtonCell(new StatusListCell());
             combo.setStyle(
-                "-fx-background-color:#FEF3C7;" +
-                "-fx-border-color:#D97706;" +
+                "-fx-background-color:" + statusBg(order.getStatus()) + ";" +
+                "-fx-border-color:" + statusBorder(order.getStatus()) + ";" +
                 "-fx-border-radius:20;-fx-background-radius:20;-fx-border-width:1.5;"
             );
-            combo.setPrefWidth(140); combo.setMaxWidth(140);
+            combo.setPrefWidth(150); combo.setMaxWidth(150);
             combo.setOnAction(e -> {
                 StatutCommande sel = combo.getValue();
-                if (sel == null || sel == StatutCommande.EN_ATTENTE) return;
-                if (sel != StatutCommande.VALIDEE && sel != StatutCommande.ANNULEE) {
-                    combo.setValue(StatutCommande.EN_ATTENTE);
-                    return;
-                }
+                if (sel == null || sel == order.getStatus()) return;
                 updateOrderStatus(order.getOrderId(), sel);
             });
             statutBox.getChildren().add(combo);
         } else {
-            // Static simple rounded badge
+            // État final (LIVREE ou ANNULEE) : badge statique
             Label badge = createStatusBadge(order.getStatus());
             statutBox.getChildren().add(badge);
         }
@@ -438,13 +449,9 @@ public class AdminCommandesView extends BorderPane {
      * No icon prefix, short text.
      */
     private Label createStatusBadge(StatutCommande status) {
-        String bgColor, textColor, text;
-        switch (status) {
-            case EN_ATTENTE -> { bgColor = "#FEF3C7"; textColor = "#92400E"; text = "En attente"; }
-            case VALIDEE    -> { bgColor = "#D1FAE5"; textColor = "#065F46"; text = "Validée";    }
-            case ANNULEE    -> { bgColor = "#FEE2E2"; textColor = "#991B1B"; text = "Annulée";    }
-            default         -> { bgColor = "#F3F4F6"; textColor = "#374151"; text = status.name(); }
-        }
+        String bgColor    = statusBg(status);
+        String textColor  = statusText(status);
+        String text       = statusLabel(status);
         Label lbl = new Label(text);
         lbl.setStyle(
             "-fx-font-size:12px;-fx-font-weight:bold;" +
@@ -454,6 +461,54 @@ public class AdminCommandesView extends BorderPane {
             "-fx-padding:4 12 4 12;"
         );
         return lbl;
+    }
+
+    /** Libellé FR du statut. */
+    private static String statusLabel(StatutCommande s) {
+        return switch (s) {
+            case EN_ATTENTE     -> "En attente";
+            case VALIDEE        -> "Validée";
+            case EN_PREPARATION -> "En préparation";
+            case EXPEDIEE       -> "Expédiée";
+            case LIVREE         -> "Livrée";
+            case ANNULEE        -> "Annulée";
+        };
+    }
+
+    /** Couleur de fond du badge. */
+    private static String statusBg(StatutCommande s) {
+        return switch (s) {
+            case EN_ATTENTE     -> "#FEF3C7";  // amber clair
+            case VALIDEE        -> "#D1FAE5";  // vert clair
+            case EN_PREPARATION -> "#DBEAFE";  // bleu clair
+            case EXPEDIEE       -> "#EDE9FE";  // violet clair
+            case LIVREE         -> "#D1FAE5";  // vert foncé clair
+            case ANNULEE        -> "#FEE2E2";  // rouge clair
+        };
+    }
+
+    /** Couleur de la bordure du combo. */
+    private static String statusBorder(StatutCommande s) {
+        return switch (s) {
+            case EN_ATTENTE     -> "#D97706";
+            case VALIDEE        -> "#059669";
+            case EN_PREPARATION -> "#2563EB";
+            case EXPEDIEE       -> "#7C3AED";
+            case LIVREE         -> "#065F46";
+            case ANNULEE        -> "#DC2626";
+        };
+    }
+
+    /** Couleur du texte du badge. */
+    private static String statusText(StatutCommande s) {
+        return switch (s) {
+            case EN_ATTENTE     -> "#92400E";
+            case VALIDEE        -> "#065F46";
+            case EN_PREPARATION -> "#1E40AF";
+            case EXPEDIEE       -> "#5B21B6";
+            case LIVREE         -> "#065F46";
+            case ANNULEE        -> "#991B1B";
+        };
     }
 
     // ── Icon button (same helper as Produits) ─────────────────────────────────────
