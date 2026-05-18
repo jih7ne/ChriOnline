@@ -75,7 +75,7 @@ public class HistoriqueCommandesView extends BorderPane {
         // FILTERS
         HBox filtersBox = new HBox(12);
         filtersBox.setAlignment(Pos.CENTER_LEFT);
-        String[] filters = {"Toutes", "En attente", "Validée", "Annulée"};
+        String[] filters = {"Toutes", "En attente", "Validée", "En préparation", "Expédiée", "Livrée", "Annulée"};
         for (String filter : filters) {
             filtersBox.getChildren().add(createFilterChip(filter, filtersBox));
         }
@@ -438,10 +438,13 @@ public class HistoriqueCommandesView extends BorderPane {
 
         String bg, textCol, labelText;
         switch (statutCode) {
-            case "en_attente" -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "En attente"; }
-            case "validee"    -> { bg = "#7F5539"; textCol = "white";   labelText = "Validée"; }
-            case "annulee"    -> { bg = "#E74C3C"; textCol = "white";   labelText = "Annulée"; }
-            default           -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "Inconnu"; }
+            case "en_attente"     -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "En attente"; }
+            case "validee"        -> { bg = "#7F5539"; textCol = "white";   labelText = "Validée"; }
+            case "en_preparation" -> { bg = "#2563EB"; textCol = "white";   labelText = "En préparation"; }
+            case "expediee"       -> { bg = "#7C3AED"; textCol = "white";   labelText = "Expédiée"; }
+            case "livree"         -> { bg = "#059669"; textCol = "white";   labelText = "Livrée"; }
+            case "annulee"        -> { bg = "#E74C3C"; textCol = "white";   labelText = "Annulée"; }
+            default               -> { bg = "#E6CCB2"; textCol = "#7F5539"; labelText = "Inconnu"; }
         }
 
         badge.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 12px;");
