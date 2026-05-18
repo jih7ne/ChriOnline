@@ -130,6 +130,7 @@ public class HistoriqueCommandesView extends BorderPane {
                         .controller("Commande")
                         .action("lister")
                         .payload(payload)
+                        .authToken(client.getAuthToken())
                         .build();
 
                 String jsonResponse = client.sendRequest(request);
@@ -270,7 +271,9 @@ public class HistoriqueCommandesView extends BorderPane {
                 java.util.Map<String, Object> payload = new java.util.HashMap<>();
                 payload.put("idCommande", idCommande);
                 AppRequest req = new AppRequest.Builder()
-                        .controller("Commande").action("details").payload(payload).build();
+                        .controller("Commande").action("details").payload(payload)
+                        .authToken(client.getAuthToken())
+                        .build();
                 AppResponse res = AppResponse.fromJson(client.sendRequest(req));
 
                 Platform.runLater(() -> {
@@ -293,7 +296,9 @@ public class HistoriqueCommandesView extends BorderPane {
                 java.util.Map<String, Object> payload = new java.util.HashMap<>();
                 payload.put("idCommande", idCommande);
                 AppRequest req = new AppRequest.Builder()
-                        .controller("Commande").action("details").payload(payload).build();
+                        .controller("Commande").action("details").payload(payload)
+                        .authToken(client.getAuthToken())
+                        .build();
                 AppResponse res = AppResponse.fromJson(client.sendRequest(req));
 
                 Platform.runLater(() -> {
@@ -543,7 +548,9 @@ public class HistoriqueCommandesView extends BorderPane {
                     payload.put("idCommande", idCommande);
                     AppRequest req = new AppRequest.Builder()
                             .controller("Commande").action("annuler")
-                            .payload(payload).build();
+                            .payload(payload)
+                            .authToken(client.getAuthToken())
+                            .build();
                     AppResponse res = AppResponse.fromJson(client.sendRequest(req));
 
                     Platform.runLater(() -> {

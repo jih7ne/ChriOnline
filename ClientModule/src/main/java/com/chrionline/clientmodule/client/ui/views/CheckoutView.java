@@ -367,7 +367,9 @@ public class CheckoutView extends BorderPane {
             try {
                 AppRequest req = new AppRequest.Builder()
                         .controller("Adresse").action("lister")
-                        .parameter("idUtilisateur", idUtilisateur).build();
+                        .parameter("idUtilisateur", idUtilisateur)
+                        .authToken(tcpClient.getAuthToken())
+                        .build();
                 AppResponse resp = tcpClient.sendAndParse(req);
                 if (resp != null && resp.isSuccess()) {
                     List<Map<String, Object>> adresses = resp.getDataAs(List.class);
@@ -443,7 +445,9 @@ public class CheckoutView extends BorderPane {
 
                 AppRequest reqPaiement = new AppRequest.Builder()
                         .controller("Paiement").action("traiter")
-                        .payload(JsonUtils.toJson(paiementParams)).build();
+                        .payload(JsonUtils.toJson(paiementParams))
+                        .authToken(tcpClient.getAuthToken())
+                        .build();
                 AppResponse respPaiement = tcpClient.sendAndParse(reqPaiement);
 
                 // ── Paiement échoué → commande reste EN_ATTENTE (pas d'annulation) ──
@@ -514,7 +518,9 @@ public class CheckoutView extends BorderPane {
 
                 AppRequest reqCommande = new AppRequest.Builder()
                         .controller("Commande").action("valider")
-                        .payload(JsonUtils.toJson(commandeParams)).build();
+                        .payload(JsonUtils.toJson(commandeParams))
+                        .authToken(tcpClient.getAuthToken())
+                        .build();
                 AppResponse respCommande = tcpClient.sendAndParse(reqCommande);
 
                 if (respCommande != null && respCommande.isSuccess()) {

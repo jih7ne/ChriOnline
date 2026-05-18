@@ -147,8 +147,15 @@ public class CommandeController implements IController {
                 return AppResponse.forbidden("Authentification requise");
             }
  
-            // ⭐ SÉCURITÉ IDOR: On récupère la commande UNIQUEMENT si elle appartient à l'utilisateur
-            Commande commande = commandeRepository.getCommandeByIdAndUser(idCommande, authenticatedUser.getId());
+            Commande commande;
+            if ("ADMIN".equalsIgnoreCase(authenticatedUser.getRole())) {
+                // L'admin peut voir toutes les commandes
+                commande = commandeRepository.getCommandeById(idCommande);
+            } else {
+                // ⭐ SÉCURITÉ IDOR: On récupère la commande UNIQUEMENT si elle appartient à l'utilisateur
+                commande = commandeRepository.getCommandeByIdAndUser(idCommande, authenticatedUser.getId());
+            }
+
             if (commande == null) {
                 return AppResponse.notFound("Commande");
             }
