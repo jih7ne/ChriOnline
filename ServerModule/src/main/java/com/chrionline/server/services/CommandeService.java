@@ -22,6 +22,7 @@ public class CommandeService {
     private final ProduitRepository produitRepository;
     private final PanierService panierService;
     private final OrderCalculator orderCalculator;
+    private final StockReservationService stockReservationService;
 
     public CommandeService(CommandeRepository commandeRepository,
                            LigneCommandeRepository ligneCommandeRepository,
@@ -31,7 +32,8 @@ public class CommandeService {
         this.produitRepository = produitRepository;
         this.panierService = ServerConfig.getService(PanierService.class);
         this.orderCalculator = new OrderCalculator();
-        logger.info("CommandeService initialized with secure OrderCalculator");
+        this.stockReservationService = new StockReservationService(produitRepository);
+        logger.info("CommandeService initialized with secure OrderCalculator and Pessimistic Stock Reservation");
     }
 
     private NotificationService getNotificationService() {
@@ -59,14 +61,14 @@ public class CommandeService {
             }
         }
 
-        // 🔒 SÉCURITÉ: Détecte si le client a tenté de manipuler les prix
+        // SÉCURITÉ: Détecte si le client a tenté de manipuler les prix
         // Les prix envoyés par le client peuvent être ignorés/manipulés
         boolean manipulationDetected = !orderCalculator.detectPriceManipulation(lignes);
         if (manipulationDetected) {
-            logger.warn(" ⚠️ Une tentative de manipulation de prix a été détectée et ignorée");
+            logger.warn(" Une tentative de manipulation de prix a été détectée et ignorée");
         }
 
-        // 🔒 SÉCURITÉ: Recalcule le prix total UNIQUEMENT depuis la BDD
+        // SÉCURITÉ: Recalcule le prix total UNIQUEMENT depuis la BDD
         // Les prix envoyés par le client sont COMPLÈTEMENT IGNORÉS
         // Cela garantit que le serveur facture TOUJOURS le bon prix
         double prixTotal = orderCalculator.calculateTotalPrice(lignes);
@@ -129,18 +131,20 @@ public class CommandeService {
             return false;
         }
 
-        // Décrémentation du stock
+        // Décrémentation du stock AVEC Verrouillage Pessimiste
         for (LigneCommande ligne : lignes) {
-            Produit produit = produitRepository.findById(ligne.getId_produit());
-            if (produit == null) continue;
-
-            int nouveauStock = produit.getStock() - ligne.getQuantite();
-            produitRepository.updateStock(ligne.getId_produit(), nouveauStock);
-            logger.info("Stock produit id={} mis à jour → {}", ligne.getId_produit(), nouveauStock);
-
-            // ── UDP : Scénario 3 — broadcast mise à jour stock
-            NotificationService ns = getNotificationService();
-            if (ns != null) ns.notifyStockUpdated(produit.getNom(), nouveauStock);
+            boolean reserved = stockReservationService.reserveStock(ligne.getId_produit(), ligne.getQuantite());
+            
+            if (reserved) {
+                Produit produit = produitRepository.findById(ligne.getId_produit());
+                if (produit != null) {
+                    // ── UDP : Scénario 3 — broadcast mise à jour stock
+                    NotificationService ns = getNotificationService();
+                    if (ns != null) ns.notifyStockUpdated(produit.getNom(), produit.getStock());
+                }
+            } else {
+                logger.error("ALERTE CRITIQUE : Impossible de décrémenter le stock pour le produit ID={} (quantité: {}). Une survente a été évitée grâce au verrou !", ligne.getId_produit(), ligne.getQuantite());
+            }
         }
 
         // Changement de statut
@@ -202,7 +206,7 @@ public class CommandeService {
 
         StatutCommande currentStatut = commande.getStatut();
         
-        // 🔒 MACHINE À ÉTATS: Vérifier si la transition est autorisée
+        //  MACHINE À ÉTATS: Vérifier si la transition est autorisée
         if (!OrderStateMachine.isValidTransition(currentStatut, newStatut)) {
             logger.warn("⚠️ Transition illégale refusée: {} → {} (Commande id={})", 
                         currentStatut, newStatut, idCommande);
