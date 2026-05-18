@@ -1,10 +1,11 @@
-package com.chrionline.server.services;
- 
+package com.chrionline.core.services;
+
 import com.chrionline.core.enums.StatutCommande;
 import java.util.*;
- 
+
 /**
  * Machine à états pour le cycle de vie complet des commandes.
+ * Placée dans SharedModule pour être accessible par ServerModule ET AdminModule.
  *
  * Transitions autorisées :
  *
@@ -22,49 +23,39 @@ import java.util.*;
  *   ANNULEE        →  (état final — aucune transition)
  */
 public class OrderStateMachine {
- 
+
     private static final Map<StatutCommande, Set<StatutCommande>> VALID_TRANSITIONS =
             new EnumMap<>(StatutCommande.class);
- 
+
     static {
-        // EN_ATTENTE : en attente de paiement
         VALID_TRANSITIONS.put(StatutCommande.EN_ATTENTE,
                 EnumSet.of(StatutCommande.VALIDEE, StatutCommande.ANNULEE));
 
-        // VALIDEE : paiement confirmé — peut être préparée ou remboursée
         VALID_TRANSITIONS.put(StatutCommande.VALIDEE,
                 EnumSet.of(StatutCommande.EN_PREPARATION, StatutCommande.ANNULEE));
 
-        // EN_PREPARATION : en cours de préparation entrepôt
         VALID_TRANSITIONS.put(StatutCommande.EN_PREPARATION,
                 EnumSet.of(StatutCommande.EXPEDIEE));
 
-        // EXPEDIEE : colis remis au transporteur
         VALID_TRANSITIONS.put(StatutCommande.EXPEDIEE,
                 EnumSet.of(StatutCommande.LIVREE));
 
-        // LIVREE : état final positif
         VALID_TRANSITIONS.put(StatutCommande.LIVREE,
                 EnumSet.noneOf(StatutCommande.class));
 
-        // ANNULEE : état final négatif
         VALID_TRANSITIONS.put(StatutCommande.ANNULEE,
                 EnumSet.noneOf(StatutCommande.class));
     }
- 
+
     /**
      * Vérifie si une transition entre deux statuts est autorisée.
-     *
-     * @param current le statut actuel
-     * @param next    le nouveau statut demandé
-     * @return true si la transition est valide, false sinon
      */
     public static boolean isValidTransition(StatutCommande current, StatutCommande next) {
-        if (current == next) return true; // Rester dans le même état est toléré (idempotence)
+        if (current == next) return true;
         Set<StatutCommande> allowed = VALID_TRANSITIONS.get(current);
         return allowed != null && allowed.contains(next);
     }
- 
+
     /**
      * Retourne la liste des statuts accessibles depuis le statut actuel.
      */
@@ -80,4 +71,3 @@ public class OrderStateMachine {
         return next != null && next.isEmpty();
     }
 }
-

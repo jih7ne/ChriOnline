@@ -20,5 +20,6 @@ module com.chrionline.sharedmodule {
     opens com.chrionline.shared.models to com.google.gson;
     opens com.chrionline.core.network.protocol to com.google.gson;
     exports com.chrionline.utils;
+    exports com.chrionline.core.services;
 
 }
