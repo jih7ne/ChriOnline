@@ -9,13 +9,13 @@ import java.nio.charset.StandardCharsets;
 
 public class CaptchaServer {
 
-    private static final int PORT = 8765;
+    private static int currentPort = 8765;
     private static HttpServer server;
 
     public static int start() throws Exception {
-        if (server != null) return PORT; // déjà démarré
+        if (server != null) return currentPort; // déjà démarré
 
-        server = HttpServer.create(new InetSocketAddress("localhost", PORT), 0);
+        server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
 
         server.createContext("/recaptcha", exchange -> {
             String html = buildHtml();
@@ -29,7 +29,8 @@ public class CaptchaServer {
 
         server.setExecutor(null);
         server.start();
-        return PORT;
+        currentPort = server.getAddress().getPort();
+        return currentPort;
     }
 
     public static void stop() {
